@@ -1,3 +1,4 @@
+import {accountTab,accountStatus} from './account.js';
 import {$,PET,RC,RN,S,SL,SLN,SP,TR,def,forgeMode,forgeSelected,mode,run,save,setForgeMode,setForgeSelected,setMode,setRun,setS,setTab,setUid,tab} from './state.js';
 import {fmt,sc,val} from './items.js';
 import {AURAS,activeAuras,auraOwned,auraUpCost} from './auras.js';
@@ -14,10 +15,11 @@ import {chip} from './assets.js';
 export function view(){$('#battle').hidden=mode!='battle';$('#camp').hidden=mode!='camp';
  $('#spells').innerHTML=SP.map((s,i)=>hasSp(i)?'<button class="s" data-a="cast" data-v="'+i+'">'+s.n+'</button>':'').join('');
  if(mode=='camp')camp();else hud()}
-export function camp(){const st=stats();$('#sdw').innerHTML=(RL('rStart')?'<span>Start stage</span><button class="s alt" data-a="sd" data-v="-1">-</button><b>'+startStage()+'</b><button class="s alt" data-a="sd" data-v="1">+</button>':'')+(L('sorter')?'<span style="margin-left:8px">Auto-sell</span><button class="s alt" data-a="qm" data-v="-1">-</button><b>'+(qmT()?RN[qmT()-1]+' and below':'Off')+'</b><button class="s alt" data-a="qm" data-v="1">+</button>':'');$('#tg').className=tab=='g'?'on':'';$('#ta').className=tab=='a'?'on':'';$('#tv').className=tab=='v'?'on':'';$('#tl').className=tab=='l'?'on':'';$('#tp').className=tab=='p'?'on':'';$('#tm').className=tab=='m'?'on':'';$('#ti').className=tab=='i'?'on':'';$('#tu').className=tab=='u'?'on':'';if($('#tr2'))$('#tr2').className=tab=='r'?'on':'';
+export function camp(){const st=stats();$('#sdw').innerHTML=(RL('rStart')?'<span>Start stage</span><button class="s alt" data-a="sd" data-v="-1">-</button><b>'+startStage()+'</b><button class="s alt" data-a="sd" data-v="1">+</button>':'')+(L('sorter')?'<span style="margin-left:8px">Auto-sell</span><button class="s alt" data-a="qm" data-v="-1">-</button><b>'+(qmT()?RN[qmT()-1]+' and below':'Off')+'</b><button class="s alt" data-a="qm" data-v="1">+</button>':'');$('#tg').className=tab=='g'?'on':'';$('#ta').className=tab=='a'?'on':'';$('#tv').className=tab=='v'?'on':'';$('#tl').className=tab=='l'?'on':'';$('#tp').className=tab=='p'?'on':'';$('#tm').className=tab=='m'?'on':'';$('#ti').className=tab=='i'?'on':'';$('#tu').className=tab=='u'?'on':'';if($('#tr2'))$('#tr2').className=tab=='r'?'on':'';if($('#tx'))$('#tx').className=tab=='x'?'on':'';
  const pl=powerLevel(),plC=plColor(pl),plLbl=plLabel(pl);
  const gemHtml=(S.gems||0)>0?'<span style="color:var(--gem)"> · 💎'+S.gems+'</span>':'';
  const plHtml='<span style="color:'+plC+'"> · ⚡'+pl+' ('+plLbl+')</span>';
+ if(tab=='x'){$('#top').innerHTML=fmtN(S.gold)+' gold'+plHtml+gemHtml+'<br><span class="mute">'+accountStatus()+'</span>';$('#cbody').innerHTML=accountTab();return}
  if(tab=='m'){$('#top').innerHTML=fmtN(S.gold)+' gold'+plHtml+gemHtml+'<br><span class="mute">'+(hasMagic()?'magic unlocked':'magic locked')+'</span>';$('#cbody').innerHTML=magicTab();return}
  if(tab=='i'){$('#top').innerHTML=fmtN(S.gold)+' gold'+plHtml+gemHtml+'<br><span class="mute">'+S.relics+' relics</span>';$('#cbody').innerHTML=idleTab();return}
  if(tab=='p'){$('#top').innerHTML=fmtN(S.gold)+' gold'+plHtml+gemHtml+'<br><span class="mute">'+petStars()+' pet stars</span>';$('#cbody').innerHTML=petTab();return}

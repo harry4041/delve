@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>running</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+</head><body><div id="app">
+<header><h1>Delve</h1><div id="top"></div></header>
+<section id="battle" hidden>
+ <div class="cv"><canvas id="c" width="192" height="108"></canvas><div id="fxl"></div>
+  <div id="over" hidden><div class="px" style="font-size:12px">Defeated</div><div id="ovt"></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button data-a="delveAgain" style="background:#d94a4a;color:#fff;border-color:#fff">⚔ Delve Again</button><button data-a="camp">Go to camp</button></div></div></div>
+ <div class="bar"><i id="hpb"></i><span id="hpt"></span></div>
+ <div class="bar m" id="mpw"><i id="mpb"></i><span id="mpt"></span></div>
+ <div class="bar e"><i id="ehb"></i><span id="ent"></span></div>
+ <div class="row sp" style="margin:6px 0"><div class="row" id="spells"></div><div class="row"><button class="s alt" data-a="spd" id="spdb"></button><button class="s alt" data-a="end">End run</button></div></div>
+ <div class="mute">Last drop</div><div id="last"></div><div class="mute" style="margin-top:6px">Loot this run</div><div id="feed"></div>
+</section>
+<section id="camp" hidden>
+ <div class="row sp"><div class="tabs"><button data-a="tab" data-v="g" id="tg">Gear</button><button data-a="tab" data-v="u" id="tu">Upgrades</button><button data-a="tab" data-v="v" id="tv">Vault</button><button data-a="tab" data-v="m" id="tm">Magic</button><button data-a="tab" data-v="p" id="tp">Pets</button><button data-a="tab" data-v="r" id="tr2">Auras</button><button data-a="tab" data-v="i" id="ti">Idle</button><button data-a="tab" data-v="a" id="ta">Ascend</button><button data-a="tab" data-v="l" id="tl">Scores</button><button data-a="tab" data-v="x" id="tx">Account</button></div></div>
+ <div style="margin:8px 0"><button data-a="delve" style="width:100%;font-size:22px;padding:10px;background:var(--btn);border-width:4px;box-shadow:5px 5px 0 var(--ink)">⚔ DELVE</button></div>
+ <div id="sdw" class="row" style="margin:6px 0"></div><div id="cbody"></div><div style="margin:16px 0"><button class="s alt" data-a="reset">Reset save</button></div>
+</section>
+</div>
+<script type="module">
+const out=[],ck=(n,c,x)=>out.push(n+':'+(c?'ok':'FAIL'+(x!==undefined?'('+x+')':'')));
+window.onerror=(m,u,l)=>out.push('ERR '+m+' @'+String(u).split('/').pop()+':'+l);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+try{
+ await import('/src/main.js');
+ const st=await import('/src/state.js'),cloud=await import('/src/cloud.js'),T=cloud._test;
+ const KEY='hollow-delve-2';
+ // ---- UI: account tab renders; a real (fake-credential) sign-in proves the Firebase SDK loads and the API key works
+ st.setTab('x');(await import('/src/camp.js')).camp();
+ ck('account-tab',!!document.querySelector('#ac-form')&&document.querySelector('#tx').className==='on');
+ document.querySelector('#ac-email').value='nobody@example.invalid';document.querySelector('#ac-pass').value='not-a-real-password';
+ document.querySelector('#ac-form').dispatchEvent(new Event('submit',{cancelable:true,bubbles:true}));
+ for(let i=0;i<60&&!(cloud.cloudState().err||cloud.cloudState().msg);i++)await sleep(250);
+ out.push('(real sign-in with fake creds -> "'+cloud.cloudState().err+'")');
+ ck('sdk-loads-and-answers',cloud.cloudState().err.length>0&&!/Something went wrong \(unknown\)/.test(cloud.cloudState().err));
+ // ---- sync logic against an in-memory fake Firestore
+ const docs=new Map();
+ const F={doc:(db,c,id)=>({path:c+'/'+id}),serverTimestamp:()=>({ts:1}),
+  async getDoc(ref){const d=docs.get(ref.path);return{exists:()=>!!d,data:()=>d}},
+  async runTransaction(db,fn){const pend=[];const tx={get:async ref=>({exists:()=>docs.has(ref.path),data:()=>docs.get(ref.path)}),set:(ref,d)=>pend.push([ref.path,d])};await fn(tx);for(const[p,d]of pend)docs.set(p,d)}};
+ T.inject({A:{},F,auth:{},db:{}});
+ const user=v=>({uid:'u1',email:'a@b.c',emailVerified:v});
+ const played=(gold,best)=>({...st.def(),gold,best,bestOverall:best,lastT:Date.now()});
+ const setLocal=o=>{localStorage.setItem(KEY,JSON.stringify(o));st.load()};
+ const fresh=()=>{localStorage.removeItem('hd-cloud-base');localStorage.removeItem('hollow-delve-2-backup');T.reset();setLocal(st.def())};
+ const cs=cloud.cloudState;
+ // 1 unverified user: nothing is written
+ fresh();docs.clear();setLocal(played(500,12));await T.onUser(user(false));
+ ck('unverified-writes-nothing',docs.size===0&&cs().user.verified===false);
+ // 2 first verified sign-in, no cloud save: local is uploaded
+ await T.onUser(user(true));
+ ck('first-signin-uploads',docs.has('saves/u1')&&JSON.parse(docs.get('saves/u1').data).gold===500&&docs.get('saves/u1').v===1&&!!docs.get('saves/u1').summary,cs().err);
+ // 3 new device (fresh local), cloud exists: cloud is applied silently
+ fresh();await T.onUser(user(true));
+ ck('new-device-takes-cloud',st.S.gold===500&&!cs().conflict,'gold='+st.S.gold);
+ // 4 both sides changed, no history: conflict, then resolve with cloud (local is backed up)
+ fresh();setLocal(played(900,20));await T.onUser(user(true));
+ ck('conflict-detected',!!cs().conflict&&cs().conflict.local.gold===900&&cs().conflict.cloud.gold===500);
+ await cloud.resolveConflict('cloud');
+ ck('resolve-cloud',st.S.gold===500&&!cs().conflict&&JSON.parse(localStorage.getItem('hollow-delve-2-backup')).gold===900);
+ // 5 conflict again, resolve with local: cloud is overwritten
+ fresh();setLocal(played(900,20));await T.onUser(user(true));await cloud.resolveConflict('local');
+ ck('resolve-local',JSON.parse(docs.get('saves/u1').data).gold===900&&!cs().conflict);
+ // 6 later play: cloud unchanged since our sync, so a normal push goes through
+ setLocal({...JSON.parse(localStorage.getItem(KEY)),gold:1000,lastT:Date.now()+5});
+ await T.push(false);
+ ck('normal-push',JSON.parse(docs.get('saves/u1').data).gold===1000);
+ // 7 another device writes to the cloud; our next push must NOT overwrite it
+ docs.set('saves/u1',{...docs.get('saves/u1'),clientT:docs.get('saves/u1').clientT+1,data:JSON.stringify({...st.def(),gold:7777,best:99,bestOverall:99})});
+ setLocal({...JSON.parse(localStorage.getItem(KEY)),gold:1100,lastT:Date.now()+9});
+ let code='';try{await T.push(false)}catch(e){code=e.code}
+ ck('push-refuses-to-clobber',code==='hd/conflict'&&JSON.parse(docs.get('saves/u1').data).gold===7777,code);
+ T.schedule();T.reset();
+ // 8 sign-out state clears; a save while signed out schedules nothing
+ ck('signed-out-no-schedule',(T.schedule(),cs().dirty===false));
+ // 9 hook is wired: a normal game save marks dirty for a verified user
+ fresh();setLocal(played(5,1));await T.onUser(user(true));st.save();
+ ck('save-hook-marks-dirty',cs().dirty===true||docs.get('saves/u1')!==undefined);
+ T.reset();
+}catch(e){out.push('EXC '+e.message+' | '+(e.stack||'').split('\n')[1])}
+document.title=out.join(' ');
+</script>
+</body></html>

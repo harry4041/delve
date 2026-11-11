@@ -16,5 +16,8 @@
   },
   "engines": {
     "node": ">=22"
+  },
+  "dependencies": {
+    "firebase": "^13.3.0"
   }
 }

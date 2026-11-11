@@ -39,3 +39,8 @@ button.alt{background:var(--panel);color:var(--ink)}
 .tn{cursor:pointer}
 .tvc{position:absolute;right:10px;bottom:12px;display:flex;gap:4px}
 .tvp{margin-top:8px}.tvp small{display:block;color:var(--mute)}
+
+.ac input{display:block;width:100%;margin:2px 0 8px;padding:8px;font:inherit;color:var(--ink);background:var(--bg);border:3px solid var(--ink)}
+.ac input:disabled{opacity:.5}
+.ac label{display:block}
+.acerr{color:var(--hp);margin:6px 0}.acok{color:var(--c1);margin:6px 0}
