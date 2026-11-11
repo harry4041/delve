@@ -1,7 +1,8 @@
 rules_version = '2';
 
-// One save document per player at saves/<uid>. Players can only touch their own document, only with a
-// verified email, only with the expected fields, and the server stamps the time. Everything else is denied.
+// saves/<uid>: one save per player. Only the owner, only with a verified email, only the expected fields, a size cap,
+// a server-stamped time, and at most one write per 60 s (cost/abuse control, enforced server-side).
+// gifts/global and gifts/<uid>: read-only for players; you create them in the Firebase console.
 service cloud.firestore {
   match /databases/{database}/documents {
     match /saves/{uid} {
@@ -10,16 +11,25 @@ service cloud.firestore {
       allow create, update: if request.auth != null
         && request.auth.uid == uid
         && request.auth.token.email_verified == true
-        && request.resource.data.keys().hasOnly(['v', 'data', 'clientT', 'summary', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['v', 'enc', 'data', 'clientT', 'summary', 'updatedAt'])
         && request.resource.data.keys().hasAll(['v', 'data', 'clientT', 'summary', 'updatedAt'])
+        && (!('enc' in request.resource.data) || request.resource.data.enc in ['raw', 'gz1'])
         && request.resource.data.v == 1
         && request.resource.data.data is string
-        && request.resource.data.data.size() < 700000
+        && request.resource.data.data.size() < 950000
         && request.resource.data.clientT is number
         && request.resource.data.summary is map
-        && request.resource.data.updatedAt == request.time;
+        && request.resource.data.updatedAt == request.time
+        && (resource == null || request.time > resource.data.updatedAt + duration.value(60, 's'));
 
       allow delete: if request.auth != null && request.auth.uid == uid;
+    }
+
+    match /gifts/{giftDoc} {
+      allow read: if request.auth != null
+        && request.auth.token.email_verified == true
+        && (giftDoc == 'global' || giftDoc == request.auth.uid);
+      allow write: if false;
     }
 
     match /{document=**} {

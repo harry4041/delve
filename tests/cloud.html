@@ -23,20 +23,21 @@
 <script type="module">
 const out=[],ck=(n,c,x)=>out.push(n+':'+(c?'ok':'FAIL'+(x!==undefined?'('+x+')':'')));
 window.onerror=(m,u,l)=>out.push('ERR '+m+' @'+String(u).split('/').pop()+':'+l);
+window.addEventListener('unhandledrejection',e=>out.push('REJ '+(e.reason&&e.reason.message||e.reason)));
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 try{
  await import('/src/main.js');
- const st=await import('/src/state.js'),cloud=await import('/src/cloud.js'),T=cloud._test;
- const KEY='hollow-delve-2';
+ const st=await import('/src/state.js'),cloud=await import('/src/cloud.js'),gifts=await import('/src/gifts.js'),itemsMod=await import('/src/items.js'),T=cloud._test;
+ const KEY='hollow-delve-2',cs=cloud.cloudState,dec=cloud.decodeSave;
  // ---- UI: account tab renders; a real (fake-credential) sign-in proves the Firebase SDK loads and the API key works
  st.setTab('x');(await import('/src/camp.js')).camp();
  ck('account-tab',!!document.querySelector('#ac-form')&&document.querySelector('#tx').className==='on');
  document.querySelector('#ac-email').value='nobody@example.invalid';document.querySelector('#ac-pass').value='not-a-real-password';
  document.querySelector('#ac-form').dispatchEvent(new Event('submit',{cancelable:true,bubbles:true}));
- for(let i=0;i<60&&!(cloud.cloudState().err||cloud.cloudState().msg);i++)await sleep(250);
- out.push('(real sign-in with fake creds -> "'+cloud.cloudState().err+'")');
- ck('sdk-loads-and-answers',cloud.cloudState().err.length>0&&!/Something went wrong \(unknown\)/.test(cloud.cloudState().err));
- // ---- sync logic against an in-memory fake Firestore
+ for(let i=0;i<60&&!(cs().err||cs().msg);i++)await sleep(250);
+ out.push('(real sign-in with fake creds -> "'+cs().err+'")');
+ ck('sdk-loads-and-answers',cs().err==='Email or password is incorrect.',cs().err);
+ // ---- fake Firestore (in memory)
  const docs=new Map();
  const F={doc:(db,c,id)=>({path:c+'/'+id}),serverTimestamp:()=>({ts:1}),
   async getDoc(ref){const d=docs.get(ref.path);return{exists:()=>!!d,data:()=>d}},
@@ -45,42 +46,86 @@ try{
  const user=v=>({uid:'u1',email:'a@b.c',emailVerified:v});
  const played=(gold,best)=>({...st.def(),gold,best,bestOverall:best,lastT:Date.now()});
  const setLocal=o=>{localStorage.setItem(KEY,JSON.stringify(o));st.load()};
- const fresh=()=>{localStorage.removeItem('hd-cloud-base');localStorage.removeItem('hollow-delve-2-backup');T.reset();setLocal(st.def())};
- const cs=cloud.cloudState;
+ const fresh=()=>{localStorage.removeItem('hd-cloud-base');localStorage.removeItem('hollow-delve-2-backup');localStorage.removeItem('hd-gifts-at');T.reset();setLocal(st.def())};
+ const dget=async()=>JSON.parse(await dec(docs.get('saves/u1')));
  // 1 unverified user: nothing is written
  fresh();docs.clear();setLocal(played(500,12));await T.onUser(user(false));
  ck('unverified-writes-nothing',docs.size===0&&cs().user.verified===false);
- // 2 first verified sign-in, no cloud save: local is uploaded
- await T.onUser(user(true));
- ck('first-signin-uploads',docs.has('saves/u1')&&JSON.parse(docs.get('saves/u1').data).gold===500&&docs.get('saves/u1').v===1&&!!docs.get('saves/u1').summary,cs().err);
+ // 2 first verified sign-in, no cloud save: local is uploaded (compressed)
+ await T.onUser(user(true));await sleep(100);
+ const d1=docs.get('saves/u1');
+ ck('first-signin-uploads',!!d1&&d1.v===1&&!!d1.summary&&(await dget()).gold===500,cs().err);
+ ck('save-is-compressed',d1.enc==='gz1'&&d1.data.length<JSON.stringify(played(500,12)).length,d1&&d1.enc+' '+d1.data.length);
  // 3 new device (fresh local), cloud exists: cloud is applied silently
- fresh();await T.onUser(user(true));
+ fresh();await T.onUser(user(true));await sleep(100);
  ck('new-device-takes-cloud',st.S.gold===500&&!cs().conflict,'gold='+st.S.gold);
  // 4 both sides changed, no history: conflict, then resolve with cloud (local is backed up)
- fresh();setLocal(played(900,20));await T.onUser(user(true));
+ fresh();setLocal(played(900,20));await T.onUser(user(true));await sleep(100);
  ck('conflict-detected',!!cs().conflict&&cs().conflict.local.gold===900&&cs().conflict.cloud.gold===500);
  await cloud.resolveConflict('cloud');
  ck('resolve-cloud',st.S.gold===500&&!cs().conflict&&JSON.parse(localStorage.getItem('hollow-delve-2-backup')).gold===900);
  // 5 conflict again, resolve with local: cloud is overwritten
- fresh();setLocal(played(900,20));await T.onUser(user(true));await cloud.resolveConflict('local');
- ck('resolve-local',JSON.parse(docs.get('saves/u1').data).gold===900&&!cs().conflict);
+ fresh();setLocal(played(900,20));await T.onUser(user(true));await sleep(100);await cloud.resolveConflict('local');
+ ck('resolve-local',(await dget()).gold===900&&!cs().conflict);
  // 6 later play: cloud unchanged since our sync, so a normal push goes through
  setLocal({...JSON.parse(localStorage.getItem(KEY)),gold:1000,lastT:Date.now()+5});
- await T.push(false);
- ck('normal-push',JSON.parse(docs.get('saves/u1').data).gold===1000);
- // 7 another device writes to the cloud; our next push must NOT overwrite it
- docs.set('saves/u1',{...docs.get('saves/u1'),clientT:docs.get('saves/u1').clientT+1,data:JSON.stringify({...st.def(),gold:7777,best:99,bestOverall:99})});
- setLocal({...JSON.parse(localStorage.getItem(KEY)),gold:1100,lastT:Date.now()+9});
+ ck('normal-push',(await T.push(false))==='pushed'&&(await dget()).gold===1000);
+ // 7 nothing but the timestamp changed: no write at all
+ const t1=docs.get('saves/u1').clientT;
+ setLocal({...JSON.parse(localStorage.getItem(KEY)),lastT:Date.now()+50});
+ ck('timestamp-only-change-skips-write',(await T.push(false))==='skipped'&&docs.get('saves/u1').clientT===t1);
+ // 8 another device writes to the cloud; our next push must NOT overwrite it
+ const other=await T.encodeSave(JSON.stringify({...st.def(),gold:7777,best:99,bestOverall:99}));
+ docs.set('saves/u1',{...docs.get('saves/u1'),clientT:t1+1,enc:other.enc,data:other.data});
+ setLocal({...JSON.parse(localStorage.getItem(KEY)),gold:1100,lastT:Date.now()+90});
  let code='';try{await T.push(false)}catch(e){code=e.code}
- ck('push-refuses-to-clobber',code==='hd/conflict'&&JSON.parse(docs.get('saves/u1').data).gold===7777,code);
- T.schedule();T.reset();
- // 8 sign-out state clears; a save while signed out schedules nothing
+ ck('push-refuses-to-clobber',code==='hd/conflict'&&(await dget()).gold===7777,code);
+ T.reset();
  ck('signed-out-no-schedule',(T.schedule(),cs().dirty===false));
- // 9 hook is wired: a normal game save marks dirty for a verified user
- fresh();setLocal(played(5,1));await T.onUser(user(true));st.save();
- ck('save-hook-marks-dirty',cs().dirty===true||docs.get('saves/u1')!==undefined);
+ // 9 an old, uncompressed cloud save (no `enc` field) still loads
+ fresh();docs.set('saves/u1',{v:1,data:JSON.stringify(played(321,5)),clientT:Date.now(),summary:{},updatedAt:{}});
+ await T.onUser(user(true));await sleep(100);
+ ck('legacy-uncompressed-save-loads',st.S.gold===321,'gold='+st.S.gold);
+ // 10 an enormous bag: the CLOUD copy is trimmed (lowest value first, order kept); local stays whole
+ fresh();
+ const big=[];for(let i=0;i<12000;i++)big.push(itemsMod.gen(1+Math.floor(Math.random()*150),Math.min(8,Math.floor(Math.random()*Math.random()*9.6))));
+ const bigJson=JSON.stringify({...st.def(),gold:1,best:1,bestOverall:1,bag:big});
+ T.setMax(100000);const fitted=await T.fit(bigJson);T.setMax(900000);const back=JSON.parse(await dec(fitted.payload));
+ ck('huge-bag-trimmed-to-fit',fitted.trimmed>0&&fitted.payload.data.length<=100000&&back.bag.length===12000-fitted.trimmed,'trimmed='+fitted.trimmed+' enc='+(fitted.payload.data.length/1024|0)+'KB');
+ const kept=new Set(back.bag.map(i=>i.id)),dropped=big.filter(i=>!kept.has(i.id));
+ const minKept=Math.min(...back.bag.map(i=>itemsMod.val(i))),maxDropped=Math.max(...dropped.map(i=>itemsMod.val(i)));
+ ck('trim-drops-lowest-value-first',maxDropped<=minKept,'maxDropped='+maxDropped+' minKept='+minKept);
+ ck('trim-keeps-order',back.bag.every((it,i)=>i===0||it.id>back.bag[i-1].id));
+ // 11 gifts: valid ones are claimed once; hostile or malformed ones are rejected or clamped
+ fresh();setLocal(played(1000,10));const gold0=1000,bag0=st.S.bag.length;
+ docs.clear();
+ docs.set('gifts/global',{gifts:[
+  {id:'g1',note:'Hello there',gold:100,gems:2,items:[{ty:'head',ri:2,il:50,lv:1,nm:'Test Crown of Testing',st:{def:10,hp:100}}],gen:[{ri:3,il:60,n:3,ty:'weapon'}]},
+  {id:'g1',gold:5000},
+  {id:'bad-type',items:[{ty:'nonsense',ri:2,il:50,nm:'Thing',st:{def:1}}]},
+  {id:'xss',items:[{ty:'head',ri:1,il:5,nm:'<img src=x onerror=alert(1)>',st:{def:1}}]},
+  {id:'old',until:1,gold:999},
+  {id:'huge',gold:1e30,gems:1e30},
+  {id:'bad id with spaces!',gold:5},
+  {id:'bad-stat',items:[{ty:'head',ri:1,il:5,nm:'Plain Cap',st:{notastat:5,def:-3}}]},
+ ]});
+ docs.set('gifts/u1',{gifts:[{id:'mine',gold:7,note:'Just for you'}]});
+ await T.onUser(user(true));await sleep(600);   // sync -> afterSync -> claimGifts
+ const claimed=st.S.giftsClaimed.slice().sort().join(',');
+ ck('gifts-claimed-via-sync-hook',claimed==='g:g1,g:huge,u:mine',claimed);
+ ck('gift-gold-gems-clamped',st.S.gold===gold0+100+1e12+7&&st.S.gems===2+1e6,'gold='+st.S.gold+' gems='+st.S.gems);
+ ck('gift-items-added',st.S.bag.length===bag0+4&&st.S.bag.some(i=>i.nm==='Test Crown of Testing'&&typeof i.id==='number'&&i.st.def===10),'bag '+bag0+'->'+st.S.bag.length);
+ ck('no-markup-in-item-names',!st.S.bag.some(i=>/[<>]/.test(i.nm)));
+ const n2=await gifts.claimGifts(true);
+ ck('claim-is-idempotent',n2===0&&st.S.bag.length===bag0+4);
+ T.reset();T.onUser(user(false));st.S.giftsClaimed=[];
+ ck('unverified-cannot-claim',(await gifts.claimGifts(true))===0&&st.S.bag.length===bag0+4);
+ // 12 normal save marks the cloud copy dirty
+ fresh();docs.clear();setLocal(played(5,1));await T.onUser(user(true));await sleep(100);st.save();
+ ck('save-hook-marks-dirty',cs().dirty===true);
  T.reset();
 }catch(e){out.push('EXC '+e.message+' | '+(e.stack||'').split('\n')[1])}
 document.title=out.join(' ');
 </script>
+
 </body></html>

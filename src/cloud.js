@@ -1,19 +1,30 @@
 // Cloud sync: Firebase Auth (email + password) and one Firestore document per player (saves/<uid>).
-// The game stays local-first: localStorage is always written; the cloud copy is a mirror that is only
-// touched for signed-in players whose email is verified. The Firebase SDK is loaded lazily.
+// Local-first: localStorage is always written; the cloud copy is a mirror, only touched for signed-in players
+// with a verified email. The Firebase SDK is loaded lazily.
+//
+// Cost/size controls (Firestore bills per document write, not per byte, but documents are capped at 1 MiB):
+//  - pushes are throttled (PUSH_DELAY) and skipped when nothing but the timestamp changed
+//  - firestore.rules also refuses writes less than 60 s apart per player
+//  - the save is gzip-compressed; if it is still too big the cloud copy drops the lowest-value bag items
 import { firebaseConfig } from './firebase-config.js';
 import { S, mode, load, setSaveHook } from './state.js';
+import { val } from './items.js';
 
 const KEY = 'hollow-delve-2', BACKUP = 'hollow-delve-2-backup', BASE = 'hd-cloud-base', FLAG = 'hd-cloud';
-const PUSH_DELAY = 45000; // push at most once per 45 s while playing
+const PUSH_DELAY = 5 * 60 * 1000;  // push at most every 5 minutes while playing
+const MIN_GAP = 90 * 1000;         // never push more often than this (server rule enforces 60 s)
+let MAX_DATA = 900000;           // chars of encoded save we allow (Firestore hard limit is 1 MiB per document)
 
 // Shared UI state (read by account.js). `conflict` is set when both copies changed.
-const st = { ready: false, user: null, busy: false, msg: '', err: '', syncAt: 0, conflict: null, dirty: false };
+const st = { ready: false, user: null, busy: false, msg: '', err: '', syncAt: 0, conflict: null, dirty: false, trimmed: 0 };
 export const cloudState = () => st;
 const emit = (t) => window.dispatchEvent(new CustomEvent('hd-cloud', { detail: t }));
 export function setCloudError(msg) { st.err = msg; st.msg = ''; emit('state'); }
+export function setCloudMessage(msg) { st.msg = msg; st.err = ''; emit('state'); }
 
-let fb = null, timer = 0;
+let fb = null, timer = 0, lastPushAt = 0, lastSig = '', afterSync = null;
+export function setAfterSync(f) { afterSync = f; }
+export const withFirebase = () => init();
 
 function init() {
   if (!fb) {
@@ -40,8 +51,11 @@ const ERR = {
   'auth/network-request-failed': 'Network problem. Check your connection and try again.',
   'auth/operation-not-allowed': 'Email sign-in is not switched on for this game yet.',
   'auth/configuration-not-found': 'Email sign-in is not switched on for this game yet.',
-  'permission-denied': 'The server refused the save. Verify your email address first.',
+  'permission-denied': 'The server refused the request. Make sure your email is verified, and avoid syncing more than once a minute.',
+  'resource-exhausted': 'Cloud saving is busy right now. Your progress is safe on this device and will sync later.',
   'unavailable': 'Could not reach the server. It will retry.',
+  'hd/too-big': 'Your save is too large to sync even after trimming. Sell some items and try again.',
+  'hd/wait': 'Please wait a minute between syncs.',
 };
 export function cloudErr(e) {
   const code = e && e.code ? String(e.code).replace('firestore/', '') : '';
@@ -51,8 +65,44 @@ export function cloudErr(e) {
 // ---- save summaries & local helpers ----
 const summ = (s) => ({ asc: s.asc || 0, best: s.bestOverall || s.best || 0, gold: s.gold || 0, relics: s.relics || 0, t: s.lastT || 0 });
 const isFresh = (s) => !s.bestOverall && !s.best && !s.gold && !s.asc && !(s.bag && s.bag.length) && !Object.keys(s.tr || {}).length;
+const sigOf = (json) => json.replace(/"lastT":\d+/, ''); // a save that only differs by timestamp is not worth a write
 function readBase() { try { const b = JSON.parse(localStorage.getItem(BASE)); return b && st.user && b.uid === st.user.uid ? b : null; } catch (e) { return null; } }
 function writeBase(b) { try { localStorage.setItem(BASE, JSON.stringify(b)); } catch (e) { /* storage unavailable */ } }
+
+// ---- compression (gzip + base64) with a plain fallback; old uncompressed docs (no `enc`) still load ----
+const CAN_GZ = typeof CompressionStream !== 'undefined' && typeof DecompressionStream !== 'undefined';
+async function gzB64(str) {
+  const cs = new CompressionStream('gzip'), w = cs.writable.getWriter();
+  w.write(new TextEncoder().encode(str)); w.close();
+  const buf = new Uint8Array(await new Response(cs.readable).arrayBuffer());
+  let bin = ''; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+async function unGzB64(b64) {
+  const bin = atob(b64), buf = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+  const ds = new DecompressionStream('gzip'), w = ds.writable.getWriter();
+  w.write(buf); w.close();
+  return await new Response(ds.readable).text();
+}
+const encodeSave = async (json) => (CAN_GZ ? { enc: 'gz1', data: await gzB64(json) } : { enc: 'raw', data: json });
+export const decodeSave = async (doc) => (doc.enc === 'gz1' ? unGzB64(doc.data) : doc.data);
+
+// Shrink the CLOUD copy until it fits by dropping the lowest-value bag items (the local save is never touched).
+async function fit(json) {
+  let enc = await encodeSave(json), trimmed = 0;
+  if (enc.data.length <= MAX_DATA) return { payload: enc, trimmed };
+  const obj = JSON.parse(json), orig = obj.bag || [];
+  const byValue = orig.slice().sort((a, b) => val(a) - val(b)), drop = new Set();
+  for (let i = 0, step = Math.max(1, Math.ceil(orig.length * 0.1)); i < 12 && enc.data.length > MAX_DATA && drop.size < orig.length; i++) {
+    for (const it of byValue.slice(drop.size, drop.size + step)) drop.add(it);
+    obj.bag = orig.filter((it) => !drop.has(it)); // keeps the original order
+    enc = await encodeSave(JSON.stringify(obj)); trimmed = drop.size;
+    step = Math.max(1, Math.ceil((orig.length - drop.size) * 0.2));
+  }
+  if (enc.data.length > MAX_DATA) throw Object.assign(new Error('too big'), { code: 'hd/too-big' });
+  return { payload: enc, trimmed };
+}
 
 // ---- auth state ----
 async function onUser(u) {
@@ -73,31 +123,38 @@ async function syncNow() {
     const snap = await F.getDoc(F.doc(db, 'saves', st.user.uid));
     if (!snap.exists()) { await push(true); return; }
     const c = snap.data(), b = readBase();
-    if (isFresh(S)) { applyCloud(c); return; }                         // brand-new device: take the cloud save
-    if (b && b.version === c.clientT) { await push(false); return; }   // cloud unchanged since our last sync: send ours
-    if (b && b.localT >= (S.lastT || 0)) { applyCloud(c); return; }    // we have not played since last sync: take cloud
-    st.conflict = { cloud: c.summary || {}, local: summ(S), data: c.data, version: c.clientT }; // both changed: ask the player
-  } catch (e) { st.err = cloudErr(e); } finally { st.busy = false; emit('state'); }
+    if (isFresh(S)) { await applyCloud(c); return; }                         // brand-new device: take the cloud save
+    if (b && b.version === c.clientT) { await push(false); return; }         // cloud unchanged since our last sync: send ours
+    if (b && b.localT >= (S.lastT || 0)) { await applyCloud(c); return; }    // we have not played since last sync: take cloud
+    st.conflict = { cloud: c.summary || {}, local: summ(S), doc: c, version: c.clientT }; // both changed: ask the player
+  } catch (e) { st.err = cloudErr(e); } finally {
+    st.busy = false; emit('state');
+    if (!st.err && !st.conflict && afterSync) afterSync().catch(() => { /* gifts are best-effort */ });
+  }
 }
 
 async function push(force) {
   const { F, db } = await init(), ref = F.doc(db, 'saves', st.user.uid);
-  const data = localStorage.getItem(KEY) || JSON.stringify(S), clientT = Date.now(), b = readBase();
+  const json = localStorage.getItem(KEY) || JSON.stringify(S), b = readBase(), sig = sigOf(json);
+  if (!force && b && sig === lastSig) { st.dirty = false; return 'skipped'; } // nothing meaningful changed: no write
+  const { payload, trimmed } = await fit(json), clientT = Date.now();
   await F.runTransaction(db, async (tx) => {
     const s = await tx.get(ref);
     if (!force && s.exists() && (!b || s.data().clientT !== b.version)) throw Object.assign(new Error('conflict'), { code: 'hd/conflict' });
-    tx.set(ref, { v: 1, data, clientT, summary: summ(JSON.parse(data)), updatedAt: F.serverTimestamp() });
+    tx.set(ref, { v: 1, enc: payload.enc, data: payload.data, clientT, summary: summ(JSON.parse(json)), updatedAt: F.serverTimestamp() });
   });
   writeBase({ uid: st.user.uid, version: clientT, localT: S.lastT || 0 });
-  st.syncAt = Date.now(); st.dirty = false;
+  st.syncAt = lastPushAt = Date.now(); st.dirty = false; st.trimmed = trimmed; lastSig = sig;
+  return 'pushed';
 }
 
-function applyCloud(c) {
+async function applyCloud(c) {
+  const json = await decodeSave(c);
   try { const cur = localStorage.getItem(KEY); if (cur) localStorage.setItem(BACKUP, cur); } catch (e) { /* ignore */ }
-  localStorage.setItem(KEY, c.data);
+  localStorage.setItem(KEY, json);
   load();
   writeBase({ uid: st.user.uid, version: c.clientT, localT: S.lastT || 0 });
-  st.syncAt = Date.now(); st.conflict = null; st.dirty = false;
+  lastSig = sigOf(json); st.syncAt = Date.now(); st.conflict = null; st.dirty = false;
   emit('applied');
 }
 
@@ -105,7 +162,7 @@ export async function resolveConflict(which) {
   const c = st.conflict; if (!c) return;
   st.busy = true; st.err = ''; emit('state');
   try {
-    if (which === 'cloud') applyCloud({ data: c.data, clientT: c.version });
+    if (which === 'cloud') await applyCloud(c.doc);
     else { await push(true); st.conflict = null; }
   } catch (e) { st.err = cloudErr(e); } finally { st.busy = false; emit('state'); }
 }
@@ -118,9 +175,20 @@ function schedule() { // called after every local save
 async function flush() {
   timer = 0;
   if (!st.dirty || !st.user || !st.user.verified || st.conflict) return;
+  if (Date.now() - lastPushAt < MIN_GAP) { timer = setTimeout(flush, MIN_GAP); return; }
   try { await push(false); emit('state'); }
-  catch (e) { if (e.code === 'hd/conflict') await syncNow(); else { st.err = cloudErr(e); emit('state'); } }
+  catch (e) {
+    if (e.code === 'hd/conflict') await syncNow();
+    else { st.err = cloudErr(e); emit('state'); if (e.code !== 'hd/too-big') timer = setTimeout(flush, PUSH_DELAY); }
+  }
 }
+
+// "Sync now" button
+export const syncManual = () => act(async () => {
+  if (Date.now() - lastPushAt < MIN_GAP) throw Object.assign(new Error('wait'), { code: 'hd/wait' });
+  try { const r = await push(false); st.msg = r === 'skipped' ? 'Already up to date.' : 'Saved to the cloud.'; }
+  catch (e) { if (e.code === 'hd/conflict') await syncNow(); else throw e; }
+});
 
 // ---- account actions (each returns when done; errors become st.err) ----
 async function act(fn) {
@@ -149,14 +217,14 @@ export const recheckVerified = () => act(async ({ auth }) => {
 export const signOutCloud = () => act(async ({ A, auth }) => {
   await A.signOut(auth);
   if (timer) { clearTimeout(timer); timer = 0; }
-  st.conflict = null; st.dirty = false; st.syncAt = 0;
+  st.conflict = null; st.dirty = false; st.syncAt = 0; st.trimmed = 0; lastSig = '';
   try { localStorage.removeItem(FLAG); localStorage.removeItem(BASE); } catch (e) { /* ignore */ }
 });
 
 // ---- boot ----
 export function cloudBoot() {
   setSaveHook(schedule);
-  const leaving = () => { if (st.dirty) flush(); };
+  const leaving = () => { if (st.dirty && Date.now() - lastPushAt >= MIN_GAP) flush(); };
   window.addEventListener('pagehide', leaving);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') leaving(); });
   try { if (localStorage.getItem(FLAG) === '1') init().catch(() => { /* offline: stay local */ }); } catch (e) { /* ignore */ }
@@ -165,6 +233,7 @@ export function cloudBoot() {
 // Test seam: lets tests inject a fake Firebase and drive the sync logic directly.
 export const _test = {
   inject(f) { fb = Promise.resolve(f); st.ready = true; },
-  onUser, syncNow, push, flush, schedule,
-  reset() { Object.assign(st, { user: null, busy: false, msg: '', err: '', syncAt: 0, conflict: null, dirty: false }); if (timer) { clearTimeout(timer); timer = 0; } },
+  setMax(n) { MAX_DATA = n; },
+  onUser, syncNow, push, flush, schedule, fit, encodeSave,
+  reset() { Object.assign(st, { user: null, busy: false, msg: '', err: '', syncAt: 0, conflict: null, dirty: false, trimmed: 0 }); lastPushAt = 0; lastSig = ''; if (timer) { clearTimeout(timer); timer = 0; } },
 };

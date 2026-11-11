@@ -1,6 +1,7 @@
 // Account tab: email/password sign-in, verification, cloud-save status and conflict resolution.
 import { $ } from './state.js';
-import { cloudState, setCloudError, signUp, signIn, resetPassword, resendVerification, recheckVerified, signOutCloud, resolveConflict } from './cloud.js';
+import { claimGifts } from './gifts.js';
+import { cloudState, cloudErr, setCloudError, setCloudMessage, syncManual, signUp, signIn, resetPassword, resendVerification, recheckVerified, signOutCloud, resolveConflict } from './cloud.js';
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const when = (t) => (t ? new Date(t).toLocaleString() : 'never');
@@ -41,7 +42,9 @@ export function accountTab() {
         + sumRow('This device', c.conflict.local) + sumRow('Cloud', c.conflict.cloud)
         + '<div class="row" style="margin-top:8px"><button data-c="usecloud"' + off + '>Use cloud save</button><button class="alt" data-c="uselocal"' + off + '>Use this device</button></div>';
     } else {
-      h += '<div class="mute" style="margin-top:8px">Cloud save is on. Last synced: ' + when(c.syncAt) + (c.dirty ? ' (changes waiting to upload)' : '') + '</div>';
+      h += '<div class="mute" style="margin-top:8px">Cloud save is on. Last synced: ' + when(c.syncAt) + (c.dirty ? ' (changes waiting to upload; it syncs every few minutes)' : '') + '</div>';
+      if (c.trimmed) h += '<div class="mute" style="margin-top:4px">The cloud copy left out your ' + c.trimmed + ' lowest-value bag items to stay within the size limit. Your save on this device is complete.</div>';
+      h += '<div class="row" style="margin-top:8px"><button class="s alt" data-c="syncnow"' + off + '>Sync now</button><button class="s alt" data-c="gifts"' + off + '>Check for gifts</button></div>';
     }
   }
   return h + '</div>';
@@ -62,6 +65,11 @@ async function run(a) {
   else if (a === 'resend') await resendVerification();
   else if (a === 'recheck') await recheckVerified();
   else if (a === 'signout') await signOutCloud();
+  else if (a === 'syncnow') await syncManual();
+  else if (a === 'gifts') {
+    try { const n = await claimGifts(true); setCloudMessage(n ? 'Gift claimed. Check your bag.' : 'No new gifts right now.'); }
+    catch (e) { setCloudError(cloudErr(e)); }
+  }
   else if (a === 'usecloud') await resolveConflict('cloud');
   else if (a === 'uselocal') await resolveConflict('local');
 }
