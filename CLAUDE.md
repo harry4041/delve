@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Delve is an idle/incremental pixel-art dungeon-crawler game: HTML/CSS/ES-module JS built with Vite. Long-term plan: mobile apps via Capacitor, plus a backend for cross-platform cloud saves and later purchases (backend choice — Firebase/Supabase vs Next.js on Ruust — is still undecided). There is no git repo yet. `Delve.html` (original single file) and `legacy/` (the split classic-`<script>` version) are old backups, not the source of truth.
+Delve is an idle/incremental pixel-art dungeon-crawler game: HTML/CSS/ES-module JS built with Vite. Long-term plan: mobile apps via Capacitor, plus a backend for cross-platform cloud saves and later purchases (backend choice — Firebase/Supabase vs Next.js on Ruust — is still undecided). Git: private repo https://github.com/harry4041/delve (branch `main`, remote `origin`); commit and push only when asked. `Delve.html` (original single file) and `legacy/` (the split classic-`<script>` version) are old backups, not the source of truth.
 
 ## Commands
 
