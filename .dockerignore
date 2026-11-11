@@ -1,0 +1,12 @@
+node_modules
+dist
+.git
+.gitignore
+.gitattributes
+legacy
+Delve.html
+tests
+CLAUDE.md
+Procfile
+Dockerfile
+.dockerignore
