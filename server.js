@@ -1,12 +1,12 @@
 // Minimal dependency-free static server for the built game (dist/), used by the Ruust deploy (see Procfile).
-// Binds 0.0.0.0 and reads PORT. Serves index.html for extension-less paths (SPA fallback), gzips text assets.
+// Binds 0.0.0.0 and listens on PORT (default 8080, the port Ruust expects). Serves index.html for extension-less paths (SPA fallback), gzips text assets.
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { gzipSync } from 'node:zlib';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 
 const root = resolve(process.env.DIST_DIR || 'dist');
-const port = Number(process.env.PORT) || 3000;
+const port = Number(process.env.PORT) || 8080; // Ruust routes to 8080; PORT overrides
 const TYPES = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg',

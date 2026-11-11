@@ -12,7 +12,7 @@ Node and Go are installed via winget; in a bash session started before that, add
 - `npm run dev` — Vite dev server (http://localhost:5173)
 - `npm run build` / `npm run preview` — production build to `dist/` (relative `base`, so it works inside a Capacitor webview) and serve it
 - `npm run typecheck` — `tsc --noEmit`; the code is still plain JS (`allowJs`, `checkJs:false`, non-strict), so this only validates config. Converting to TypeScript is a later step.
-- `npm start` — `server.js`, a dependency-free static server for `dist/` (binds 0.0.0.0, reads `PORT`, SPA fallback, gzip). `Procfile` (`web: node server.js`) is what Ruust runs after Nixpacks builds with `npm run build`. Deploy target docs: Ruust has no bare file host, so a static site needs a running server; never bind to localhost there.
+- `npm start` — `server.js`, a dependency-free static server for `dist/` (binds 0.0.0.0, listens on `PORT` (default 8080, the port Ruust routes to), SPA fallback, gzip). `Procfile` (`web: node server.js`) is what Ruust runs after Nixpacks builds with `npm run build`. Deploy target docs: Ruust has no bare file host, so a static site needs a running server; never bind to localhost there.
 - Smoke test: with the dev server running, load `http://localhost:5173/tests/smoke.html` (e.g. headless Edge `--dump-dom`) and read the page `<title>`: it lists `name:ok|FAIL` for boot, every tab, the three skill trees, buying, delve/combat, cross-module `uid` bump, run end, save and reset. It reaches into modules by import, so it can only call exported names.
 
 ## File layout
