@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>running</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+</head><body><div id="app">
+<header><h1>Delve</h1><div id="top"></div></header>
+<section id="battle" hidden>
+ <div class="cv"><canvas id="c" width="192" height="108"></canvas><div id="fxl"></div>
+  <div id="over" hidden><div class="px" style="font-size:12px">Defeated</div><div id="ovt"></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button data-a="delveAgain" style="background:#d94a4a;color:#fff;border-color:#fff">⚔ Delve Again</button><button data-a="camp">Go to camp</button></div></div></div>
+ <div class="bar"><i id="hpb"></i><span id="hpt"></span></div>
+ <div class="bar m" id="mpw"><i id="mpb"></i><span id="mpt"></span></div>
+ <div class="bar e"><i id="ehb"></i><span id="ent"></span></div>
+ <div class="row sp" style="margin:6px 0"><div class="row" id="spells"></div><div class="row"><button class="s alt" data-a="spd" id="spdb"></button><button class="s alt" data-a="end">End run</button></div></div>
+ <div class="mute">Last drop</div><div id="last"></div><div class="mute" style="margin-top:6px">Loot this run</div><div id="feed"></div>
+</section>
+<section id="camp" hidden>
+ <div class="row sp"><div class="tabs"><button data-a="tab" data-v="g" id="tg">Gear</button><button data-a="tab" data-v="u" id="tu">Upgrades</button><button data-a="tab" data-v="v" id="tv">Vault</button><button data-a="tab" data-v="m" id="tm">Magic</button><button data-a="tab" data-v="p" id="tp">Pets</button><button data-a="tab" data-v="r" id="tr2">Auras</button><button data-a="tab" data-v="i" id="ti">Idle</button><button data-a="tab" data-v="a" id="ta">Ascend</button><button data-a="tab" data-v="l" id="tl">Scores</button><button data-a="tab" data-v="x" id="tx">Account</button></div></div>
+ <div style="margin:8px 0"><button data-a="delve" style="width:100%;font-size:22px;padding:10px;background:var(--btn);border-width:4px;box-shadow:5px 5px 0 var(--ink)">⚔ DELVE</button></div>
+ <div id="sdw" class="row" style="margin:6px 0"></div><div id="cbody"></div><div style="margin:16px 0"><button class="s alt" data-a="reset">Reset save</button></div>
+</section>
+</div>
+<script type="module">
+const out=[],ck=(n,c,x)=>out.push(n+':'+(c?'ok':'FAIL'+(x!==undefined?'('+x+')':'')));
+window.onerror=(m,u,l)=>out.push('ERR '+m+' @'+String(u).split('/').pop()+':'+l);
+try{
+ await import('/src/main.js');
+ const st=await import('/src/state.js'),bt=await import('/src/battle.js'),stats=await import('/src/stats.js'),sk=await import('/src/skilltree.js'),itm=await import('/src/items.js'),asc=await import('/src/ascension.js'),gear=await import('/src/gear.js'),tv=await import('/src/treeview.js');
+ const KEY='hollow-delve-2';
+ const reset=()=>{localStorage.removeItem(KEY);st.load();st.S.gold=1e9;st.S.best=30;st.S.ap=-1;st.S.tr={might:40}};
+ const MAST=['mGrit','mRegen','mHaste','mFury','mAim','mSlayer'];
+ const NEW=['bulwark','vamp','secondWind','evasion','executioner','deadlyAim','opening','rampage','bossSlayer','gemHunter','bounty','goblin','relicChannel','effForge','luckyForge','appraiser'];
+ // 1 definitions, arms, tree rendering, labels
+ ck('all-16-nodes-defined',NEW.every(k=>sk.NODE[k]&&sk.NODE[k].d&&sk.NODE[k].m>0&&sk.NODE[k].b>0));
+ const inArm=k=>sk.GRAPHS.u.arms.some(a=>a.ks.includes(k));
+ ck('all-16-nodes-in-the-upgrades-web',NEW.every(inArm));
+ ck('prereqs-are-real-nodes',NEW.every(k=>Object.keys(sk.NODE[k].r).every(q=>sk.NODE[q])));
+ const th=tv.tree(sk.GRAPHS.u);ck('upgrades-web-renders',th.includes('<svg')&&['Bulwark','Vampirism','Evasion','Rampage','Appraiser'].every(w=>th.includes(w)));
+ reset();NEW.forEach(k=>{st.S.tr[k]=3});ck('every-node-has-a-value-label',NEW.every(k=>gear.treeVal(k).length>0),NEW.filter(k=>!gear.treeVal(k)).join(','));
+ // 2 plain stats
+ reset();const b0=stats.stats();st.S.tr.vamp=5;st.S.tr.evasion=7;st.S.tr.deadlyAim=4;const b1=stats.stats();
+ ck('vampirism-adds-lifesteal',Math.abs(b1.ls-b0.ls-5)<1e-9,b1.ls-b0.ls);
+ ck('evasion-adds-dodge',Math.abs(b1.dodge-b0.dodge-10.5)<1e-9,b1.dodge-b0.dodge);
+ ck('deadly-aim-adds-crit-damage',Math.abs(b1.critDmg-b0.critDmg-.6)<1e-9,b1.critDmg-b0.critDmg);
+ // 3 hero-hit multipliers, measured over many real attacks (crit chance is the same on both sides)
+ const avgHit=(setup,n=500)=>{reset();setup();bt.startRun();const r=st.run;let tot=0;for(let i=0;i<n;i++){r.eHp=r.eMax=1e15;r.fresh=false;r.eAtk=0;r.stun=1e9;r.hT=1e9;r.pT=-1e9;r.totalDmg=0;r.boss=false;(setup.pre||(()=>{}))(r);bt.tick(.001);tot+=r.totalDmg}return tot/n};
+ const mk=(tr,pre)=>{const f=()=>{Object.assign(st.S.tr,tr)};f.pre=pre;return f};
+ const base=avgHit(mk({}));
+ const withOpen=avgHit(mk({opening:5},r=>{r.fresh=true}));
+ ck('opening-strike-boosts-first-hit',withOpen/base>2.2&&withOpen/base<2.8,'x'+(withOpen/base).toFixed(2)+' (expect 2.5)');
+ const withBoss=avgHit(mk({bossSlayer:5},r=>{r.boss=true}));
+ ck('boss-slayer-boosts-boss-damage',withBoss/base>1.25&&withBoss/base<1.55,'x'+(withBoss/base).toFixed(2)+' (expect 1.4)');
+ const withExe=avgHit(mk({executioner:5},r=>{r.eHp=r.eMax*.2}));
+ ck('executioner-boosts-low-hp-damage',withExe/base>1.25&&withExe/base<1.55,'x'+(withExe/base).toFixed(2)+' (expect 1.4)');
+ const noExe=avgHit(mk({executioner:5},r=>{r.eHp=r.eMax*.9}));
+ ck('executioner-needs-a-weakened-enemy',noExe/base>.9&&noExe/base<1.1,'x'+(noExe/base).toFixed(2));
+ // 4 rampage: kills stack attack speed, it expires
+ reset();st.S.tr.rampage=5;bt.startRun();let r=st.run;r.hT=-1e9;r.pT=-1e9;
+ for(let i=0;i<3;i++){r.eHp=1;r.hT=1e9;bt.tick(.001)}
+ ck('rampage-stacks-on-kills',r.rn===3&&r.rt>5,'rn='+r.rn+' rt='+r.rt);
+ for(let i=0;i<5;i++){r.eHp=r.eMax=1e15;r.eAtk=0;r.hT=-1e9;r.stun=1e9;r.rn=Math.min(r.rn,5);bt.tick(1)}
+ for(let i=0;i<4;i++){r.eHp=r.eMax=1e15;r.hT=-1e9;r.stun=1e9;bt.tick(1)}
+ ck('rampage-expires',r.rn===0,'rn='+r.rn);
+ // 5 bulwark reflects damage you take (hero and pet attacks paused)
+ const reflected=(lvl)=>{reset();st.S.tr.bulwark=lvl;bt.startRun();const q=st.run;q.hT=-1e9;q.pT=-1e9;q.eHp=q.eMax=1e15;q.eAtk=500;q.hp=1e9;q.totalDmg=0;for(let i=0;i<40;i++)bt.tick(.1);return q.totalDmg};
+ ck('bulwark-reflects-damage',reflected(10)>0&&reflected(0)===0,'with='+reflected(10)+' without='+reflected(0));
+ // 6 second wind: one free revive per run
+ const survive=(lvl)=>{reset();st.S.tr.secondWind=lvl;bt.startRun();const q=st.run;q.hT=-1e9;q.pT=-1e9;q.eHp=q.eMax=1e15;q.eAtk=1e6;q.hp=1;q.eT=99;let first=null,died1=null;bt.tick(.001);first={over:q.over,hp:q.hp,used:q.swUsed};q.eT=99;bt.tick(.001);died1=q.over;return{first,died2:died1,max:q.maxHp}};
+ const sw=survive(2),nosw=survive(0);
+ ck('second-wind-saves-once',!sw.first.over&&sw.first.used&&sw.first.hp>0&&sw.died2===true,JSON.stringify(sw));
+ ck('without-second-wind-you-die',nosw.first.over===true);
+ // 7 loot: gem hunter, bounty, golden goblin
+ const atBoss=()=>{st.S.rl={rStart:3};st.S.sd=3};
+ const gemRate=(lvl,n=400)=>{let c=0;for(let i=0;i<n;i++){reset();atBoss();st.S.tr.gemHunter=lvl;bt.startRun();if(st.run.boss&&st.run.gemDrop)c++}return c/n};
+ const g0=gemRate(0),g5=gemRate(5);ck('gem-hunter-raises-boss-gem-chance',g5>g0+.08&&g0<.2&&g5>.2,'0:'+g0.toFixed(2)+' 5:'+g5.toFixed(2)+' (expect .10 / .25)');
+ const drops=(lvl)=>{let t=0;for(let i=0;i<60;i++){reset();atBoss();st.S.tr.bounty=lvl;bt.startRun();t+=st.run.eDrops.length}return t/60};
+ const d0=drops(0),d5=drops(5);ck('bounty-adds-boss-drops',d5-d0>4&&d5-d0<6,'+'+(d5-d0).toFixed(1)+' (expect +5)');
+ const goldenRate=(lvl,n=1500)=>{let c=0;for(let i=0;i<n;i++){reset();st.S.tr.goblin=lvl;bt.startRun();if(st.run.golden)c++}return c/n};
+ const go0=goldenRate(0),go10=goldenRate(10);ck('golden-goblin-spawns',go0===0&&go10>.10&&go10<.20,'0:'+go0.toFixed(3)+' 10:'+go10.toFixed(3)+' (expect 0 / .15)');
+ const killGold=(gold)=>{reset();bt.startRun();const q=st.run;q.golden=gold;q.hT=1e9;q.eHp=1;bt.tick(.001);return q.gold};
+ ck('golden-enemy-pays-5x',killGold(true)>=killGold(false)*4.5,killGold(true)+' vs '+killGold(false));
+ // 8 economy: forge cost, lucky forge, appraiser, relics
+ reset();const item={ri:3,il:50};const c0=stats.forgeCost(item);st.S.tr.effForge=10;const c10=stats.forgeCost(item);
+ ck('efficient-forge-cuts-cost',Math.abs(c10/c0-Math.pow(.96,10))<.01,(c10/c0).toFixed(3)+' (expect .665)');
+ const refunds=(lvl,n=400)=>{reset();st.S.tr.luckyForge=lvl;let c=0;for(let i=0;i<n;i++){st.S.bag=[0,1,2].map(()=>itm.gen(10,0,'head',undefined,1));const before=st.S.bag.length;if(!stats.forgeDo(st.S.bag.slice()))continue;if(st.S.bag.length===before-1)c++}return c/n};
+ const rf0=refunds(0),rf10=refunds(10);ck('lucky-forge-refunds-an-item',rf0===0&&rf10>.2&&rf10<.4,'0:'+rf0.toFixed(2)+' 10:'+rf10.toFixed(2)+' (expect 0 / .30)');
+ reset();const rare={il:50,ri:3,lv:1},common={il:50,ri:0,lv:1};const v0=itm.val(rare),u0=itm.val(common);st.S.tr.appraiser=10;
+ ck('appraiser-boosts-rare-sales-only',Math.abs(itm.val(rare)/v0-1.3)<.02&&itm.val(common)===u0,(itm.val(rare)/v0).toFixed(3));
+ reset();st.S.life=60;const rg0=asc.relicGain();st.S.tr.relicChannel=10;ck('relic-channel-boosts-relics',Math.abs(asc.relicGain()/rg0-1.4)<.05,(asc.relicGain()/rg0).toFixed(2)+' (expect 1.4)');
+ // 10 endless masteries
+ ck('all-6-masteries-defined-and-in-the-web',MAST.every(k=>sk.NODE[k]&&sk.NODE[k].m>=999&&sk.GRAPHS.u.arms.some(a=>a.ks.includes(k))));
+ reset();MAST.forEach(k=>{st.S.tr[k]=3});ck('masteries-have-labels',MAST.every(k=>gear.treeVal(k).length>0));
+ reset();st.S.tr.grit=5;const m0=stats.stats();st.S.tr.mGrit=10;const m1=stats.stats();ck('mastery-grit-multiplies-defense',Math.abs(m1.def/m0.def-Math.pow(1.06,10))<.01,(m1.def/m0.def).toFixed(3));
+ reset();st.S.tr.haste=10;st.S.tr.fury=10;const n0=stats.stats();st.S.tr.mHaste=10;st.S.tr.mFury=10;const n1=stats.stats();
+ ck('mastery-haste-and-fury-help',n1.spd>n0.spd&&n1.crit>n0.crit,'spd '+n0.spd.toFixed(2)+'->'+n1.spd.toFixed(2)+' crit '+n0.crit.toFixed(1)+'->'+n1.crit.toFixed(1));
+ reset();st.S.tr.deadlyAim=8;const a0=stats.stats();st.S.tr.mAim=10;ck('mastery-aim-adds-crit-damage',Math.abs(stats.stats().critDmg-a0.critDmg-.5)<1e-9);
+ const heal=(lvl)=>{reset();st.S.tr.regen=8;st.S.tr.mRegen=lvl;bt.startRun();const q=st.run;q.hT=1e9;q.pT=-1e9;q.eAtk=0;q.stun=1e9;q.hp=1;q.eHp=1;bt.tick(.001);return q.hp};
+ ck('mastery-recovery-heals-more-per-kill',heal(10)>heal(0),heal(10).toFixed(1)+' vs '+heal(0).toFixed(1));
+ const bossHit=(lvl)=>avgHit(mk({bossSlayer:5,mSlayer:lvl},r=>{r.boss=true}));
+ const bs0=bossHit(0),bs10=bossHit(10);ck('mastery-slaying-boosts-boss-damage',bs10/bs0>1.45&&bs10/bs0<1.8,'x'+(bs10/bs0).toFixed(2)+' (expect 1.63)');
+ // 9 a complete run with everything maxed still works
+ reset();NEW.forEach(k=>{st.S.tr[k]=sk.NODE[k].m});bt.startRun();r=st.run;let err='';try{for(let i=0;i<1500&&!r.over;i++)bt.tick(.1)}catch(e){err=e.message}
+ ck('run-with-everything-maxed',err==='',err);
+}catch(e){out.push('EXC '+e.message+' | '+(e.stack||'').split('\n')[1])}
+document.title=out.join(' ');
+</script>
+
+</body></html>

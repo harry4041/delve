@@ -41,13 +41,13 @@ export function stats(){
  const gearHp=Object.values(S.eq).reduce((t,it)=>t+(it?.st?.hp||0),0)||0;
  const baseAtk=3+gearAtk, baseDef=gearDef||1, baseHp=30+gearHp;
  // % multipliers from upgrades (each level = +12% atk, +15% hp, +10% def, +8% spd, +8% crit, +4% regen)
- const mightMult=Math.pow(1.12,L('might'))*Math.pow(1.06,L('mMight')),vigorMult=Math.pow(1.15,L('vigor'))*Math.pow(1.06,L('mVigor')),gritMult=Math.pow(1.10,L('grit'));
- const s={atk:baseAtk*mightMult,def:baseDef*gritMult,hp:baseHp*vigorMult,crit:5+70*(1-Math.pow(.9943,L('fury'))),spd:3*(1-Math.pow(.9833,L('haste'))),ls:0,dodge:0,gf:0,thorn:0,mpr:0,poison:0,_spellBonus:1,_luckBonus:0};
+ const mightMult=Math.pow(1.12,L('might'))*Math.pow(1.06,L('mMight')),vigorMult=Math.pow(1.15,L('vigor'))*Math.pow(1.06,L('mVigor')),gritMult=Math.pow(1.10,L('grit'))*Math.pow(1.06,L('mGrit'));
+ const s={atk:baseAtk*mightMult,def:baseDef*gritMult,hp:baseHp*vigorMult,crit:5+70*(1-Math.pow(.9943,L('fury')+.6*L('mFury'))),spd:3*(1-Math.pow(.9833,L('haste')+.6*L('mHaste'))),ls:0,dodge:0,gf:0,thorn:0,mpr:0,poison:0,_spellBonus:1,_luckBonus:0};
  for(const sl of SL){const it=S.eq[sl];if(it)for(const k in it.st)if(!['atk','def','hp'].includes(k))s[k]+=it.st[k]}
- setSynergyBonuses(s);
+ s.ls+=1.0*L('vamp');s.dodge+=1.5*L('evasion');setSynergyBonuses(s);
  if(S.ascBuff){const b=ASC_BUFFS.find(x=>x.k===S.ascBuff);if(b)b.fn(s)}
  if(S.ascDebuff){const d=ASC_DEBUFFS.find(x=>x.k===S.ascDebuff);if(d)d.fn(s)}
- const pm=(1+.1*RL('rPow'))*Math.pow(1.15,RL('rMight'));const dOver=Math.max(0,s.dodge-50);s.dodge=Math.min(50,s.dodge);const ab=ascB();s.atk*=pm*ab.atk;s.hp*=pm*ab.hp;s.def*=ab.def*(1+dOver/100);const cOver=Math.max(0,s.crit-75);s.crit=Math.min(75,s.crit);s.critDmg=2+cOver/100;const sOver=Math.max(0,s.spd-3.5);s.spd=Math.min(3.5,s.spd);s.atk*=1+sOver*.5;auraApply(s);return s}
+ const pm=(1+.1*RL('rPow'))*Math.pow(1.15,RL('rMight'));const dOver=Math.max(0,s.dodge-50);s.dodge=Math.min(50,s.dodge);const ab=ascB();s.atk*=pm*ab.atk;s.hp*=pm*ab.hp;s.def*=ab.def*(1+dOver/100);const cOver=Math.max(0,s.crit-75);s.crit=Math.min(75,s.crit);s.critDmg=2+cOver/100+.15*L('deadlyAim')+.05*L('mAim');const sOver=Math.max(0,s.spd-3.5);s.spd=Math.min(3.5,s.spd);s.atk*=1+sOver*.5;auraApply(s);return s}
 export function L(k){return (S.tr[k]||0)}
 export function RL(k){return ((S.rl&&S.rl[k])||0)}
 export function fmtN(n){n=Math.floor(n);if(!isFinite(n))return'huge';if(n<1e5)return String(n);if(n>=1e36)return n.toExponential(2).replace('e+','e');const u=['','K','M','B','T','Qa','Qi','Sx','Sp','Oc','No','Dc'];let i=0,v=n;while(v>=1000&&i<u.length-1){v/=1000;i++}return v.toFixed(v<10?2:v<100?1:0)+u[i]}
@@ -57,13 +57,13 @@ export function ascB(){const a=S.asc||0,ps=petStars();return{atk:Math.pow(1.03,a
 export const ASC_MS=[[1,'+1 loot roll per enemy'],[2,'+15% relics gained'],[3,'+25% gold'],[4,'+20% health'],[5,'+3 free Vault slots'],[7,'+20% damage'],[10,'+2 loot rolls per enemy and +30% relics'],[15,'+50% gold and +25% damage']];
 export function msRolls(){return (((S.asc||0)>=1?1:0)+((S.asc||0)>=10?2:0))}
 export function forgeReq(it){return (Math.min(31,3+2*it.ri))}
-export function forgeCost(it){return (Math.round(100*Math.pow(4,it.ri)*(1+it.il/25)))}
+export function forgeCost(it){return (Math.round(100*Math.pow(4,it.ri)*(1+it.il/25)*Math.pow(.96,L('effForge'))))}
 export function rarLabel(it){return (RN[it.ri]+' '+LVN[(it.lv||1)-1])}
 export function nextLabel(it){const lv=it.lv||1;return lv<3?RN[it.ri]+' '+LVN[lv]:RN[Math.min(RN.length-1,it.ri+1)]+' I'}
 export function pReq(st){return (10+5*st)}
 export function fOK(it){return (it.ri<=L('forgeT')&&it.ri<RN.length-1)}
 export function forgeIntro(){return ('Forge can currently work on '+RN[Math.min(L('forgeT'),RN.length-2)]+' items and below (making '+RN[Math.min(L('forgeT')+1,RN.length-1)]+'). Buy Forge mastery in Upgrades, under Camp, to forge higher tiers. Every tier has 3 levels (I, II, III): forging raises an item one level, and level III becomes level I of the next tier. Every level step needs as many items and as much gold as a whole tier step always did (3 items for Common, 2 more per tier).')}
-export function forgeDo(items){const f0=items[0];if(!f0||!fOK(f0)||items.length!==forgeReq(f0))return false;if(!items.every(it=>it&&it.ri===f0.ri&&it.ty===f0.ty&&(it.lv||1)===(f0.lv||1)))return false;const cost=forgeCost(f0);if(S.gold<cost)return false;S.gold-=cost;const avgIl=Math.round(items.reduce((t,x)=>t+x.il,0)/items.length),cnt={};for(const it of items){const b=baseOf(it);if(b)cnt[b]=(cnt[b]||0)+1}const bn=Object.keys(cnt).sort((x,y)=>cnt[y]-cnt[x])[0];for(const it of items){const i=S.bag.indexOf(it);if(i>=0)S.bag.splice(i,1)}{const lv=f0.lv||1;S.bag.push(lv<3?gen(avgIl,f0.ri,f0.ty,bn,lv+1):gen(avgIl,f0.ri+1,f0.ty,bn,1))}return true}
+export function forgeDo(items){const f0=items[0];if(!f0||!fOK(f0)||items.length!==forgeReq(f0))return false;if(!items.every(it=>it&&it.ri===f0.ri&&it.ty===f0.ty&&(it.lv||1)===(f0.lv||1)))return false;const cost=forgeCost(f0);if(S.gold<cost)return false;S.gold-=cost;const avgIl=Math.round(items.reduce((t,x)=>t+x.il,0)/items.length),cnt={};for(const it of items){const b=baseOf(it);if(b)cnt[b]=(cnt[b]||0)+1}const bn=Object.keys(cnt).sort((x,y)=>cnt[y]-cnt[x])[0];for(const it of items){const i=S.bag.indexOf(it);if(i>=0)S.bag.splice(i,1)}{const lv=f0.lv||1;S.bag.push(lv<3?gen(avgIl,f0.ri,f0.ty,bn,lv+1):gen(avgIl,f0.ri+1,f0.ty,bn,1))}if(Math.random()<.03*L('luckyForge'))S.bag.push(items[0]);return true}
 export function forgeAll(){let n=0;for(let guard=0;guard<400;guard++){const gr={};for(const it of S.bag)if(fOK(it))(gr[it.ri+'|'+it.ty+'|'+(it.lv||1)]=gr[it.ri+'|'+it.ty+'|'+(it.lv||1)]||[]).push(it);let did=false;const ks=Object.keys(gr).sort((x,y)=>(+x.split('|')[0]*3+ +x.split('|')[2])-(+y.split('|')[0]*3+ +y.split('|')[2]));for(const k of ks){const need=forgeReq({ri:+k.split('|')[0],lv:+k.split('|')[2]});if(gr[k].length>=need){const pick=gr[k].slice().sort((x,y)=>sc(x.st)-sc(y.st)).slice(0,need);if(forgeDo(pick)){did=true;n++;break}}}if(!did)break}return n}
 function idleStage(){return (Math.max(S.best||1,Math.floor((S.bestOverall||0)*.6),1))}
 function idleKg(){return (1.5*Math.pow(1.12,idleStage()*.7)*Math.pow(1.12,L('greed'))*Math.pow(1.06,L('mGreed'))*ascB().gold)}

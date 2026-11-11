@@ -11,6 +11,6 @@ export function gen(il,ri,fty,fbn,flv){const lv=flv||rollLv(),ty=fty||pick(Objec
  for(let i=0;i<Math.min(ri,6)&&i<ex.length;i++)put(ex[i],.5);
  const bn=fbn&&BASE[ty].includes(fbn)?fbn:pick(BASE[ty]);if(SPEC[bn]&&!(SPEC[bn] in st))put(SPEC[bn],.8);let sf='';if(ri>=2){sf=pick(Object.keys(SUFS));const k=SUFS[sf];if(!(k in st))put(k,.7)}return{id:nextUid(),ty,ri,lv,il,nm:pick(PRE[Math.min(ri,PRE.length-1)])+' '+bn+(sf?' '+sf:''),st}}
 // greed now gives +12% per level multiplicatively
-export function val(it){return (Math.max(1,Math.round((2+it.il*1.6)*RM[it.ri]*LVM[(it.lv||1)-1]*1.2*Math.pow(1.12,L('greed'))*Math.pow(1.06,L('mGreed'))*(1+.15*RL('rGold'))*ascB().gold)))}
+export function val(it){return (Math.max(1,Math.round((2+it.il*1.6)*RM[it.ri]*LVM[(it.lv||1)-1]*1.2*Math.pow(1.12,L('greed'))*Math.pow(1.06,L('mGreed'))*(1+.15*RL('rGold'))*ascB().gold*(it.ri>=2?1+.03*L('appraiser'):1))))}
 export function sc(s){return ((s.ls||0)*5+(s.dodge||0)*4+(s.gf||0)*1.5+(s.thorn||0)+(s.mpr||0)*6+(s.atk||0)*3+(s.def||0)*2+(s.hp||0)*.3+(s.crit||0)*4+(s.spd||0)*60)}
 export function fmt(s){const o=[];if(s.atk)o.push('+'+s.atk+' atk');if(s.def)o.push('+'+s.def+' def');if(s.hp)o.push('+'+s.hp+' hp');if(s.crit)o.push('+'+s.crit+'% crit');if(s.spd)o.push('+'+Math.round(s.spd*100)+'% speed');if(s.ls)o.push('+'+s.ls+'% lifesteal');if(s.dodge)o.push('+'+s.dodge+'% dodge');if(s.gf)o.push('+'+s.gf+'% gold find');if(s.thorn)o.push('+'+s.thorn+' thorns');if(s.mpr)o.push('+'+s.mpr+' mana/s');if(s.poison)o.push('+'+s.poison+' poison');return o.join(', ')}

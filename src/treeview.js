@@ -5,7 +5,7 @@ import {hasMagic} from './ascension.js';
 import {treeVal} from './gear.js';
 /* ===== SKILL TREE WEB VIEW ===== */
 /* Hub-and-spoke SVG graph. Data lives in GRAPHS (skilltree.js); tapping a node inspects it, the Buy button reuses the data-a="tr" handler. */
-const TV_R=26,TV_HR=36,TV_GAP=150,TV_STEP=104,TV_VS=108,TV_AR=1.15;
+const TV_R=26,TV_HR=36,TV_GAP=150,TV_STEP=104,TV_VS=108,TV_AR=1.15,TV_WEDGE=72; // TV_WEDGE keeps every arm inside its own 90-degree wedge
 const tvS={};/* per-graph view state: {sel, vb:{x,y,w,h}} survives camp() re-renders */
 function tvState(G){return (tvS[G.id]||(tvS[G.id]={sel:null,vb:null}))}
 
@@ -21,11 +21,11 @@ function tvLayout(G){
  G.arms.forEach((a,i)=>{
   const multi=roots[i].length>1,jk='_j'+i,at=(u,v)=>a.d=='N'?{x:v,y:-u}:a.d=='S'?{x:v,y:u}:a.d=='E'?{x:u,y:v}:{x:-u,y:v};
   if(multi){pos[jk]=at(TV_GAP,0);junc[jk]=i;edges.push([hubK,jk])}
-  const place=(k,depth,left)=>{const v=(left+wd(k)/2)*TV_VS,u=TV_GAP+(depth-1+(multi?1:0))*TV_STEP;
+  const place=(k,depth,left,up)=>{const v=(left+wd(k)/2)*TV_VS,u=Math.max(TV_GAP+(depth-1+(multi?1:0))*TV_STEP,up+TV_STEP*.75,Math.abs(v)+TV_WEDGE);
    pos[k]=at(u,v);
-   let l=left;for(const c of kids[k]){place(c,depth+1,l);l+=wd(c);edges.push([k,c])}};
+   let l=left;for(const c of kids[k]){place(c,depth+1,l,u);l+=wd(c);edges.push([k,c])}};
   let cur=-roots[i].reduce((s,k)=>s+wd(k),0)/2;
-  for(const r of roots[i]){place(r,1,cur);cur+=wd(r);edges.push([multi?jk:hubK,r])}});
+  for(const r of roots[i]){place(r,1,cur,0);cur+=wd(r);edges.push([multi?jk:hubK,r])}});
  let x0=0,x1=0,y0=0,y1=0;for(const k in pos){const p=pos[k];x0=Math.min(x0,p.x);x1=Math.max(x1,p.x);y0=Math.min(y0,p.y);y1=Math.max(y1,p.y)}
  return G._lay={pos,edges,arm,junc,hubK,b:{x0,x1,y0,y1}};
 }

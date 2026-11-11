@@ -8,7 +8,7 @@ export const RTREE=[{k:'rMagic',n:'Arcane Awakening',d:'Unlocks spellcasting (Fi
 {k:'rIdleE',n:'Better camp',d:'Idle camp: +2.5% earning efficiency per level (up to 60%)',m:20,b:6,g:1.35}];
 export const RT=Object.fromEntries(RTREE.map(n=>[n.k,n]));
 export function rcost(n){return (Math.max(1,Math.round(n.b*Math.pow(n.g,RL(n.k)))))}
-function relicGain(){return (Math.floor(Math.pow(S.life,1.4)/4*(1+.15*S.asc)*(1+.1*RL('rEcho'))*(S.asc>=2?1.15:1)*(S.asc>=10?1.3:1)))}
+export function relicGain(){return (Math.floor(Math.pow(S.life,1.4)/4*(1+.15*S.asc)*(1+.1*RL('rEcho'))*(S.asc>=2?1.15:1)*(S.asc>=10?1.3:1)*(1+.04*L('relicChannel'))))}
 export function ascend(){if(S.life<reqStage()||S.gold<ascFee())return;const g=relicGain(),kept={};
  if(RL('rLog'))for(const k of['sort','tidy','bulk1','bulk2','bulk3','bulk4','bulk5','bulk6','bulk7','bulk8','bulk9','bulkX','forgeT','autof','massf'])if(L(k))kept[k]=L(k);
  if(RL('rTime'))for(const k of['sim1','sim2'])if(L(k))kept[k]=L(k);

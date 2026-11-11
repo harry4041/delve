@@ -69,15 +69,37 @@ export const TREE=[
 {k:'coinPick',n:'Coin: Pickpocket',d:'Coin finds more bonus gold per level (4%, up to 12% as your Greed grows)',m:5,b:1500,g:1.9,r:{den:1}},
 {k:'coinMap',n:'Coin: Treasure map',d:'4% more chance per level that an enemy gets an extra loot roll',m:5,b:2400,g:1.9,r:{coinPick:1}},
 {k:'sparkSurge',n:'Spark: Surge',d:'Spark restores 0.5 more mana per second per level',m:5,b:2200,g:1.9,r:{den:1}},
-{k:'sparkOver',n:'Spark: Overcharge',d:'Spells recharge 3% faster per level while Spark is active',m:5,b:3000,g:1.9,r:{sparkSurge:1}}];
+{k:'sparkOver',n:'Spark: Overcharge',d:'Spells recharge 3% faster per level while Spark is active',m:5,b:3000,g:1.9,r:{sparkSurge:1}},
+{k:'bulwark',n:'Bulwark',d:'Reflect 3% of the damage you take back at the enemy per level',m:20,b:500,g:1.8,r:{grit:3}},
+{k:'vamp',n:'Vampirism',d:'Heal 1% of the damage you deal per level',m:20,b:600,g:1.85,r:{might:3,regen:1}},
+{k:'secondWind',n:'Second wind',d:'Once per run, survive a killing blow and stand back up with 25% health, +5% per level',m:5,b:1200,g:2.2,r:{vigor:5}},
+{k:'evasion',n:'Evasion',d:'+1.5% dodge per level (dodge is capped at 50%)',m:20,b:700,g:1.8,r:{grit:5}},
+{k:'executioner',n:'Executioner',d:'+8% damage per level against enemies below 30% health',m:15,b:600,g:1.8,r:{might:5}},
+{k:'deadlyAim',n:'Deadly aim',d:'+0.15x critical hit damage per level',m:20,b:600,g:1.85,r:{fury:3}},
+{k:'opening',n:'Opening strike',d:'Your first hit on each enemy deals 30% more damage per level',m:5,b:1000,g:2.1,r:{haste:3}},
+{k:'rampage',n:'Rampage',d:'Each kill gives +2% attack speed per level for 6 seconds, stacking up to 5 times',m:10,b:1500,g:1.9,r:{haste:5,fury:2}},
+{k:'bossSlayer',n:'Boss slayer',d:'+8% damage per level against bosses',m:15,b:700,g:1.8,r:{fury:2}},
+{k:'gemHunter',n:'Gem hunter',d:'+3% gem chance per level when a boss falls (base 10%, max 50%)',m:13,b:1800,g:1.9,r:{eyes:3}},
+{k:'bounty',n:'Bounty',d:'Bosses drop one extra rare item per level',m:10,b:2000,g:2,r:{plunder:3}},
+{k:'goblin',n:'Golden goblin',d:'1.5% chance per level that an enemy is golden and drops 5x gold',m:15,b:1800,g:1.9,r:{greed:4}},
+{k:'relicChannel',n:'Relic channel',d:'+4% relics gained per level when you ascend',m:15,b:2500,g:1.9,r:{luck:3}},
+{k:'effForge',n:'Efficient forge',d:'Forging costs 4% less gold per level',m:15,b:3000,g:1.9,r:{forgeT:1}},
+{k:'luckyForge',n:'Lucky forge',d:'3% chance per level that forging gives one of the items back',m:10,b:4000,g:2,r:{forgeT:2}},
+{k:'appraiser',n:'Appraiser',d:'Rare and better items sell for 3% more per level',m:15,b:2000,g:1.85,r:{sort:1}},
+{k:'mGrit',n:'Mastery: Grit',d:'+6% defense per level (multiplicative), no cap',m:999,b:30000,g:1.32,r:{grit:8}},
+{k:'mRegen',n:'Mastery: Recovery',d:'Each level counts as one more Recovery level (slowly diminishing), no cap',m:999,b:30000,g:1.4,r:{regen:8}},
+{k:'mHaste',n:'Mastery: Haste',d:'Each level counts as 0.6 Haste levels (slowly diminishing), no cap',m:999,b:35000,g:1.4,r:{haste:8}},
+{k:'mFury',n:'Mastery: Fury',d:'Each level counts as 0.6 Fury levels (slowly diminishing), no cap',m:999,b:35000,g:1.4,r:{fury:8}},
+{k:'mAim',n:'Mastery: Aim',d:'+0.05x critical hit damage per level, no cap',m:999,b:40000,g:1.45,r:{deadlyAim:8}},
+{k:'mSlayer',n:'Mastery: Slaying',d:'+5% damage to bosses per level (multiplicative), no cap',m:999,b:40000,g:1.45,r:{bossSlayer:8}}];
 export const NODE=Object.fromEntries(TREE.map(n=>[n.k,n]));
 /* Skill-tree webs: hub in the centre, one arm per compass direction. Each node's parent in the drawing is its deepest prerequisite inside the same arm. */
 export const GRAPHS={
 u:{id:'u',hub:null,hubName:'Delver',arms:[
- {n:'Warrior',d:'N',c:'--c4',ks:['might','vigor','grit','regen','mMight','mVigor']},
- {n:'Tempo',d:'E',c:'--btn',ks:['haste','fury','sim1','sim2']},
- {n:'Fortune',d:'S',c:'--c3',ks:['greed','eyes','luck','plunder','sorter','mGreed','mLoot','mPlunder']},
- {n:'Camp',d:'W',c:'--c1',ks:['sort','sortType','tidy','bulk1','bulk2','bulk3','bulk4','bulk5','bulk6','bulk7','bulk8','bulk9','bulkX','forgeT','autof','massf']}]},
+ {n:'Warrior',d:'N',c:'--c4',ks:['might','vigor','grit','regen','mMight','mVigor','bulwark','vamp','secondWind','evasion','executioner','mGrit','mRegen']},
+ {n:'Tempo',d:'E',c:'--btn',ks:['haste','fury','sim1','sim2','deadlyAim','opening','rampage','bossSlayer','mHaste','mFury','mAim','mSlayer']},
+ {n:'Fortune',d:'S',c:'--c3',ks:['greed','eyes','luck','plunder','sorter','mGreed','mLoot','mPlunder','gemHunter','bounty','goblin','relicChannel']},
+ {n:'Camp',d:'W',c:'--c1',ks:['sort','sortType','tidy','bulk1','bulk2','bulk3','bulk4','bulk5','bulk6','bulk7','bulk8','bulk9','bulkX','forgeT','autof','massf','effForge','luckyForge','appraiser']}]},
 m:{id:'m',hub:'arcana',arms:[
  {n:'Fire',d:'N',c:'--c4',ks:['spFirePow','spBurn','spMeteor']},
  {n:'Mind',d:'E',c:'--c2',ks:['spMana','spRegen','spCdr','spCrit','spEcho']},
