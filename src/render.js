@@ -21,6 +21,20 @@ const TINT=['#5fbf6a','#8a6fd0','#d0a040','#6fb7d8','#e0603a','#a04fd0'];
 function R(x,y,w,h,c){g.fillStyle=c;g.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h))}
 function rr(h,f){const n=parseInt(h.slice(1),16),a=[n>>16,n>>8&255,n&255].map(v=>Math.max(0,Math.min(255,Math.round(v*f))));return'#'+a.map(v=>v.toString(16).padStart(2,'0')).join('')}
 function spr(m,p,x,y){for(let j=0;j<m.length;j++)for(let i=0;i<m[j].length;i++){const k=m[j][i],c=p[k];if(k!='.'&&c){g.fillStyle=c;g.fillRect(x+i,y+j,1,1)}}}
+// Pet sprites (pixel maps; o outline, b body, h highlight, d shade, e eye, w white, y gold, f flame)
+export const PET_SPR={
+ pip:['..ooooo..','.obbbbbo.','obbhhbbbo','obebbebbo','obbbbbbbo','.ooooooo.'],
+ fang:['o.o.......','obboooo...','obbbbbbo..','obebbbbbbo','.obbbbbbbo','.obdobdbo.','..o.o.o.o.'],
+ ember:['..o....o..','.obo..obo.','.obbooobbo','..obbbbbo.','.obebbbbbo','obbhbbbbbo','.obbdodbbo','..oo.f.oo.'],
+ moss:['.ooooooo.','obbbbbbbo','obeebeebo','obbbbbbbo','oobhbbboo','obbbbbbbo','obbo.obbo','ooo...ooo'],
+ coin:['..ooo....','.obbbo...','obebbboy.','obbbbbbbo','.obwwwbo.','..obbbo..','...o.o...'],
+ spark:['...o...','.o.o.o.','..obo..','.obbbo.','obbebbo','.obhbo.','..obo..','...o...'],
+};
+function drawPet(P,t,x,yFloor,bob){const m=PET_SPR[P.k];if(!m)return;
+ const pal={o:'#1a0f24',b:P.k=='coin'?'#2a2438':P.c,h:rr(P.k=='coin'?'#6a5f88':P.c,1.45),d:rr(P.c,.7),e:'#fff',w:'#f4f0ff',y:'#ffd34d',f:'#ff9a2e'};
+ if(P.k=='spark'){g.globalAlpha=.18+.1*Math.sin(t*7);R(x-2,yFloor-m.length-bob-1,m[0].length+4,m.length+2,P.c);g.globalAlpha=1}
+ spr(m,pal,x,yFloor-m.length-bob)}
+function frame(x,y,w,h,c,a){g.globalAlpha=a;R(x,y,w,1,c);R(x,y+h-1,w,1,c);R(x,y,1,h,c);R(x+w-1,y,1,h,c);g.globalAlpha=a*.35;R(x+1,y+1,w-2,h-2,c);g.globalAlpha=1}
 function ob(x,y,w,h,c){R(x-1,y-1,w+2,h+2,'#1a0f24');R(x,y,w,h,c)}
 function gc(sl,d){const it=S.eq[sl];return it?RC[it.ri]:d}
 const CH=['....oooooo....','...ohhhhhho...','..ohhhHhhhho..','.ohhhhhhhhhho.','.ohhkkkkkkhho.','.okkeekkeekko.','.okkeekkeekko.','.okpkkkkkkpko.','..okkkwwkkko..','...oookkooo...','..obbbbbbbbo..','.oqobbbbbboqo.','.oqobBBBBboqo.','..obbbbbbbbo..','..ollo..ollo..','..ollo..ollo..','..ottoo.ottoo.','..oooo..oooo..'];
@@ -102,14 +116,18 @@ function draw(){const r=run,t=r.t,tier=Math.floor((r.stage-1)/5)%6,z=ZONES[tier]
  for(let y=0;y<44;y++)for(let x=30;x<66;x++)if(Math.hypot(x-48,y-20)<13+fl&&(x+y)%2==0)R(x,y,1,1,k[4]);
  R(46,24,4,2,'#4a3a2a');R(47,26,2,6,'#4a3a2a');R(46,17+(fl?1:0),4,6,k[5]);R(47,15+fl,2,6,'#ffe45c');
  R(0,44,96,10,k[2]);R(0,44,96,1,k[3]);for(let x=2;x<96;x+=11)R(x,48+(x%2),6,1,rr(k[3],.8));
- if(S.ap>=0){const P=PET[S.ap],b=Math.sin(t*8)>0?0:1;ob(3,39-b,7,5,P.c);ob(8,37-b,4,4,P.c);R(10,38-b,1,1,'#1a0f24')}
+ if(S.ap>=0){const P=PET[S.ap],b=Math.sin(t*8)>0?0:1;drawPet(P,t,2,44,b)}
  const hx=14+(r.lunge>0?5:0),hy=14+(Math.sin(t*6)>0?0:1);
  // aura glow rings around hero
  const aa=activeAuras();if(aa.length){aa.forEach((aur,ai)=>{const alpha=(.1+.08*Math.sin(t*5+ai*1.2));g.globalAlpha=alpha;R(hx-1-ai,hy-5-ai,22+ai*2,34+ai*2,aur.c)});g.globalAlpha=1}
  drawHero(hx,hy,r.hf>0);
+ if(r.rn>0){for(let q=0;q<r.rn;q++){R(hx+2+q*4,hy-7,3,1,'#ff8a2a');R(hx+3+q*4,hy-8,1,1,'#ffd34d')}}
+ if(r.swT>0){frame(hx-3,hy-4,26,38,'#ffd34d',Math.min(.9,r.swT));for(let q=0;q<5;q++){const sp=(Math.floor(t*12)+q*5)%9;R(hx-2+((q*7+sp*3)%24),hy-3+((q*13+sp*5)%36),1,1,'#fff3b0')}}
  const tint=TINT[tier],es=enStyle(r.eType,tint),sc=es.sc||1,ey=44-30*sc,ex=(r.boss?58:68)-(r.elunge>0?3:0);if(!r.eEq)r.eEq=eqFromDrops(r.eDrops||[]);
  const bestRi=(r.eDrops||[]).reduce((m,it)=>Math.max(m,it.ri),0);if(bestRi>=2){g.globalAlpha=.25+.15*Math.sin(t*6);R(ex-2,43,Math.round(24*sc),2,RC[bestRi]);g.globalAlpha=1}
  drawFigure(ex,ey,r.eEq,es,r.ef>0,true,sc);
+ if(r.golden){frame(ex-1,ey-1,Math.round(20*sc)+2,Math.round(30*sc)+2,'#ffd34d',.55+.3*Math.sin(t*9));for(let q=0;q<4;q++){const sp=Math.floor(t*6+q*7)%12;R(ex+((q*7+sp)%20)*sc,ey+((q*11+sp*3)%30)*sc,1,1,sp%2?'#fff3b0':'#ffd34d')}}
+ if(r.pb&&r.pb.n>0){for(let q=0;q<Math.min(6,r.pb.n+1);q++){const fh=2+((Math.floor(t*10)+q)%3);R(ex+2+q*3*sc,Math.round(ey+30*sc)-fh-2,2,fh,q%2?'#ffd34d':'#ff8a2a')}}
  if(r.stun>0){R(ex+4,ey-5,12,2,'#6ecbf5');R(ex+6,ey-7,8,2,'#bfeaff')}
  if(r.psnStacks>0){g.globalAlpha=.08+.03*r.psnStacks;R(ex,ey,Math.round(20*sc),Math.round(30*sc),'#40c060');g.globalAlpha=1}
  if(r.boss&&r.eHp/r.eMax<.35){g.globalAlpha=.6+.3*Math.sin(t*22);R(ex-6,30,6,3,'#ff7700');R(ex-10,32,5,2,'#ff4400');g.globalAlpha=1}

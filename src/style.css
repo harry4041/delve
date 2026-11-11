@@ -45,3 +45,6 @@ button.alt{background:var(--panel);color:var(--ink)}
 .ac label{display:block}
 .acerr{color:var(--hp);margin:6px 0}.acok{color:var(--c1);margin:6px 0}
 .toast{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);max-width:min(92vw,520px);padding:8px 12px;background:var(--panel);color:var(--ink);border:3px solid var(--ink);box-shadow:4px 4px 0 var(--ink);z-index:50;cursor:pointer}
+.aff{animation:tvpulse 1.6s ease-in-out infinite}
+@keyframes tvpulse{0%,100%{stroke-opacity:.25}50%{stroke-opacity:1}}
+@media (prefers-reduced-motion:reduce){.aff{animation:none}}

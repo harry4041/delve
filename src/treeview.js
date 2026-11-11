@@ -39,6 +39,15 @@ function tvWrap(s){s=s.replace('Mastery: ','M. ');const out=[];let cur='';for(co
 function tvInfo(k){const n=NODE[k],l=L(k),mx=l>=n.m,ok=can(n),magic=MAGIC_K.includes(k)&&!hasMagic(),c=cost(n);
  return{n,l,mx,ok,magic,c,blocked:magic||!ok,aff:!(magic||!ok)&&!mx&&S.gold>=c}}
 
+const isMastery=(k)=>/^m[A-Z]/.test(k);
+const tvPoly=(n,rad,rot)=>Array.from({length:n},(_,i)=>{const a=rot+i*2*Math.PI/n;return (rad*Math.cos(a)).toFixed(1)+','+(rad*Math.sin(a)).toFixed(1)}).join(' ');
+function tvArc(rad,frac,style){
+ if(frac<=0)return'';
+ if(frac>=1)return'<circle r="'+rad+'" fill="none" style="'+style+'" stroke-width="4"/>';
+ const a=frac*2*Math.PI-Math.PI/2;
+ return'<path d="M0 '+(-rad)+' A '+rad+' '+rad+' 0 '+(frac>.5?1:0)+' 1 '+(rad*Math.cos(a)).toFixed(1)+' '+(rad*Math.sin(a)).toFixed(1)+'" fill="none" style="'+style+'" stroke-width="4" stroke-linecap="round"/>';
+}
+
 function tvSvg(G,st){
  const lay=tvLayout(G),pos=lay.pos,E=[],T=[],N=[];
  const owned=k=>k[0]==='_'||L(k)>0;
@@ -56,12 +65,20 @@ for(const k in pos){const p=pos[k];
    if(i.aff){stroke='var(--gold)';sw=5}
    txt=i.mx?(i.n.m>1||i.n.m>=999?i.l:'✓'):(i.l>0?i.l:'');if(i.n.m==1&&i.l>0)txt='✓'}
   const lines=hub?[]:tvWrap(NODE[k].n),ly=r+17;
+  let ring='',glow='';
+  const kind=!real||hub?'circ':NODE[k].m===1?'dia':isMastery(k)?'hex':'circ';
+  const shape=(rr0,f,o,sk,w,d)=>kind==='dia'?'<polygon points="'+tvPoly(4,rr0*1.3,-Math.PI/2)+'" style="fill:'+f+';fill-opacity:'+o+';stroke:'+sk+'" stroke-width="'+w+'"'+d+' stroke-linejoin="round"/>'
+   :kind==='hex'?'<polygon points="'+tvPoly(6,rr0*1.12,-Math.PI/2)+'" style="fill:'+f+';fill-opacity:'+o+';stroke:'+sk+'" stroke-width="'+w+'"'+d+' stroke-linejoin="round"/>'
+   :'<circle r="'+rr0+'" style="fill:'+f+';fill-opacity:'+o+';stroke:'+sk+'" stroke-width="'+w+'"'+d+'/>';
+  if(real&&!hub){const nn=NODE[k],l=L(k);
+   if(nn.m>1&&nn.m<999){ring='<circle r="'+(r+8)+'" fill="none" style="stroke:var(--mute);opacity:.35" stroke-width="3"/>'+tvArc(r+8,l/nn.m,'stroke:var('+colOf(k)+')')}
+   if(tvInfo(k).aff)glow='<circle class="aff" r="'+(r+(kind==='circ'?7:10))+'" fill="none" style="stroke:var(--gold)" stroke-width="3"/>'}
   N.push('<g class="tn" data-n="'+k+'" transform="translate('+p.x+','+p.y+')">'
    +(st.sel===k?'<circle r="'+(r+8)+'" fill="none" style="stroke:var(--ink)" stroke-width="3" stroke-dasharray="5 4"/>':'')
-   +'<circle r="'+(r+10)+'" fill="transparent"/><circle r="'+r+'" style="fill:'+fill+';fill-opacity:'+fo+';stroke:'+stroke+'" stroke-width="'+sw+'"'+dash+'/>'
+   +'<circle r="'+(r+10)+'" fill="transparent"/>'+ring+shape(r,fill,fo,stroke,sw,dash)+glow
    +(hub?'<text y="'+(real?-3:7)+'" text-anchor="middle" style="font-size:19px;fill:var('+(real?'--btnt':'--bg')+')">'+(real?NODE[k].n:G.hubName)+'</text>'+(real&&txt!==''?'<text y="19" text-anchor="middle" style="font-size:22px;fill:var(--btnt)">'+txt+'</text>':''):txt!==''?'<text y="7" text-anchor="middle" style="font-size:26px;fill:var(--btnt)">'+txt+'</text>':'')
    +lines.map((s,i)=>'<text y="'+(ly+i*19)+'" text-anchor="middle" style="font-size:21px;'+''+'">'+s+'</text>').join('')+'</g>')}
- return'<svg class="tvsvg" viewBox="'+tvVbStr(st.vb)+'" xmlns="http://www.w3.org/2000/svg">'+E.join('')+T.join('')+N.join('')+'</svg>'}
+ return'<svg class="tvsvg" viewBox="'+tvVbStr(st.vb)+'" xmlns="http://www.w3.org/2000/svg">'+'<defs><pattern id="tvg" width="44" height="44" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.6" style="fill:var(--mute);opacity:.28"/></pattern>'+'<radialGradient id="tvh"><stop offset="0" style="stop-color:var(--c2);stop-opacity:.38"/><stop offset="1" style="stop-color:var(--c2);stop-opacity:0"/></radialGradient></defs>'+'<rect x="-6000" y="-6000" width="12000" height="12000" fill="url(#tvg)"/><circle r="230" fill="url(#tvh)"/>'+E.join('')+T.join('')+N.join('')+'</svg>'}
 
 function tvPanel(G,k){
  if(!k)return'<div class="mute">Tap a node to inspect it. Drag to pan, pinch or use + / − to zoom. Gold rings can be bought now.</div>';
