@@ -9,7 +9,7 @@ Delve is an idle/incremental pixel-art dungeon-crawler game: HTML/CSS/ES-module 
 ## Commands
 
 Node and Go are installed via winget; in a bash session started before that, add `/c/Program Files/nodejs` to PATH.
-- `npm run dev` — Vite dev server (http://localhost:5173)
+- `npm run dev` — Vite dev server (http://localhost:5173), or double-click `play.cmd`. **Do not open `index.html` or `dist/index.html` by double-clicking**: ES modules are blocked on `file://`, so the page is blank. The old single-file `Delve.html` still works that way.
 - `npm run build` / `npm run preview` — production build to `dist/` (relative `base`, so it works inside a Capacitor webview) and serve it
 - `npm run typecheck` — `tsc --noEmit`; the code is still plain JS (`allowJs`, `checkJs:false`, non-strict), so this only validates config. Converting to TypeScript is a later step.
 - `npm start` — `server.js`, a dependency-free static server for `dist/` (binds 0.0.0.0, listens on `PORT`, default 8080 which is the port Ruust routes to; SPA fallback, gzip). Ruust deploys use the repo `Dockerfile` (two stages: `npm ci && npm run build`, then `node server.js` as the non-root `node` user on 8080 with a HEALTHCHECK) instead of Nixpacks. Docker is not installed locally; stages were verified by running the same commands in a clean copy. Ruust has no bare file host, so a static site needs a running server; never bind to localhost there.
