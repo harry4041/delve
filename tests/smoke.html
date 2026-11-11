@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>running</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+</head><body><div id="app">
+<header><h1>Delve</h1><div id="top"></div></header>
+<section id="battle" hidden>
+ <div class="cv"><canvas id="c" width="192" height="108"></canvas><div id="fxl"></div>
+  <div id="over" hidden><div class="px" style="font-size:12px">Defeated</div><div id="ovt"></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button data-a="delveAgain" style="background:#d94a4a;color:#fff;border-color:#fff">⚔ Delve Again</button><button data-a="camp">Go to camp</button></div></div></div>
+ <div class="bar"><i id="hpb"></i><span id="hpt"></span></div>
+ <div class="bar m" id="mpw"><i id="mpb"></i><span id="mpt"></span></div>
+ <div class="bar e"><i id="ehb"></i><span id="ent"></span></div>
+ <div class="row sp" style="margin:6px 0"><div class="row" id="spells"></div><div class="row"><button class="s alt" data-a="spd" id="spdb"></button><button class="s alt" data-a="end">End run</button></div></div>
+ <div class="mute">Last drop</div><div id="last"></div><div class="mute" style="margin-top:6px">Loot this run</div><div id="feed"></div>
+</section>
+<section id="camp" hidden>
+ <div class="row sp"><div class="tabs"><button data-a="tab" data-v="g" id="tg">Gear</button><button data-a="tab" data-v="u" id="tu">Upgrades</button><button data-a="tab" data-v="v" id="tv">Vault</button><button data-a="tab" data-v="m" id="tm">Magic</button><button data-a="tab" data-v="p" id="tp">Pets</button><button data-a="tab" data-v="r" id="tr2">Auras</button><button data-a="tab" data-v="i" id="ti">Idle</button><button data-a="tab" data-v="a" id="ta">Ascend</button><button data-a="tab" data-v="l" id="tl">Scores</button></div></div>
+ <div style="margin:8px 0"><button data-a="delve" style="width:100%;font-size:22px;padding:10px;background:var(--btn);border-width:4px;box-shadow:5px 5px 0 var(--ink)">⚔ DELVE</button></div>
+ <div id="sdw" class="row" style="margin:6px 0"></div><div id="cbody"></div><div style="margin:16px 0"><button class="s alt" data-a="reset">Reset save</button></div>
+</section>
+</div>
+<script type="module">
+const out=[],ck=(n,c,x)=>out.push(n+':'+(c?'ok':'FAIL'+(x?'('+x+')':'')));
+window.onerror=(m,u,l)=>{out.push('ERR '+m+' @'+String(u).split('/').pop()+':'+l)};
+window.addEventListener('unhandledrejection',e=>out.push('REJ '+e.reason));
+try{
+ await import('/src/main.js');
+ const st=await import('/src/state.js'),bt=await import('/src/battle.js'),rd=await import('/src/render.js'),cp=await import('/src/camp.js'),tv=await import('/src/treeview.js');
+ const sk=await import('/src/skilltree.js');
+ ck('boot',st.S&&st.mode==='camp'&&document.querySelector('#cbody').innerHTML.length>100);
+ st.S.gold=1e7;st.S.best=30;st.S.relics=5;st.S.rl={rMagic:1};
+ // every tab renders
+ const tabs=['g','u','v','m','p','i','a','l','r'];let tabsOk=true,tabErr='';
+ for(const t of tabs){try{st.setTab(t);cp.camp();if(document.querySelector('#cbody').innerHTML.length<50){tabsOk=false;tabErr+=t}}catch(e){tabsOk=false;tabErr+=t+'='+e.message+' '}}
+ ck('tabs',tabsOk,tabErr);
+ // skill tree webs
+ for(const id of ['u','m','p'])ck('tree-'+id,tv.tree(sk.GRAPHS[id]).includes('<svg'));
+ // buy via click
+ st.setTab('u');cp.camp();document.querySelector('#tv_u .tn[data-n=might]').dispatchEvent(new MouseEvent('click',{bubbles:true}));
+ const g0=st.S.gold,l0=(st.S.tr.might||0);document.querySelector('#tv_u [data-a=tr]').click();
+ ck('buy',(st.S.tr.might||0)===l0+1&&st.S.gold<g0);
+ // delve: start run, simulate combat + render
+ document.querySelector('[data-a=delve]').click();
+ ck('delve-start',st.mode==='battle'&&st.run&&st.run.stage>=1);
+ for(let i=0;i<600&&!st.run.over;i++){bt.tick(.1)}
+ await new Promise(r=>setTimeout(r,500));
+ ck('combat',st.run.t>1&&st.run.stage>=2&&st.run.loot.length>=0,'t='+st.run.t.toFixed(1)+' stage='+st.run.stage+' over='+st.run.over+' loot='+st.run.loot.length);out.push('(info t='+st.run.t.toFixed(1)+' stage='+st.run.stage+' over='+st.run.over+' loot='+st.run.loot.length+')');
+ // loot / uid across modules
+ const u0=st.uid;const it=(await import('/src/items.js')).gen(5,1);ck('uid-bump',st.uid===u0+1&&it.id===u0);
+ // end run -> camp
+ if(!st.run.over){st.run.hp=0;bt.die()}
+ ck('over',st.run.over===true);
+ const back=document.querySelector('[data-a=camp]');if(back)back.click();
+ ck('back-to-camp',st.mode==='camp'&&st.run===null);
+ // persistence + reset
+ st.save();ck('save',JSON.parse(localStorage.getItem('hollow-delve-2')).gold>0);
+ st.setTab('g');
+ const rs=document.createElement('button');rs.dataset.a='reset';document.body.appendChild(rs);rs.click();rs.click();
+ ck('reset',st.S.gold===0&&st.uid===1&&st.tab==='g');
+}catch(e){out.push('EXC '+e.message+' | '+(e.stack||'').split('\n')[1])}
+document.title=out.join(' ');
+</script>
+</body></html>

@@ -1,0 +1,26 @@
+const $=s=>document.querySelector(s),pick=a=>a[Math.random()*a.length|0];
+const SL=['head','chest','gloves','legs','boots','amu1','amu2','amu3','lhand','rhand'];
+const SLN={head:'Helmet',chest:'Chest',gloves:'Gloves',legs:'Trousers',boots:'Boots',amu1:'Amulet',amu2:'Amulet',amu3:'Amulet',lhand:'Left hand',rhand:'Right hand'};
+const SLOTOF={head:['head'],chest:['chest'],gloves:['gloves'],legs:['legs'],boots:['boots'],amulet:['amu1','amu2','amu3'],weapon:['lhand','rhand'],shield:['lhand','rhand']};
+const RC=['#8a8499','#4cc46a','#4aa0ff','#c06bff','#ff9a2e','#ff4f8b','#4ff0ff','#fff3b0','#a6ff3a'],RN=['Common','Uncommon','Rare','Epic','Legendary','Mythic','Celestial','Divine','Primordial'];
+const RM=[1,1.5,2.2,3.2,4.8,7,10,15,22],RW=[60,25,10,4,1.2,.25,.06,.015,.004];
+const ROM=n=>{const v=[[1000,'M'],[900,'CM'],[500,'D'],[400,'CD'],[100,'C'],[90,'XC'],[50,'L'],[40,'XL'],[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']];let o='';for(const[a,b]of v)while(n>=a){o+=b;n-=a}return o};
+const hsl2hex=(h,sa,l)=>{sa/=100;l/=100;const a=sa*Math.min(l,1-l),f=n=>{const k=(n+h/30)%12,c=l-a*Math.max(-1,Math.min(k-3,9-k,1));return Math.round(255*c).toString(16).padStart(2,'0')};return'#'+f(0)+f(8)+f(4)};
+const TXN=['Ascendant','Transcendent','Immortal','Infinite','Cosmic','Stellar','Eclipsed','Sovereign','Omniscient','Absolute','Boundless','Eternal','Paramount','Apex','Zenith','Genesis','Omega'];
+const LVN=['I','II','III'],LVM=[1,1.15,1.3],rollLv=(m=3)=>{const w=[.851,.128,.021].slice(0,m),t=w.reduce((a,c)=>a+c);let r=Math.random()*t;for(let i=0;i<w.length;i++){r-=w[i];if(r<=0)return i+1}return 1};
+(function(){for(let i=9;i<400;i++){RN.push(i-9<TXN.length?TXN[i-9]:'Beyond '+(i-9-TXN.length+1));RC.push(hsl2hex((i*47)%360,95,64));RM.push(RM[i-1]*1.45);RW.push(Math.max(1e-300,RW[i-1]*.3))}})();
+const PRE=[['Worn','Frayed','Rusty'],['Sturdy','Hardy','Keen'],['Gleaming','Fine','Honed'],['Runed','Warded','Vicious'],['Mythic','Ancient','Dawnforged'],['Eternal','Primal','Godforged'],['Celestial','Astral','Radiant'],['Divine','Sacred','Hallowed'],['Primordial','Cosmic','Worldforged']];
+const BASE={head:['Cap','Helm','Hood','Crown'],chest:['Tunic','Mail','Plate','Robe'],gloves:['Mitts','Gauntlets','Wraps'],legs:['Breeches','Greaves','Trousers'],boots:['Boots','Sandals','Treads'],amulet:['Charm','Amulet','Talisman','Locket'],weapon:['Sword','Axe','Dagger','Mace','Spear'],shield:['Buckler','Shield','Aegis']};
+const TT={head:{def:1,hp:1.5},chest:{def:1.5,hp:3},gloves:{atk:.6,def:.6},legs:{def:1,hp:2},boots:{def:.6,spd:1.5},amulet:{atk:.6,hp:1.5,crit:1.2},weapon:{atk:2,crit:.5},shield:{def:1.6,hp:2}};
+const W={atk:.7,def:.7,hp:3,crit:.12,spd:.0035,ls:.05,dodge:.06,gf:.2,thorn:.4,mpr:.02,poison:.08};
+const SPEC={Dagger:'spd',Axe:'atk',Spear:'crit',Mace:'thorn',Robe:'mpr',Crown:'gf',Hood:'dodge',Aegis:'thorn',Locket:'ls',Talisman:'mpr',Treads:'dodge',Sandals:'spd',Wraps:'crit',Gauntlets:'thorn',Charm:'gf',Amulet:'ls',Plate:'def'};
+const SUFS={'of the Fox':'dodge','of the Bear':'hp','of Embers':'atk','of the Deep':'mpr','of Storms':'spd','of the Wyrm':'def','of Ruin':'crit','of Thieves':'gf','of Leeches':'ls','of Briars':'thorn','of Venom':'poison'};
+const SP=[{n:'Fireball',c:20,cd:4},{n:'Mend',c:30,cd:8},{n:'Frost',c:25,cd:10},{n:'Meteor',c:60,cd:20}];
+const PET=[{n:'Pip the slime',d:.2,iv:1.2,cost:1500,c:'#5fe08a'},{n:'Fang the wolf',d:.45,iv:1,cost:9000,c:'#b9b3c9'},{n:'Ember the drake',d:.9,iv:.9,cost:40000,c:'#ff7a3a'}];
+const TR=[{k:'might',n:'Might',d:'+12% attack (multiplicative)',b:25},{k:'vigor',n:'Vigor',d:'+15% health (multiplicative)',b:25},{k:'grit',n:'Grit',d:'+10% defense (multiplicative)',b:30},{k:'arcana',n:'Arcana',d:'+20% spell power, +10 mana',b:60,m:1}];
+const NM=['Zombie','Skeleton','Bandit','Orc','Cultist'],TP=['Mossy','Cave','Ashen','Frost','Ember','Void'];
+
+let S,run=null,mode='camp',tab='g',uid=1,forgeSelected=[],forgeMode=false;
+function def(){return{gold:0,gems:0,best:0,bestOverall:0,tr:{},eq:{rhand:{id:0,ty:'weapon',ri:0,il:1,nm:'Rusty Sword',st:{atk:2}}},bag:[],magic:false,petsOn:false,pets:[{own:0,lvl:0},{own:0,lvl:0},{own:0,lvl:0}],ap:-1,speed:1,uid:1,rl:{},relics:0,asc:0,life:0,sd:0,vault:[],vaultLvl:0,vaultUnlocked:false,ascBuff:null,ascDebuff:null,bagLvl:0,auras:{}}}
+function load(){try{S=JSON.parse(localStorage.getItem('hollow-delve-2'))}catch(e){}if(!S||!S.eq)S=def();S.tr=S.tr||{};S.pets=(S.pets&&S.pets.length>=3?S.pets:[{own:0,lvl:0},{own:0,lvl:0},{own:0,lvl:0}]);S.eq=S.eq||{};S.bag=S.bag||[];S.rl=S.rl||{};S.relics=S.relics||0;if(S.rl.rKeep){let t=0;for(let i=0;i<S.rl.rKeep;i++)t+=Math.max(1,Math.round(6*Math.pow(1.5,i)));S.relics+=t;delete S.rl.rKeep}if(S.tr&&S.tr.offl){let g0=0;for(let i=0;i<S.tr.offl;i++)g0+=Math.round(8000*Math.pow(1.5,i));S.gold=(S.gold||0)+g0;delete S.tr.offl}S.asc=S.asc||0;S.life=S.life||S.best||0;S.sd=S.sd||0;uid=S.uid||1;S.vault=S.vault||[];S.vaultLvl=S.vaultLvl||0;S.vaultUnlocked=S.vaultUnlocked||false;S.bestOverall=S.bestOverall||S.best||0;S.ascBuff=S.ascBuff||null;S.ascDebuff=S.ascDebuff||null;S.bagLvl=S.bagLvl||0;S.gems=S.gems||0;S.auras=S.auras||{};offlineCalc()}
+function save(){S.uid=uid;S.lastT=Date.now();try{localStorage.setItem('hollow-delve-2',JSON.stringify(S))}catch(e){}}
