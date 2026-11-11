@@ -57,7 +57,19 @@ export const TREE=[
 {k:'mVigor',n:'Mastery: Vigor',d:'+6% health per level, no cap',m:999,b:25000,g:1.3,r:{vigor:10,might:10}},
 {k:'mGreed',n:'Mastery: Greed',d:'+6% gold and sale value per level, no cap',m:999,b:30000,g:1.32,r:{greed:8}},
 {k:'mLoot',n:'Mastery: Fortune',d:'+4% chance to bump a drop up one rarity',m:999,b:60000,g:1.5,r:{luck:8}},
-{k:'mPlunder',n:'Mastery: Plunder',d:'+1 loot roll per enemy',m:999,b:50000,g:1.45,r:{plunder:8}}];
+{k:'mPlunder',n:'Mastery: Plunder',d:'+1 loot roll per enemy',m:999,b:50000,g:1.45,r:{plunder:8}},
+{k:'pipSticky',n:'Pip: Sticky goo',d:'While Pip is active, enemies attack 4% slower per level (the total slow is capped)',m:5,b:1200,g:1.9,r:{den:1}},
+{k:'pipThick',n:'Pip: Thick slime',d:'Pip heals 30% more per hit per level',m:5,b:1800,g:1.9,r:{pipSticky:1}},
+{k:'fangAlpha',n:'Fang: Alpha',d:'Fang deals 10% more damage to bosses per level',m:5,b:1800,g:1.9,r:{den:1}},
+{k:'fangBlood',n:'Fang: Bloodhound',d:'Fang\'s crits deal an extra 0.12x damage per level',m:5,b:2600,g:1.9,r:{fangAlpha:1}},
+{k:'embInferno',n:'Ember: Inferno',d:'Ember\'s burn can stack one more time per level',m:3,b:2500,g:2.2,r:{den:1}},
+{k:'embRoast',n:'Ember: Slow roast',d:'Ember\'s burn lasts 0.5s longer and ticks 15% harder per level',m:5,b:3500,g:1.9,r:{embInferno:1}},
+{k:'mossGranite',n:'Moss: Granite',d:'Moss takes 4% more of the damage aimed at you per level',m:5,b:2200,g:1.9,r:{den:1}},
+{k:'mossQuake',n:'Moss: Quake',d:'Damage Moss reflects is 20% stronger per level',m:5,b:3000,g:1.9,r:{mossGranite:1}},
+{k:'coinPick',n:'Coin: Pickpocket',d:'Coin finds more bonus gold per level (4%, up to 12% as your Greed grows)',m:5,b:1500,g:1.9,r:{den:1}},
+{k:'coinMap',n:'Coin: Treasure map',d:'4% more chance per level that an enemy gets an extra loot roll',m:5,b:2400,g:1.9,r:{coinPick:1}},
+{k:'sparkSurge',n:'Spark: Surge',d:'Spark restores 0.5 more mana per second per level',m:5,b:2200,g:1.9,r:{den:1}},
+{k:'sparkOver',n:'Spark: Overcharge',d:'Spells recharge 3% faster per level while Spark is active',m:5,b:3000,g:1.9,r:{sparkSurge:1}}];
 export const NODE=Object.fromEntries(TREE.map(n=>[n.k,n]));
 /* Skill-tree webs: hub in the centre, one arm per compass direction. Each node's parent in the drawing is its deepest prerequisite inside the same arm. */
 export const GRAPHS={
@@ -74,8 +86,9 @@ m:{id:'m',hub:'arcana',arms:[
 p:{id:'p',hub:'den',arms:[
  {n:'Claws',d:'N',c:'--c3',ks:['ptClaws','ptHaste','ptFire','ptFrost','ptVenom','ptStorm']},
  {n:'Bond',d:'E',c:'--btn',ks:['bond']},
- {n:'Beastmaster',d:'S',c:'--c2',ks:['ptMaster']}]}};
-export const NODEC={ptFire:'--c4',ptFrost:'--gem',ptVenom:'--c1',ptStorm:'--btn'};
+ {n:'Kennel',d:'S',c:'--c2',ks:['ptMaster','mossGranite','mossQuake','coinPick','coinMap','sparkSurge','sparkOver']},
+ {n:'Signatures',d:'W',c:'--c3',ks:['pipSticky','pipThick','fangAlpha','fangBlood','embInferno','embRoast']}]}};
+export const NODEC={ptFire:'--c4',ptFrost:'--gem',ptVenom:'--c1',ptStorm:'--btn',pipSticky:'--c1',pipThick:'--c1',fangAlpha:'--c2',fangBlood:'--c2',embInferno:'--c4',embRoast:'--c4',mossGranite:'--c3',mossQuake:'--c3',coinPick:'--btn',coinMap:'--btn',sparkSurge:'--gem',sparkOver:'--gem'};
 export const MAGIC_K=['arcana','mender','frost','spMana','spRegen','spCdr','spCrit','spEcho','spFirePow','spBurn','spMeteor','spHeal','spFrostDur','spShatter'];
 export function can(n){return (Object.entries(n.r).every(([k,v])=>L(k)>=v))}
 export function cost(n){return (Math.round(n.b*Math.pow(n.g,L(n.k))))}

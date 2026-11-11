@@ -1,4 +1,4 @@
-// usage: node cdp.mjs <url> [maxSeconds]  -> waits until document.title no longer starts with "running", prints it
+// usage: node tests/run-page.mjs <url> [maxSeconds]  -> waits until document.title no longer starts with "running", prints it
 const [url,maxS='60']=process.argv.slice(2),port=9333;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 let tgt;for(let i=0;i<30;i++){try{const r=await fetch(`http://127.0.0.1:${port}/json/new?${encodeURIComponent(url)}`,{method:'PUT'});tgt=await r.json();break}catch{await sleep(500)}}
@@ -8,4 +8,4 @@ let id=0;const pend=new Map();ws.onmessage=m=>{const d=JSON.parse(m.data);if(d.i
 const call=(method,params={})=>new Promise(r=>{const i=++id;pend.set(i,r);ws.send(JSON.stringify({id:i,method,params}))});
 const t0=Date.now();let title='';
 while(Date.now()-t0<maxS*1000){const r=await call('Runtime.evaluate',{expression:'document.title',returnByValue:true});title=r.result?.result?.value||'';if(title&&!title.startsWith('running'))break;await sleep(500)}
-console.log(title);ws.close();process.exit(0);
+console.log(title);ws.close();try{await fetch(`http://127.0.0.1:${port}/json/close/${tgt.id}`)}catch{}process.exit(0); // close the tab so its timers cannot touch the next run's localStorage

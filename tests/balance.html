@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>running</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+</head><body><div id="app">
+<header><h1>Delve</h1><div id="top"></div></header>
+<section id="battle" hidden>
+ <div class="cv"><canvas id="c" width="192" height="108"></canvas><div id="fxl"></div>
+  <div id="over" hidden><div class="px" style="font-size:12px">Defeated</div><div id="ovt"></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button data-a="delveAgain" style="background:#d94a4a;color:#fff;border-color:#fff">⚔ Delve Again</button><button data-a="camp">Go to camp</button></div></div></div>
+ <div class="bar"><i id="hpb"></i><span id="hpt"></span></div>
+ <div class="bar m" id="mpw"><i id="mpb"></i><span id="mpt"></span></div>
+ <div class="bar e"><i id="ehb"></i><span id="ent"></span></div>
+ <div class="row sp" style="margin:6px 0"><div class="row" id="spells"></div><div class="row"><button class="s alt" data-a="spd" id="spdb"></button><button class="s alt" data-a="end">End run</button></div></div>
+ <div class="mute">Last drop</div><div id="last"></div><div class="mute" style="margin-top:6px">Loot this run</div><div id="feed"></div>
+</section>
+<section id="camp" hidden>
+ <div class="row sp"><div class="tabs"><button data-a="tab" data-v="g" id="tg">Gear</button><button data-a="tab" data-v="u" id="tu">Upgrades</button><button data-a="tab" data-v="v" id="tv">Vault</button><button data-a="tab" data-v="m" id="tm">Magic</button><button data-a="tab" data-v="p" id="tp">Pets</button><button data-a="tab" data-v="r" id="tr2">Auras</button><button data-a="tab" data-v="i" id="ti">Idle</button><button data-a="tab" data-v="a" id="ta">Ascend</button><button data-a="tab" data-v="l" id="tl">Scores</button><button data-a="tab" data-v="x" id="tx">Account</button></div></div>
+ <div style="margin:8px 0"><button data-a="delve" style="width:100%;font-size:22px;padding:10px;background:var(--btn);border-width:4px;box-shadow:5px 5px 0 var(--ink)">⚔ DELVE</button></div>
+ <div id="sdw" class="row" style="margin:6px 0"></div><div id="cbody"></div><div style="margin:16px 0"><button class="s alt" data-a="reset">Reset save</button></div>
+</section>
+</div>
+<script type="module">
+// Pet balance simulator: plays automatic runs for each (build x pet) and reports average progress.
+const out=[];window.onerror=(m,u,l)=>out.push('ERR '+m+' @'+String(u).split('/').pop()+':'+l);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const q=new URLSearchParams(location.search),RUNS=+(q.get('runs')||12),LVL=+(q.get('plvl')||6),SIG=+(q.get('sig')||0),CAP=15000,SCALE=+(q.get('scale')||1);
+try{
+ await import('/src/main.js');
+ const st=await import('/src/state.js'),bt=await import('/src/battle.js'),asc=await import('/src/ascension.js'),itm=await import('/src/items.js');
+ const KEY='hollow-delve-2';
+ const item=(ty,stt,il=40)=>({id:Math.floor(Math.random()*1e9),ty,ri:3,lv:1,il,nm:'Sim '+ty,st:stt});
+ const common=()=>({rhand:item('weapon',{atk:40}),head:item('head',{def:15,hp:150}),chest:item('chest',{def:25,hp:300}),boots:item('boots',{def:8,hp:80})});
+ const BUILDS={
+  thorn:{tr:{might:8,vigor:10,grit:24,regen:4,greed:2},eq:{amu1:item('amulet',{thorn:80}),amu2:item('amulet',{def:25,hp:150}),legs:item('legs',{def:25,hp:150})}},
+  sustain:{tr:{might:8,vigor:26,grit:4,regen:7,greed:2},eq:{amu1:item('amulet',{hp:250}),amu2:item('amulet',{hp:250}),legs:item('legs',{hp:250,def:10})}},
+  crit:{tr:{might:12,vigor:8,haste:12,fury:14},eq:{amu1:item('amulet',{crit:12}),amu2:item('amulet',{crit:10,spd:.4}),gloves:item('gloves',{atk:20,crit:6})}},
+  support:{magic:true,tr:{might:5,vigor:10,arcana:12,spMana:4,spRegen:8,spCdr:10,mender:1,spHeal:4,frost:1,spFrostDur:3},eq:{amu1:item('amulet',{mpr:3}),amu2:item('amulet',{mpr:3}),gloves:item('gloves',{atk:10}),legs:item('legs',{hp:150,def:10})}},
+  fire:{magic:true,tr:{might:5,vigor:10,arcana:12,spFirePow:20,spBurn:8,spMeteor:1,spMana:6,spRegen:4,spCdr:1},eq:{amu1:item('amulet',{mpr:3}),amu2:item('amulet',{mpr:3}),gloves:item('gloves',{atk:10}),legs:item('legs',{hp:150,def:10})}},
+  economy:{tr:{might:8,vigor:10,greed:14,eyes:8,plunder:6,luck:4},eq:{amu1:item('amulet',{gf:60}),amu2:item('amulet',{gf:40}),legs:item('legs',{hp:150,def:10})}},
+ };
+ // signature nodes each pet would buy (only used when ?sig=N)
+ const SIGS={pip:['pipSticky','pipThick'],fang:['fangAlpha','fangBlood'],ember:['embInferno','embRoast'],moss:['mossGranite','mossQuake'],coin:['coinPick','coinMap'],spark:['sparkSurge','sparkOver']};
+ const setup=(b,pet,scale)=>{
+  localStorage.removeItem(KEY);localStorage.removeItem('hd-lb');st.load();const S=st.S;
+  S.tr={};for(const k in b.tr)S.tr[k]=Math.round(b.tr[k]*scale);Object.assign(S.tr,{den:1,bond:2,ptClaws:3,ptHaste:2});
+  S.rl=b.magic?{rMagic:1}:{};S.eq={...common(),...b.eq};S.bag=[];S.gold=0;S.best=1;S.life=1;S.speed=1;S.ap=-1;
+  if(pet>=0){S.pets[pet]={own:1,lvl:LVL,star:0};S.ap=pet;if(SIG)for(const k of SIGS[st.PET[pet].k])S.tr[k]=SIG}
+ };
+ const auto=(r,s)=>{if(!asc.hasSp(0))return;bt.cast(0);if(r.hp<s.hp*.5)bt.cast(1);if(r.stun<=0)bt.cast(2);bt.cast(3)};
+ const mean=a=>a.reduce((x,y)=>x+y,0)/a.length;
+ const names=['none',...st.PET.map(p=>p.k)],SCALES=(q.get('scales')||'1.2,1.5,1.8,2.1').split(',').map(Number);
+ const T0=performance.now();let capped=0;const capBy={};
+ const all={};
+ for(const bn of Object.keys(BUILDS)){
+  const per={};  // pet -> {prog:[], gpm:[], lpm:[]} ratios vs no-pet at the same strength
+  for(const sc of SCALES){
+   const cell={};
+   for(let pi=-1;pi<st.PET.length;pi++){
+    const stages=[],gpm=[],lpm=[];
+    for(let k=0;k<RUNS;k++){
+     setup(BUILDS[bn],pi,sc);bt.startRun();const r=st.run;let n=0;
+     while(!r.over&&n<CAP){if(BUILDS[bn].magic)auto(r,{hp:r.maxHp});bt.tick(.1);n++}
+     if(!r.over){capped++;capBy[bn]=(capBy[bn]||0)+1}
+     stages.push(r.stage+1-Math.max(0,r.eHp)/r.eMax);gpm.push(r.gold/Math.max(1,r.t)*60);lpm.push(r.loot.reduce((a,it)=>a+itm.val(it),0)/Math.max(1,r.t)*60);
+    }
+    cell[names[pi+1]]={prog:mean(stages),gpm:mean(gpm),lpm:mean(lpm)};
+   }
+   for(const nm of names.slice(1)){const c=cell[nm],b0=cell.none;(per[nm]??=({prog:[],gpm:[],lpm:[]}));per[nm].prog.push(c.prog/b0.prog);per[nm].gpm.push(c.gpm/b0.gpm);per[nm].lpm.push(c.lpm/b0.lpm)}
+   await sleep(0);
+  }
+  all[bn]={};for(const nm of names.slice(1))all[bn][nm]={prog:mean(per[nm].prog),gpm:mean(per[nm].gpm),lpm:mean(per[nm].lpm)};
+ }
+ const best=(bn,key)=>names.slice(1).reduce((a,b)=>all[bn][b][key]>all[bn][a][key]?b:a);
+ const pct=v=>((v-1)*100).toFixed(0).padStart(4)+'%';
+ for(const bn of Object.keys(all)){
+  out.push('## '+bn+'  [best: progress='+best(bn,'prog')+' gold='+best(bn,'gpm')+' loot='+best(bn,'lpm')+']   (change vs no pet, averaged over strengths '+SCALES.join('/')+')');
+  for(const nm of names.slice(1)){const c=all[bn][nm];out.push(nm.padEnd(6)+' progress '+pct(c.prog)+'  gold/min '+pct(c.gpm)+'  loot value/min '+pct(c.lpm))}
+ }
+ out.push('capped runs by build: '+JSON.stringify(capBy)+' | total '+capped+' | seconds: '+((performance.now()-T0)/1000).toFixed(0)+' | runs/cell '+RUNS+' pet lvl '+LVL+' sig '+SIG);
+}catch(e){out.push('EXC '+e.message+' | '+(e.stack||'').split('\n')[1])}
+document.title=out.join(' ## ');
+</script>
+
+</body></html>

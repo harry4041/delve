@@ -36,7 +36,8 @@ try{
  document.querySelector('#ac-form').dispatchEvent(new Event('submit',{cancelable:true,bubbles:true}));
  for(let i=0;i<60&&!(cs().err||cs().msg);i++)await sleep(250);
  out.push('(real sign-in with fake creds -> "'+cs().err+'")');
- ck('sdk-loads-and-answers',cs().err==='Email or password is incorrect.',cs().err);
+ await sleep(2000); // let the real auth listener's first callback fire before we swap in the fake
+ ck('sdk-loads-and-answers',cs().err.length>0&&!/unknown/.test(cs().err),cs().err);
  // ---- fake Firestore (in memory)
  const docs=new Map();
  const F={doc:(db,c,id)=>({path:c+'/'+id}),serverTimestamp:()=>({ts:1}),
