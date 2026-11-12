@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>running</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+</head><body><div id="app">
+<header><h1>Delve</h1><div id="top"></div></header>
+<section id="battle" hidden>
+ <div class="cv"><canvas id="c" width="192" height="108"></canvas><div id="fxl"></div>
+  <div id="over" hidden><div class="px" style="font-size:12px">Defeated</div><div id="ovt"></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button data-a="delveAgain" style="background:#d94a4a;color:#fff;border-color:#fff">⚔ Delve Again</button><button data-a="camp">Go to camp</button></div></div></div>
+ <div class="bar"><i id="hpb"></i><span id="hpt"></span></div>
+ <div class="bar m" id="mpw"><i id="mpb"></i><span id="mpt"></span></div>
+ <div class="bar e"><i id="ehb"></i><span id="ent"></span></div>
+ <div class="row sp" style="margin:6px 0"><div class="row" id="spells"></div><div class="row"><button class="s alt" data-a="spd" id="spdb"></button><button class="s alt" data-a="end">End run</button></div></div>
+ <div class="mute">Last drop</div><div id="last"></div><div class="mute" style="margin-top:6px">Loot this run</div><div id="feed"></div>
+</section>
+<section id="camp" hidden>
+ <div class="row sp"><div class="tabs"><button data-a="tab" data-v="g" id="tg">Gear</button><button data-a="tab" data-v="u" id="tu">Upgrades</button><button data-a="tab" data-v="v" id="tv">Vault</button><button data-a="tab" data-v="m" id="tm">Magic</button><button data-a="tab" data-v="p" id="tp">Pets</button><button data-a="tab" data-v="r" id="tr2">Auras</button><button data-a="tab" data-v="i" id="ti">Idle</button><button data-a="tab" data-v="a" id="ta">Ascend</button><button data-a="tab" data-v="l" id="tl">Scores</button><button data-a="tab" data-v="x" id="tx">Account</button></div></div>
+ <div style="margin:8px 0"><button data-a="delve" style="width:100%;font-size:22px;padding:10px;background:var(--btn);border-width:4px;box-shadow:5px 5px 0 var(--ink)">⚔ DELVE</button></div>
+ <div id="sdw" class="row" style="margin:6px 0"></div><div id="cbody"></div><div style="margin:16px 0"><button class="s alt" data-a="reset">Reset save</button></div>
+</section>
+</div>
+<script type="module">
+const out=[],ck=(n,c,x)=>out.push(n+':'+(c?'ok':'FAIL'+(x!==undefined?'('+x+')':'')));
+window.onerror=(m,u,l)=>out.push('ERR '+m+' @'+String(u).split('/').pop()+':'+l);
+try{
+ await import('/src/main.js');
+ const st=await import('/src/state.js'),farm=await import('/src/farm.js'),cp=await import('/src/camp.js');
+ const KEY='hollow-delve-2',S=()=>st.S,H=3600e3,near=(a,b,t=.01)=>Math.abs(a-b)<=Math.abs(b)*t+1e-9;
+ const reset=()=>{localStorage.removeItem(KEY);st.load();S().gold=0;S().gems=0;S().best=30;S().tr={den:1};S().ap=-1;S().farm={t:Date.now(),gold:0,gems:0}};
+ const own=(i,lvl=0,star=0)=>{S().pets[i]={own:1,lvl,star}};
+ const click=(a,v)=>{const b=document.createElement('button');b.dataset.a=a;if(v!==undefined)b.dataset.v=v;document.body.appendChild(b);b.click();b.remove()};
+ // 1 old saves get a farm; a new game starts with an empty one
+ localStorage.setItem(KEY,JSON.stringify({...st.def(),farm:undefined}));st.load();
+ ck('old-save-gets-a-farm',!!S().farm&&typeof S().farm.t==='number'&&S().farm.gold===0);
+ ck('every-pet-has-a-farm-job',st.PET.every(P=>P.farm&&P.farm.n&&P.farm.g>0));
+ // 2 who works
+ reset();ck('no-pets-no-income',farm.farmRates().gold===0&&farm.farmRates().pets.length===0);
+ own(0);let r=farm.farmRates();ck('a-resting-pet-earns',r.pets.length===1&&r.gold>0&&r.pets[0].i===0);
+ S().ap=0;ck('the-active-pet-does-not-farm',farm.farmRates().pets.length===0);
+ S().ap=-1;own(4);r=farm.farmRates();const pip=r.pets.find(e=>e.i===0).gold,coin=r.pets.find(e=>e.i===4).gold;
+ ck('coin-earns-more-than-pip',near(coin/pip,2.2,.02),(coin/pip).toFixed(2));
+ reset();own(0,5,0);const l5=farm.farmRates().gold;reset();own(0,0,0);const l0=farm.farmRates().gold;ck('levels-raise-income',near(l5/l0,2,.02),(l5/l0).toFixed(2));
+ reset();own(0,0,1);const s1=farm.farmRates().gold;ck('stars-raise-income',near(s1/l0,1.5,.02),(s1/l0).toFixed(2));
+ reset();own(3);own(5);own(0);r=farm.farmRates();ck('only-some-pets-find-gems',r.pets.find(e=>e.i===3).gems>0&&r.pets.find(e=>e.i===5).gems>0&&r.pets.find(e=>e.i===0).gems===0);
+ // 3 time
+ reset();own(0);const rate=farm.farmRates().gold,now=Date.now();S().farm={t:now-H,gold:0,gems:0};
+ ck('one-hour-pays-one-hours-rate',near(farm.farmPending(now).gold,rate,.005),farm.farmPending(now).gold.toFixed(1)+' vs '+rate.toFixed(1));
+ S().farm={t:now-100*H,gold:0,gems:0};ck('absences-are-capped-at-8-hours',near(farm.farmPending(now).gold,rate*8,.005),(farm.farmPending(now).gold/rate).toFixed(2)+' hours');
+ S().farm={t:now-H,gold:50,gems:0};farm.farmSettle(now);ck('settle-banks-the-work-and-restarts-the-clock',S().farm.t===now&&near(S().farm.gold,rate+50,.005));
+ S().farm={t:now+H,gold:10,gems:0};ck('a-clock-set-backwards-never-goes-negative',farm.farmPending(now).gold===10);
+ // 4 swapping the active pet banks what the old resting set earned
+ reset();own(0);own(1);S().ap=1;const pipRate=farm.farmRates().gold;S().farm={t:Date.now()-H,gold:0,gems:0};
+ click('ap',0);ck('sending-a-pet-out-banks-the-farms-income',near(S().farm.gold,pipRate,.01)&&S().ap===0,S().farm.gold.toFixed(1)+' vs '+pipRate.toFixed(1));
+ const fangRate=farm.farmRates().gold,bank=S().farm.gold;S().farm.t=Date.now()-H;
+ ck('the-former-active-pet-now-works',farm.farmRates().pets.length===1&&farm.farmRates().pets[0].i===1&&near(farm.farmPending().gold-bank,fangRate,.01));
+ // 5 buying a pet also settles first
+ reset();own(0);S().gold=1e9;S().farm={t:Date.now()-H,gold:0,gems:0};const pr=farm.farmRates().gold;click('bp',1);
+ ck('buying-a-pet-banks-first',near(S().farm.gold,pr,.01)&&S().pets[1].own===1,S().farm.gold.toFixed(1));
+ // 6 collecting
+ reset();own(3);S().farm={t:Date.now(),gold:1234.7,gems:2.6};const g0=S().gold;const c=farm.farmCollect();
+ ck('collect-pays-whole-gold-and-gems',c.gold===1234&&c.gems===2&&S().gold===g0+1234&&S().gems===2,JSON.stringify(c));
+ ck('collect-keeps-the-fractions',near(S().farm.gold,.7,.05)&&near(S().farm.gems,.6,.05));
+ // 7 the screen
+ reset();own(0);own(4);own(5);S().ap=0;st.setTab('p');cp.camp();
+ const html=document.querySelector('#cbody').innerHTML;
+ ck('farm-box-lists-the-resting-pets',html.includes('Pet farm')&&html.includes('Coin the magpie')&&html.includes('Spark the sprite')&&html.includes('Treasure hunter'));
+ ck('active-pet-is-not-listed-on-the-farm',!/id="farm"[\s\S]*Pip the slime/.test(html.slice(html.indexOf('id="farm"'))));
+ ck('farm-uses-sprites',(html.match(/data:image\/png;base64/g)||[]).length>=2);
+ S().farm={t:Date.now(),gold:5000,gems:0};st.setTab('p');cp.camp();const gb=S().gold;document.querySelector('[data-a=farmCollect]').click();
+ ck('collect-button-works',S().gold>=gb+5000);
+ st.setTab('p');cp.camp();ck('collect-is-disabled-when-nothing-is-ready',document.querySelector('[data-a=farmCollect]').disabled===true||farm.farmPending().gold>=1);
+ // 8 no den, no farm screen
+ reset();S().tr={};st.setTab('p');cp.camp();ck('farm-hidden-until-the-den-is-unlocked',!document.querySelector('#cbody').innerHTML.includes('Pet farm'));
+}catch(e){out.push('EXC '+e.message+' | '+(e.stack||'').split(String.fromCharCode(10))[1])}
+document.title=out.join(' ');
+</script>
+
+</body></html>

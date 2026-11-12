@@ -48,3 +48,4 @@ button.alt{background:var(--panel);color:var(--ink)}
 .aff{animation:tvpulse 1.6s ease-in-out infinite}
 @keyframes tvpulse{0%,100%{stroke-opacity:.25}50%{stroke-opacity:1}}
 @media (prefers-reduced-motion:reduce){.aff{animation:none}}
+.bp select{font:inherit;color:var(--ink);background:var(--bg);border:3px solid var(--ink);padding:4px 6px;max-width:100%;min-height:34px}.bp .row{gap:6px}

@@ -1,3 +1,6 @@
+import {farmSettle,farmCollect} from './farm.js';
+import {toast} from './toast.js';
+import {bpView,bpControls} from './backpack.js';
 import {accountTab,accountStatus} from './account.js';
 import {$,PET,RC,RN,S,SL,SLN,SP,TR,def,forgeMode,forgeSelected,mode,run,save,setForgeMode,setForgeSelected,setMode,setRun,setS,setTab,setUid,tab} from './state.js';
 import {fmt,sc,val} from './items.js';
@@ -62,8 +65,8 @@ export function camp(){const st=stats();$('#sdw').innerHTML=(RL('rStart')?'<span
   } else {
    h+='<div class="row" style="margin:4px 0"><button class="s alt" data-a="forgeOpen">⚒ Open Forge</button></div>';
   }
-  const bag=L('sort')?(L('sortType')?S.bag.slice().sort((a,b)=>a.ty.localeCompare(b.ty)||b.ri-a.ri||b.il-a.il):S.bag.slice().sort((a,b)=>b.ri-a.ri||b.il-a.il)):S.bag.slice().reverse();
-  h+=bag.length?bag.slice(0,60).map(it=>{const o=S.eq[target(it)],d=Math.round(sc(it.st)-(o?sc(o.st):0));const fSel=forgeSelected.includes(it.id);const forgeBtn=forgeMode?'<button class="s'+(fSel?' ':' alt')+'" data-a="fSel" data-v="'+it.id+'">'+(fSel?'✓ '+(forgeSelected.indexOf(it.id)+1):'+ Forge')+'</button>':'';return '<div class="it" style="'+(fSel?'background:color-mix(in srgb,var(--panel) 80%,var(--c4));':'')+'"><div>'+chip(it)+' <small style="display:inline">lv'+it.il+' <span class="'+(d>0?'up':'dn')+'">'+(d>0?'▲':'▼')+Math.abs(d)+'</span></small><small>'+fmt(it.st)+'</small></div><div class="row">'+forgeBtn+'<button class="s'+(forgeMode?' alt':'')+'" data-a="eq" data-v="'+it.id+'">'+(forgeMode?'Eq':'Equip')+'</button><button class="s alt" data-a="sell" data-v="'+it.id+'">'+val(it)+'g</button></div></div>'}).join('')+(bag.length>60?'<div class="mute">+'+(bag.length-60)+' more. Sell or equip to reveal.</div>':''):'<span class="mute">Nothing here. Delve to find loot.</span>';
+  const bag0=L('sort')?(L('sortType')?S.bag.slice().sort((a,b)=>a.ty.localeCompare(b.ty)||b.ri-a.ri||b.il-a.il):S.bag.slice().sort((a,b)=>b.ri-a.ri||b.il-a.il)):S.bag.slice().reverse(),bv=bpView(bag0),bag=bv.list;
+  h+=bpControls(bv)+(bag.length?bag.map(it=>{const o=S.eq[target(it)],d=Math.round(sc(it.st)-(o?sc(o.st):0));const fSel=forgeSelected.includes(it.id);const forgeBtn=forgeMode?'<button class="s'+(fSel?' ':' alt')+'" data-a="fSel" data-v="'+it.id+'">'+(fSel?'✓ '+(forgeSelected.indexOf(it.id)+1):'+ Forge')+'</button>':'';return '<div class="it" style="'+(fSel?'background:color-mix(in srgb,var(--panel) 80%,var(--c4));':'')+'"><div>'+chip(it)+' <small style="display:inline">lv'+it.il+' <span class="'+(d>0?'up':'dn')+'">'+(d>0?'▲':'▼')+Math.abs(d)+'</span></small><small>'+fmt(it.st)+'</small></div><div class="row">'+forgeBtn+'<button class="s'+(forgeMode?' alt':'')+'" data-a="eq" data-v="'+it.id+'">'+(forgeMode?'Eq':'Equip')+'</button><button class="s alt" data-a="sell" data-v="'+it.id+'">'+val(it)+'g</button></div></div>'}).join('')+(bv.more>0?'<button class="s alt" data-bpa="more">Show '+Math.min(60,bv.more)+' more ('+bv.more+' hidden)</button>':''):'<span class="mute">'+(S.bag.length?'No items match these filters.':'Nothing here. Delve to find loot.')+'</span>');
   h+='</div>'}
  else{
   h+='<h2>Training</h2><div class="box">'+TR.filter(t=>!t.m||hasMagic()).map(t=>{const c=Math.round(t.b*Math.pow(1.35,S.tr[t.k]));return '<div class="it"><div><b>'+t.n+' '+S.tr[t.k]+'</b><small>'+t.d+'</small></div><button class="s" data-a="tr" data-v="'+t.k+'" '+(S.gold<c?'disabled':'')+'>'+c+'g</button></div>'}).join('')+'</div>';
@@ -99,7 +102,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b
   if(a=='tr'){const n=NODE[v],c=cost(n);const needsMagic=['arcana','mender','frost'].includes(v);if(can(n)&&L(v)<n.m&&S.gold>=c&&(!needsMagic||hasMagic())){S.gold-=c;S.tr[v]=L(v)+1}}
   
   if(a=='magic'&&!hasMagic()&&S.gold>=300&&S.best>=6){S.gold-=300;S.magic=true}
-  if(a=='bp'){S.gold-=PET[v].cost;S.pets[v].own=1;S.ap=+v}if(a=='ap')S.ap=+v;
+  if(a=='bp'){farmSettle();S.gold-=PET[v].cost;S.pets[v].own=1;S.ap=+v}if(a=='ap'){farmSettle();S.ap=+v}if(a=='farmCollect'){const fc=farmCollect();if(fc.gold||fc.gems)toast('Collected '+fmtN(fc.gold)+' gold'+(fc.gems?' and '+fc.gems+' gems':'')+' from the farm')}
   if(a=='pl'&&S.gold>=petLc(+v)){S.gold-=petLc(+v);S.pets[v].lvl++}
   if(a=='upAura'){const aur=AURAS.find(x=>x.k===v),lv=S.auras&&S.auras[v];if(aur&&lv){const c=auraUpCost(aur);if((S.gems||0)>=c){S.gems-=c;S.auras[v]=lv+1}}}
   if(a=='buyAura'){const aur=AURAS.find(x=>x.k===v);if(aur&&!auraOwned(v)&&(S.gems||0)>=aur.gems){S.gems-=aur.gems;S.auras=S.auras||{};S.auras[v]=1}}

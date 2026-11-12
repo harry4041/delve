@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>running</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+</head><body><div id="app">
+<header><h1>Delve</h1><div id="top"></div></header>
+<section id="battle" hidden>
+ <div class="cv"><canvas id="c" width="192" height="108"></canvas><div id="fxl"></div>
+  <div id="over" hidden><div class="px" style="font-size:12px">Defeated</div><div id="ovt"></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button data-a="delveAgain" style="background:#d94a4a;color:#fff;border-color:#fff">⚔ Delve Again</button><button data-a="camp">Go to camp</button></div></div></div>
+ <div class="bar"><i id="hpb"></i><span id="hpt"></span></div>
+ <div class="bar m" id="mpw"><i id="mpb"></i><span id="mpt"></span></div>
+ <div class="bar e"><i id="ehb"></i><span id="ent"></span></div>
+ <div class="row sp" style="margin:6px 0"><div class="row" id="spells"></div><div class="row"><button class="s alt" data-a="spd" id="spdb"></button><button class="s alt" data-a="end">End run</button></div></div>
+ <div class="mute">Last drop</div><div id="last"></div><div class="mute" style="margin-top:6px">Loot this run</div><div id="feed"></div>
+</section>
+<section id="camp" hidden>
+ <div class="row sp"><div class="tabs"><button data-a="tab" data-v="g" id="tg">Gear</button><button data-a="tab" data-v="u" id="tu">Upgrades</button><button data-a="tab" data-v="v" id="tv">Vault</button><button data-a="tab" data-v="m" id="tm">Magic</button><button data-a="tab" data-v="p" id="tp">Pets</button><button data-a="tab" data-v="r" id="tr2">Auras</button><button data-a="tab" data-v="i" id="ti">Idle</button><button data-a="tab" data-v="a" id="ta">Ascend</button><button data-a="tab" data-v="l" id="tl">Scores</button><button data-a="tab" data-v="x" id="tx">Account</button></div></div>
+ <div style="margin:8px 0"><button data-a="delve" style="width:100%;font-size:22px;padding:10px;background:var(--btn);border-width:4px;box-shadow:5px 5px 0 var(--ink)">⚔ DELVE</button></div>
+ <div id="sdw" class="row" style="margin:6px 0"></div><div id="cbody"></div><div style="margin:16px 0"><button class="s alt" data-a="reset">Reset save</button></div>
+</section>
+</div>
+<script type="module">
+const out=[],ck=(n,c,x)=>out.push(n+':'+(c?'ok':'FAIL'+(x!==undefined?'('+x+')':'')));
+window.onerror=(m,u,l)=>out.push('ERR '+m+' @'+String(u).split('/').pop()+':'+l);
+try{
+ await import('/src/main.js');
+ const st=await import('/src/state.js'),bp=await import('/src/backpack.js'),it=await import('/src/items.js'),cp=await import('/src/camp.js');
+ const KEY='hollow-delve-2',S=()=>st.S;
+ const types=['head','chest','gloves','legs','boots','amulet','weapon','shield'];
+ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+ const setBag=()=>{localStorage.removeItem(KEY);localStorage.removeItem('hd-bp');st.load();S().gold=1e9;S().eq={};
+  const bag=[];for(let ri=0;ri<5;ri++)for(const ty of types)for(let k=0;k<2;k++)bag.push(it.gen(10+ri*7+k*3+types.indexOf(ty),ri,ty));S().bag=bag;
+  Object.assign(bp.bpState,{ri:'all',ty:'all',sort:'default',limit:60})};
+ setBag();
+ const all=S().bag,N=all.length;
+ // 1 filtering
+ let v=bp.bpView(all);ck('no-filter-shows-everything-up-to-the-page-size',v.matched===N&&v.list.length===Math.min(60,N)&&v.more===N-60,JSON.stringify([v.matched,v.list.length,v.more]));
+ bp.bpState.ri=2;v=bp.bpView(all);ck('filter-by-rarity',v.matched===16&&v.list.every(i=>i.ri===2),v.matched);
+ bp.bpState.ty='head';v=bp.bpView(all);ck('rarity-and-type-combine',v.matched===2&&v.list.every(i=>i.ri===2&&i.ty==='head'),v.matched);
+ bp.bpState.ri='all';v=bp.bpView(all);ck('filter-by-type-only',v.matched===10&&v.list.every(i=>i.ty==='head'),v.matched);
+ bp.bpState.ty='all';
+ // 2 sorting
+ const mono=(arr,f,dir)=>arr.every((x,i)=>i===0||(dir>0?f(x)>=f(arr[i-1]):f(x)<=f(arr[i-1])));
+ bp.bpState.sort='price-asc';let l=bp.bpView(all).list;ck('sort-price-low-to-high',mono(l,it.val,1)&&it.val(l[0])<it.val(l[l.length-1]));
+ bp.bpState.sort='price-desc';l=bp.bpView(all).list;ck('sort-price-high-to-low',mono(l,it.val,-1));
+ bp.bpState.sort='rarity-desc';l=bp.bpView(all).list;ck('sort-rarity-high-to-low',mono(l,i=>i.ri,-1)&&l[0].ri===4);
+ bp.bpState.sort='rarity-asc';l=bp.bpView(all).list;ck('sort-rarity-low-to-high',mono(l,i=>i.ri,1)&&l[0].ri===0);
+ bp.bpState.sort='level-desc';l=bp.bpView(all).list;ck('sort-item-level-high-to-low',mono(l,i=>i.il,-1));
+ bp.bpState.sort='level-asc';l=bp.bpView(all).list;ck('sort-item-level-low-to-high',mono(l,i=>i.il,1));
+ // the exact example from the request: rare gear, then helmets only, then cheapest to dearest
+ bp.bpState.ri=2;bp.bpState.ty='head';bp.bpState.sort='price-asc';l=bp.bpView(all).list;
+ ck('rare-helmets-cheapest-first',l.length===2&&l.every(i=>i.ri===2&&i.ty==='head')&&it.val(l[0])<=it.val(l[1]));
+ bp.bpState.ri='all';bp.bpState.ty='all';
+ // 'biggest upgrade' puts the item that improves your equipped gear most first
+ const weak=it.gen(1,0,'head'),strong=it.gen(200,4,'head');S().eq={head:weak};S().bag=[weak,strong,it.gen(5,0,'head')].filter(Boolean);S().bag=[strong,it.gen(5,0,'head')];
+ bp.bpState.sort='upgrade';const up=bp.bpView(S().bag).list;ck('sort-biggest-upgrade-first',up[0]===strong);
+ // 3 sorting never loses or duplicates items
+ setBag();bp.bpState.sort='price-desc';bp.bpState.limit=1000;l=bp.bpView(S().bag).list;
+ ck('sorting-keeps-every-item-once',l.length===N&&new Set(l.map(i=>i.id)).size===N);
+ // 4 paging
+ bp.bpState.limit=60;bp.bpState.sort='default';v=bp.bpView(S().bag);ck('paging-reports-hidden-items',v.list.length===60&&v.more===N-60);
+ // 5 the real controls on the gear screen
+ setBag();st.setTab('g');cp.camp();
+ const q=s=>document.querySelector(s),qa=s=>[...document.querySelectorAll(s)];
+ ck('controls-render-on-the-gear-tab',!!q('[data-bp=ri]')&&!!q('[data-bp=ty]')&&!!q('[data-bp=sort]'));
+ ck('rarity-menu-shows-counts',q('[data-bp=ri]').textContent.includes('(16)')||q('[data-bp=ri]').textContent.includes('(80)'));
+ const rowsOf=()=>qa('#cbody [data-a=eq]').length;
+ ck('all-60-first-rows-shown',rowsOf()===60,rowsOf());
+ const sel=q('[data-bp=ri]');sel.value='2';sel.dispatchEvent(new Event('change',{bubbles:true}));await sleep(50);
+ ck('choosing-a-rarity-updates-the-list',rowsOf()===16&&!!q('[data-bpa=reset]'),rowsOf());
+ const sel2=q('[data-bp=ty]');sel2.value='head';sel2.dispatchEvent(new Event('change',{bubbles:true}));await sleep(50);
+ ck('then-choosing-a-type-narrows-it',rowsOf()===2,rowsOf());
+ ck('choices-are-remembered',JSON.parse(localStorage.getItem('hd-bp')).ri==='2'&&JSON.parse(localStorage.getItem('hd-bp')).ty==='head');
+ q('[data-bpa=reset]').click();await sleep(50);
+ ck('clear-restores-everything',rowsOf()===60&&bp.bpState.ri==='all'&&bp.bpState.ty==='all');
+ q('[data-bpa=more]').click();await sleep(50);
+ ck('show-more-reveals-the-rest',rowsOf()===N,rowsOf());
+ bp.bpState.ri=4;bp.bpState.ty='boots';bp.bpState.sort='default';S().bag=S().bag.filter(i=>!(i.ri===4&&i.ty==='boots'));st.setTab('g');cp.camp();
+ ck('empty-result-explains-itself',document.querySelector('#cbody').textContent.includes('No items match these filters'));
+}catch(e){out.push('EXC '+e.message+' | '+(e.stack||'').split(String.fromCharCode(10))[1])}
+document.title=out.join(' ');
+</script>
+
+</body></html>
