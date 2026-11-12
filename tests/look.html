@@ -40,7 +40,7 @@ try{
  let all=true,why='';
  for(const g of G)g.opts.forEach((o,i)=>{fresh();lk.applyLook(g.k+':'+i);if(lk.lookIdx(g.k)!==i){all=false;why=g.k+i}});
  ck('every-option-selectable',all,why);
- ck('option-counts',G.map(g=>g.opts.length).join(',')==='8,5,10,10,8,9,7',G.map(g=>g.opts.length).join(','));
+ ck('option-counts',G.map(g=>g.opts.length).join(',')==='8,5,10,10,8,9,7,5,5,6,4',G.map(g=>g.opts.length).join(','));
  fresh();lk.applyLook('skin:3');lk.applyLook('hair:5');lk.applyLook('tun:6');lk.applyLook('scarf:3');lk.applyLook('eye:5');lk.applyLook('hs:2');
  const s2=lk.lookStyle();ck('chosen-values-reach-the-style',s2.skin==='#c68642'&&s2.hair==='#e8e8f0'&&s2.tun==='#34303f'&&s2.scarf==='#e8c050'&&s2.eye==='#d02a2a'&&s2.hs===2,JSON.stringify(s2));
  lk.applyLook('hs:4');ck('bald-removes-hair-but-keeps-brow-colour',lk.lookStyle().hair===null&&lk.lookStyle().hairCol==='#e8e8f0');
@@ -74,6 +74,10 @@ try{
  ck('five-hair-styles-all-look-different',hairPix.size===5,hairPix.size);
  document.querySelector('[data-v=rand]').click();await sleep(150);ck('randomise-stays-in-range',G.every(g=>lk.lookIdx(g.k)===S().look[g.k]&&S().look[g.k]<g.opts.length));
  document.querySelector('[data-v=reset]').click();await sleep(250);ck('reset-restores-the-original',Object.keys(S().look).length===0&&px()===base);
+ // 4b face options: each option of each face group changes the picture
+ for(const k of ['es','br','mo','ch']){const g=G.find(x=>x.k===k),seen=new Set();for(let i=0;i<g.opts.length;i++){document.querySelector('[data-v="'+k+':'+i+'"]').click();await sleep(120);seen.add(px())}ck('face-group-'+k+'-every-option-looks-different',seen.size===g.opts.length,seen.size+'/'+g.opts.length)}
+ document.querySelector('[data-v=reset]').click();await sleep(200);
+ ck('defaults-are-the-original-face',lk.lookStyle().es===0&&lk.lookStyle().br===0&&lk.lookStyle().mo===0&&lk.lookStyle().ch===0&&px()===base);
  // 5 persistence
  document.querySelector('[data-v="hair:6"]').click();await sleep(100);st.save();const raw=JSON.parse(localStorage.getItem(KEY));ck('saved',raw.look.hair===6);
  st.load();ck('survives-load',lk.lookIdx('hair')===6);

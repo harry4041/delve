@@ -7,6 +7,21 @@ import { RTREE, STB, reqStage, ascFee } from './ascension.js';
 
 // ---------------------------------------------------------------- changelog (add new entries at the TOP; `id` must be unique)
 export const CHANGELOG = [
+  { id: '2026-11-12j', date: '2026-11-12', title: 'New gear looks and face customisation', items: [
+    'All worn gear has been redrawn from scratch to fit the new character models: helmets, hoods, crowns, plate, mail, robes, tunics, greaves, boots, sandals, gauntlets, shields, pendants and every weapon. The bag and menus keep the existing icons.',
+    'Rarity shows in the trim and gems of your gear (and a little in its colour), while steel still looks like steel and cloth like cloth.',
+    'The Look tab now lets you pick eye shape, brows, mouth and cheeks (blush, freckles) for a whole range of expressions.',
+  ] },
+  { id: '2026-11-12i', date: '2026-11-12', title: 'Characters redrawn to match the gear', items: [
+    'The hero and every enemy are now drawn in much finer pixels, with softer outlines, shading and detailed faces, so they match the quality of the gear icons instead of looking blocky next to them.',
+    'The skeleton has a real bone body, the cultist a proper robe and hood, and the orc, bandit and zombie each have more detail.',
+    'Pauldrons on orcs and bosses only show when they are not already wearing chest armour.',
+  ] },
+  { id: '2026-11-12h', date: '2026-11-12', title: 'Gear sits better on characters', items: [
+    'Armour no longer makes the arms vanish: sleeves now stay on, coloured like your chest piece, so gloves and hands connect to the body.',
+    'The scarf tucks away under helmets and hoods instead of cutting across the visor.',
+    'Shields are smaller and sit on the arm instead of hanging off the side.',
+  ] },
   { id: '2026-11-12g', date: '2026-11-12', title: 'Usernames and a tidier tab bar', items: [
     'Choose a unique username on the Account tab (once your email is verified). It is the name shown on the leaderboards, and it lets support find your account.',
     'Joining the leaderboards is now one tap: you join under your username.',

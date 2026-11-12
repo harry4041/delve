@@ -1,6 +1,7 @@
 import {petInfo} from './pets.js';
 import {farmHtml} from './farm.js';
 import {lookStyle,capeColor} from './look.js';
+import {drawWorn} from './gearart.js';
 import {drawBackdrop,drawShadows,drawForeground,drawEffects,drawCape,drawHeroAura,drawMobFx} from './scene.js';
 import {$,PET,RC,S,SP,mode,run,save} from './state.js';
 import {activeAuras} from './auras.js';
@@ -10,7 +11,7 @@ import {hasMagic,hasSp,maxSpd,petLc} from './ascension.js';
 import {tree} from './treeview.js';
 import {ename,tick} from './battle.js';
 import {delveAgain} from './camp.js';
-import {IMG,baseOf,iconSrc} from './assets.js';
+import {baseOf} from './assets.js';
 /* ---------- drawing ---------- */
 const cv=$('#c');let g=cv.getContext('2d');const g0=g;
 const ZONES=[
@@ -47,92 +48,130 @@ const BTM=['oo..........oo','oPo..oooo..oPo','oPPooPPPPooPPo','.oPPPPPPPPPPo.','
 const GBM=['oo..oooooo..oo','oGooGGGGGGooGo','.oGGGGGGGGGGo.','..oGwwGGwwGo..','..oGweGGweGo..','..oGGGffGGGo..','...ooGGGGoo...','..obbbbbbbbo..','.oGobbbbbboGo.','..oobbbbbboo..','...obboobbo...','...oGGooGGo...','...oooooooo...'];
 const SKM=['...oooooo...','..obbbbbbo..','.obbbbbbbbo.','.obeebbeebo.','.obbbooobbo.','..obbbbbbo..','...obobobo..','....oooo....','.oobbbbbboo.','obbobBBbobbo','obbobbbbobbo','.oobBBBBboo.','..oobbbboo..','..obbooobo..','..obo..obo..','..obo..obo..','.oobo..oboo.'];
 const OGM=['....oooooooo....','...oPPPPPPPPo...','..oPPPPPPPPPPo..','..oPwwPPPPwwPo..','..oPweePPweePo..','..oPPPPPPPPPPo..','..oPfPPPPPPfPo..','...oPffffffPo...','..ooPPPPPPPPoo..','.oPPoPPPPPPoPPo.','oPPPoPPddPPoPPPo','oPPPoPPPPPPoPPPo','.ooooPPPPPPoooo.','....oPPooPPo....','....oPPooPPo....','...ooooooooooo..'];
-const IM2={};
-function itImg(it){const b=baseOf(it);if(!b||!IMG[b]||!IMG[b].complete||!IMG[b].naturalWidth)return null;const k=b+it.ri;let im=IM2[k];if(!im){im=IM2[k]=new Image();im.src=iconSrc(it)}return im.complete&&im.naturalWidth?im:null}
-function put(it,cx,cy,s,sx,sy,sw,sh){const im=itImg(it);if(!im)return;if(sx===undefined){g.drawImage(im,cx-s/2,cy-s/2,s,s)}else{const w=s*sw/64,h=s*sh/64;g.drawImage(im,sx,sy,sw,sh,cx-w/2,cy-h/2,w,h)}}
-const HB={Cap:[1.8,13],Helm:[4.5,14],Hood:[5.5,15],Crown:[-.5,13]};
-// ---- character bodies -------------------------------------------------------------------------------------------
-// Heroes and enemies share one body (20x29 px grid) that is shaded and detailed here, then wearing gear icons on top.
-// A style may add `pre(C,e)` (drawn on the body, under the gear icons) and `post(C,e)` (drawn over the gear, e.g. hoods,
-// pauldrons, scarves). `C` maps a colour to white while the character flashes from a hit.
-let ART_T=0; // animation clock, set by draw(); drives blinking and cloth movement
-const lit=c=>rr(c,1.22),shd=c=>rr(c,.72);
-const blink=()=>ART_T%3.6<.13;
+// ---- characters ---------------------------------------------------------------------------------------------------
+// Bodies are drawn in FINE pixels (1 unit = 1 canvas pixel = half a logical pixel), with thin tonal outlines (a dark shade of the
+// part's own colour instead of black), 3-tone shading lit from the top-left and a little fabric texture, so they carry the same level of
+// detail as the 64px gear icons that are worn on top. `SC` is the character's size multiplier, applied per rectangle with rounding so
+// scaled enemies stay crisp. The gear icons themselves are drawn afterwards in logical units.
+let ART_T=0,SC=1,FL=false; // ART_T: animation clock set by draw(); FL: the character is flashing white from a hit
+const lit=c=>rr(c,1.25),shd=c=>rr(c,.72),inkOf=c=>rr(c,.3);
+const blink=()=>ART_T%3.6>3.47; // a short blink at the END of each 3.6 s cycle (so a character drawn at t=0, e.g. the portrait, has its eyes open)
+const F=c=>FL?'#fff':c;
+function Rf(x,y,w,h,c){const a=Math.round(x*SC),b=Math.round(y*SC);g.fillStyle=c;g.fillRect(a,b,Math.max(1,Math.round((x+w)*SC)-a),Math.max(1,Math.round((y+h)*SC)-b))}
+// Outlined composite shape made of rectangles [x,y,w,h].
+function shape(rects,c,ink){const o=F(ink||inkOf(c));for(const r of rects)Rf(r[0]-1,r[1]-1,r[2]+2,r[3]+2,o);for(const r of rects)Rf(r[0],r[1],r[2],r[3],F(c))}
+// Shaded block: base colour, lit top/left edges, shaded bottom/right edges, outline with the corners left off (so it reads as rounded).
+function blk(x,y,w,h,c,o){o=o||{};const O=F(o.ink||inkOf(c)),Dk=F(shd(c));
+ Rf(x+1,y-1,w-2,1,O);Rf(x+1,y+h,w-2,1,O);Rf(x-1,y+1,1,h-2,O);Rf(x+w,y+1,1,h-2,O);
+ Rf(x,y,w,h,F(c));Rf(x+1,y,w-2,1,F(lit(c)));Rf(x,y+1,1,h-2,F(lit(c)));
+ Rf(x+w-1,y+1,1,h-2,Dk);Rf(x+1,y+h-1,w-2,1,Dk);Rf(x+w-1,y+h-1,1,1,F(rr(c,.5)));
+ if(o.tex)for(let j=2;j<h-1;j+=3)for(let i=2+(j%2?2:0);i<w-1;i+=4)Rf(x+i,y+j,1,1,Dk)}
+
+const GCTX={Rf,blk,shape,F,lit,shd,ink:inkOf}; // what gearart.js needs from this module (functions read SC/FL at call time)
 const HERO_ST={skin:'#ffd5ac',hair:'#ff9a2e',tun:'#3d8bff',leg:'#6a4f8a',boot:'#8a5a2a',belt:'#6a4a2a',
- face:(C,st)=>{const bl=blink(),ey=C(st.eye||'#2b2150');
-  if(bl){R(8,5,2,1,ey);R(11,5,2,1,ey)}else{R(8,4,2,2,ey);R(11,4,2,2,ey);R(8,4,1,1,C('#fff'));R(11,4,1,1,C('#fff'))}
-  {const br=C(rr(st.hairCol||'#ff9a2e',.7));R(8,3,2,1,br);R(11,3,2,1,br)}R(7,6,1,1,C('#ff9fb0'));R(13,6,1,1,C('#ff9fb0'));R(9,7,2,1,C('#c0705a'))},
- pre:(C,e,st)=>{ // tunic emblem and shoulder straps
-  R(9,12,2,2,C('#ffd34d'));R(9,12,1,1,C('#fff3b0'));R(5,10,1,4,C(shd(st.tun)));R(14,10,1,4,C(shd(st.tun)))},
- post:(C,e,st)=>{ // scarf that flutters (none if the player chose no scarf)
-  if(!st.scarf)return;const w=Math.round(Math.sin(ART_T*5)),sc=C(st.scarf),sd=C(shd(st.scarf));
-  R(6,8,8,2,sc);R(6,9,8,1,sd);R(13,9,2,1,sc);R(14,10+(w>0?1:0),2,3,sc);R(15,12+(w>0?1:0),1,1,sd)}};
-function drawFigure(x,y,e,st,fl,flip,sc){g.save();g.translate(x,y);if(sc&&sc!=1)g.scale(sc,sc);if(flip){g.translate(20,0);g.scale(-1,1)}
- const C=c=>fl?'#fff':c,sk=C(st.skin),hr=C(st.hair||'#000'),tun=C(st.tun),lg=C(st.leg),bt=C(st.boot),hb=e.head?baseOf(e.head):'';
- // legs and boots with a lit and a shaded edge
- if(!e.legs){ob(6,20,4,7,lg);ob(10,20,4,7,lg);R(6,20,1,7,C(lit(st.leg)));R(9,20,1,7,C(shd(st.leg)));R(10,20,1,7,C(lit(st.leg)));R(13,20,1,7,C(shd(st.leg)))}
- if(!e.boots){ob(5,26,5,3,bt);ob(10,26,5,3,bt);R(5,26,5,1,C(lit(st.boot)));R(10,26,5,1,C(lit(st.boot)));R(5,28,5,1,C(shd(st.boot)));R(10,28,5,1,C(shd(st.boot)))}
- // torso, belt and sleeves
- if(!e.chest){ob(4,9,12,11,tun);R(4,9,12,1,C(lit(st.tun)));R(4,10,1,9,C(lit(st.tun)));R(15,10,1,9,C(shd(st.tun)));R(5,18,10,1,C(shd(st.tun)));
-  R(4,17,12,2,C(st.belt));R(4,17,12,1,C(lit(st.belt)));R(9,17,2,2,C('#e8c050'));R(9,17,1,1,C('#fff3b0'));
-  ob(1,10,3,9,tun);R(1,10,1,9,C(lit(st.tun)));R(3,10,1,9,C(shd(st.tun)));ob(16,10,3,9,tun);R(16,10,1,9,C(lit(st.tun)));R(18,10,1,9,C(shd(st.tun)));
-  if(st.ribs&&!fl){for(const yy of[11,13,15])R(5,yy,10,1,'#8a8266');R(9,10,2,8,'#a39b80')}
-  if(st.pre)st.pre(C,e,st)}
- else{if(!e.gloves){ob(1,15,3,6,sk);ob(16,15,3,6,sk)}if(st.pre)st.pre(C,e,st)}
- if(!e.gloves){ob(1,18,3,3,sk);ob(16,18,3,3,sk);R(1,20,3,1,C(shd(st.skin)));R(16,20,3,1,C(shd(st.skin)))}
- R(8,8,4,2,C(shd(st.skin)));
- // head: ears, shading, hair with a highlight
- if(hb!='Helm'&&hb!='Hood'){ob(6,0,8,9,sk);R(5,4,1,2,sk);R(14,4,1,2,sk);R(13,1,1,8,C(shd(st.skin)));R(6,8,8,1,C(shd(st.skin)));R(7,3,2,1,C(lit(st.skin)))
-  if(st.hair){const hs=st.hs||0;
-   if(hs===0){R(6,0,8,3,hr);R(5,1,1,5,hr);R(14,1,1,5,hr);R(8,-1,3,1,hr);R(11,-1,2,1,hr);R(7,1,3,1,C(lit(st.hair)));R(7,3,1,1,hr);R(10,3,2,1,hr)} // spiky
-   else if(hs===1){R(6,0,8,2,hr);R(5,1,1,3,hr);R(14,1,1,3,hr);R(7,0,3,1,C(lit(st.hair)));R(7,2,2,1,hr);R(11,2,2,1,hr)} // short crop
-   else if(hs===2){R(6,0,8,3,hr);R(5,1,2,9,hr);R(13,1,2,9,hr);R(7,1,3,1,C(lit(st.hair)));R(7,3,1,1,hr);R(10,3,2,1,hr);R(5,9,2,1,C(shd(st.hair)));R(13,9,2,1,C(shd(st.hair)))} // long
-   else if(hs===3){R(9,-3,2,4,hr);R(8,0,4,2,hr);R(9,-3,1,3,C(lit(st.hair)))} // mohawk
-  }
-  st.face(C,st)}
- g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';
- if(e.legs)put(e.legs,10,22.2,11);
- if(e.boots)put(e.boots,10,27.6,11,0,35,64,29);
- if(e.chest)put(e.chest,10,14.5,14);
- if(e.gloves){put(e.gloves,2.8,19.5,8,0,0,32,64);put(e.gloves,17.2,19.5,8,32,0,32,64)}
- for(let i=1;i<=3;i++)if(e['amu'+i])put(e['amu'+i],[7,10,13][i-1],[11.5,12.5,11.5][i-1],5.5);
- if(e.head){const h=HB[hb]||[3,13];put(e.head,10,h[0],h[1])}
- const lh=e.lhand,rh=e.rhand;
- if(lh){if(lh.ty=='shield')put(lh,.5,17,14);else{g.save();g.translate(20,0);g.scale(-1,1);put(lh,20.5,14.5,17);g.restore()}}
- if(rh){if(rh.ty=='shield')put(rh,19.5,17,14);else put(rh,20.5,14.5,17)}
-  if(st.post)st.post(C,e,st);
+ face:(st)=>{ // eye shape, brows, nose, mouth and cheeks are all player choices (look.js); index 0 of each is the original face
+  const eyc=st.eye||'#2b2150',ey=F(eyc),br=F(rr(st.hairCol||'#ff9a2e',.65)),sk=st.skin,es=st.es||0,bw=st.br||0,mo=st.mo||0,ch=st.ch||0,bl=blink();
+  const eye=(x,side)=>{ // x = left edge of this eye (4 wide); side -1 left eye, +1 right eye
+   if(bl){Rf(x,9,4,1,ey);return}
+   if(es===0){Rf(x,7,4,5,F('#fff'));Rf(x+1,7,3,5,ey);Rf(x+1,8,1,1,F('#fff'));Rf(x+1,11,3,1,F(rr(eyc,1.6)))}                       // round
+   else if(es===1){Rf(x,8,4,3,F('#fff'));Rf(x+1,8,3,3,ey);Rf(x+1,8,1,1,F('#fff'));Rf(x-1,7,6,1,F(shd(sk)))}                         // narrow, with a lid line
+   else if(es===2){Rf(x-1,6,6,6,F('#fff'));Rf(x,6,4,6,ey);Rf(x,7,1,2,F('#fff'));Rf(x+1,10,3,1,F(rr(eyc,1.6)))}                       // wide
+   else if(es===3){Rf(x,7,4,5,F('#fff'));Rf(x+1,8,3,4,ey);Rf(x+1,9,1,1,F('#fff'));Rf(x,7,4,2,F(shd(sk)));Rf(x,9,4,1,F(rr(sk,.5)))} // sleepy: heavy lids
+   else{Rf(x,10,1,1,ey);Rf(x+1,9,2,1,ey);Rf(x+3,10,1,1,ey);Rf(x+1,8,2,1,F(rr(eyc,1.6)))}                                          // happy: ^ ^
+  };
+  eye(15,-1);eye(22,1);
+  if(bw===0){Rf(15,5,4,1,br);Rf(22,5,4,1,br)}                                                    // neutral
+  else if(bw===1){Rf(15,4,2,1,br);Rf(17,5,2,1,br);Rf(22,5,2,1,br);Rf(24,4,2,1,br)}              // angry: slanting down to the nose
+  else if(bw===2){Rf(15,5,2,1,br);Rf(17,4,2,1,br);Rf(22,4,2,1,br);Rf(24,5,2,1,br)}              // worried: slanting up to the middle
+  else if(bw===3){Rf(15,3,4,1,br);Rf(22,3,4,1,br)}                                               // raised
+  Rf(20,10,1,3,F(shd(sk)));Rf(19,12,2,1,F(shd(sk)));                                            // nose
+  const lip=F('#a0503e'),dark=F('#5a1f1f');
+  if(mo===0){Rf(17,14,6,1,lip);Rf(16,13,1,1,lip);Rf(23,13,1,1,lip)}                              // smile
+  else if(mo===1){Rf(16,13,8,3,dark);Rf(17,13,6,1,F('#fff'));Rf(15,13,1,1,lip);Rf(24,13,1,1,lip);Rf(17,16,6,1,lip)} // grin with teeth
+  else if(mo===2){Rf(17,14,6,1,lip)}                                                              // neutral
+  else if(mo===3){Rf(17,14,4,1,lip);Rf(21,13,2,1,lip);Rf(23,12,1,1,lip)}                         // smirk
+  else if(mo===4){Rf(17,13,6,1,lip);Rf(16,14,1,1,lip);Rf(23,14,1,1,lip)}                         // frown
+  else{Rf(18,13,4,4,dark);Rf(19,14,2,2,F('#c0605a'));Rf(18,12,4,1,lip);Rf(18,17,4,1,lip)}       // surprised
+  if(ch===0||ch===3){Rf(13,11,3,2,F('#ffa6b4'));Rf(25,11,3,2,F('#ffa6b4'))}                       // blush
+  if(ch===2||ch===3){const fr=F(shd(rr(sk,.9)));for(const [x,y] of [[14,10],[16,12],[26,10],[24,12],[18,11],[22,11]])Rf(x,y,1,1,fr)} // freckles
+ },
+ pre:(e,st)=>{ // tunic emblem and shoulder shading
+  Rf(18,24,4,5,F('#e8c050'));Rf(18,24,2,1,F('#fff3b0'));Rf(19,26,2,2,F('#b8861c'));Rf(10,20,2,8,F(shd(st.tun)));Rf(28,20,2,8,F(shd(st.tun)))},
+ post:(e,st)=>{ // scarf that flutters (hidden under helmets and hoods, or when the player chose none)
+  if(!st.scarf||(e.head&&['Helm','Hood'].includes(baseOf(e.head))))return;const w=Math.round(Math.sin(ART_T*5));
+  blk(12,16,16,5,st.scarf);blk(27,19+(w>0?1:0),5,9,st.scarf);Rf(28,26+(w>0?1:0),3,1,F(shd(st.scarf)))}};
+
+// Default humanoid body. Style knobs: tx/tw (torso x and width; arms hang outside it), robe (long skirt instead of legs), body (custom body fn).
+function bodyFine(e,st){
+ const tx=st.tx||8,tw=st.tw||24,ax=tx-6,bx=tx+tw,hx=tx+4,hb=e.head?baseOf(e.head):'',sk=st.skin,lg=st.leg,bt=st.boot;
+ if(!st.robe)for(const x of[tx+3,tx+tw-11]){blk(x,40,8,13,lg,{tex:1});Rf(x+1,46,6,1,F(shd(lg)))}
+ if(!st.robe)for(const x of[tx+2,tx+tw-12]){blk(x,52,10,6,bt);Rf(x+1,52,8,2,F(lit(bt)));Rf(x+1,57,8,1,F(rr(bt,.45)))}
+ blk(tx+9,16,6,5,shd(sk));                                                                     // neck
+ {
+  blk(tx,18,tw,22,st.tun,{tex:1});Rf(tx+9,18,6,2,F(shd(st.tun)));                                // torso with a collar shadow
+  Rf(tx,33,tw,4,F(st.belt));Rf(tx,33,tw,1,F(lit(st.belt)));Rf(tx,36,tw,1,F(shd(st.belt)));blk(tx+10,33,4,4,'#e8c050');Rf(tx+11,34,1,1,F('#fff3b0')); // belt, buckle
+  for(const x of[ax,bx]){blk(x,20,6,16,st.tun,{tex:1});Rf(x,33,6,2,F(shd(st.tun)))}              // sleeves with cuffs
+ }
+ for(const x of[ax,bx]){blk(x,35,6,6,sk);Rf(x+1,39,1,2,F(shd(sk)));Rf(x+3,39,1,2,F(shd(sk)))} // hands with finger lines
+ {
+  blk(hx-2,6,3,5,sk);blk(hx+15,6,3,5,sk);                                                          // ears
+  blk(hx,0,16,17,sk);Rf(hx+1,15,14,1,F(shd(sk)));Rf(hx+3,2,5,1,F(lit(sk)));Rf(hx+13,1,1,14,F(shd(sk)));  // head, jaw shade, forehead light
+  if(st.hair&&hb!=='Helm'&&hb!=='Hood'){const hr=st.hair,hs=st.hs||0,h2=lit(hr);
+   if(hs===0){shape([[hx-1,-1,18,6],[hx-2,1,2,10],[hx+16,1,2,10],[hx+2,-4,3,4],[hx+7,-6,4,6],[hx+12,-4,3,4]],hr);Rf(hx+3,0,6,1,F(h2));Rf(hx+2,5,3,2,F(hr));Rf(hx+9,5,5,2,F(hr))}        // spiky
+   else if(hs===1){shape([[hx-1,-1,18,5],[hx-2,1,2,6],[hx+16,1,2,6]],hr);Rf(hx+3,0,6,1,F(h2));Rf(hx+2,4,4,2,F(hr));Rf(hx+10,4,4,2,F(hr))}                                                // short crop
+   else if(hs===2){shape([[hx-1,-1,18,6],[hx-3,1,4,22],[hx+15,1,4,22]],hr);Rf(hx+3,0,6,1,F(h2));Rf(hx+2,5,3,2,F(hr));Rf(hx+9,5,5,2,F(hr));Rf(hx-3,21,4,2,F(shd(hr)));Rf(hx+15,21,4,2,F(shd(hr)))} // long
+   else if(hs===3){shape([[hx+6,-7,4,10],[hx+4,-1,8,4]],hr);Rf(hx+6,-6,1,8,F(h2))}}                                                                                                       // mohawk
+  if(st.face)st.face(st)}
+}
+
+function drawFigure(x,y,e,st,fl,flip,sc){sc=sc||1;g.save();g.translate(x,y);FL=!!fl;SC=sc;if(flip){g.translate(20*sc,0);g.scale(-1,1)}
+ g.save();g.scale(.5,.5);(st.body||bodyFine)(e,st);if(st.pre)st.pre(e,st);drawWorn(GCTX,e,st);g.restore();   // body, then the worn gear (gearart.js), all in fine pixels
+ g.save();g.scale(.5,.5);if(st.post)st.post(e,st);g.restore();                                          // hoods, pauldrons, crown, scarf: over the gear
  g.imageSmoothingEnabled=false;g.restore()}
+
 function heroStyle(){return{...HERO_ST,...lookStyle()}}
 function drawHero(x,y,fl){drawFigure(x,y,S.eq,heroStyle(),fl,false,1)}
-function enStyle0(ty,tint){const d=rr(tint,.55);
- if(ty==0)return{skin:'#7fae6a',hair:'#3a2a1a',tun:'#5a4a3a',leg:'#3a3a50',boot:'#2a2a2a',belt:'#2a1a10',face:C=>{R(7,3,2,3,C('#e04040'));R(11,4,2,2,C('#e8e0a0'));R(8,7,4,1,C('#2a1a10'));R(9,7,1,1,C('#e8e0c4'))}};
- if(ty==1)return{skin:'#e8e0c4',hair:null,tun:'#d6ceb2',leg:'#d6ceb2',boot:'#b9b196',belt:'#b9b196',ribs:1,face:C=>{R(7,3,2,3,'#1a0f24');R(11,3,2,3,'#1a0f24');R(8,4,1,1,'#ff4630');R(12,4,1,1,'#ff4630');R(9,7,2,2,'#1a0f24');R(8,7,1,1,C('#e8e0c4'));R(11,7,1,1,C('#e8e0c4'))}};
- if(ty==2)return{skin:'#e8b890',hair:'#c0392b',tun:d,leg:'#4a3a2a',boot:'#2a1a10',belt:'#2a1a10',face:C=>{R(7,4,2,2,C('#2b2150'));R(11,4,2,2,C('#2b2150'));R(8,7,4,1,C('#a0583a'));R(7,2,6,1,C('#8a2a20'))}};
- if(ty==3)return{skin:'#5a9a4a',hair:'#2a2a20',tun:d,leg:'#5a4a3a',boot:'#3a2a1a',belt:'#2a1a10',sc:1.15,face:C=>{R(7,3,6,1,C('#2a2a20'));R(7,4,2,2,C('#ffd24a'));R(11,4,2,2,C('#ffd24a'));R(7,7,1,2,'#fff');R(12,7,1,2,'#fff');R(8,7,4,1,C('#2a1a10'))}};
- if(ty==4)return{skin:'#9a8aa0',hair:rr(tint,.45),tun:rr(tint,.5),leg:rr(tint,.5),boot:'#1a1424',belt:'#d0b040',face:C=>{R(7,4,2,2,'#ff4fa0');R(11,4,2,2,'#ff4fa0');R(9,7,2,1,C('#4a3a50'))}};
- return{skin:'#cfc8dc',hair:'#8a2ab0',tun:'#2a2438',leg:'#2a2438',boot:'#1a1424',belt:'#d0b040',sc:1.4,face:C=>{R(7,4,2,2,'#ff3a3a');R(11,4,2,2,'#ff3a3a');R(8,7,4,1,'#1a0f24');R(6,-2,1,3,'#d0b040');R(9,-3,2,4,'#d0b040');R(13,-2,1,3,'#d0b040')}}}
-// Extra detail per enemy type (0 zombie, 1 skeleton, 2 bandit, 3 orc, 4 cultist, 5 boss death knight).
-const MOBX={
- 0:{pre:C=>{R(6,12,3,2,C('#8a2a2a'));R(7,13,1,1,C('#e8c4c0'));R(11,11,3,1,C('#2a1a10'));R(12,10,1,3,C('#2a1a10'));R(4,19,2,1,'#1a0f24');R(8,19,1,1,'#1a0f24');R(12,19,2,1,'#1a0f24')},
-    post:C=>{R(9,8,1,2,C('#9ad07a'));R(7,0,2,1,C('#6a7a5a'))}},
- 1:{pre:C=>{R(5,18,4,3,C('#5a3a3a'));R(6,19,2,2,C('#3a2222'))},
-    post:C=>{for(let q=0;q<4;q++)R(8+q,8,1,1,q%2?'#8a8266':'#f4ecd0');R(12,1,1,3,'#8a8266');R(11,3,1,1,'#8a8266')}},
- 2:{pre:C=>{for(let q=0;q<6;q++)R(5+q,10+q,2,1,C('#6a4a2a'));R(9,13,2,2,C('#e8c050'));R(13,17,3,1,C('#6a6a78'));R(14,18,1,4,C('#cfd6e6'))},
-    post:C=>{R(7,6,6,2,C('#6a1a14'));R(8,6,4,1,C('#8a2a20'));R(7,3,6,1,C('#2a1a10'))}},
- 3:{pre:C=>{R(6,10,8,1,C('#e8e0c4'));for(const q of[7,9,11,13])R(q,11,1,1,C('#e8e0c4'));R(9,17,2,2,C('#e8e0c4'));R(9,18,2,1,C('#8a8266'))},
-    post:C=>{R(7,2,2,1,C('#c03030'));R(11,2,2,1,C('#c03030'));R(8,8,1,2,C('#f4ecd0'));R(11,8,1,2,C('#f4ecd0'));
-      R(0,9,5,3,C('#6a6a78'));R(0,9,5,1,C('#9a9aa8'));R(0,8,1,1,C('#cfd6e6'));R(2,7,1,2,C('#cfd6e6'));R(4,8,1,1,C('#cfd6e6'));
-      R(15,9,5,3,C('#6a6a78'));R(15,9,5,1,C('#9a9aa8'));R(19,8,1,1,C('#cfd6e6'));R(17,7,1,2,C('#cfd6e6'));R(15,8,1,1,C('#cfd6e6'))}},
- 4:{pre:(C,e)=>{const rb=C('#2a1a44');if(!e.legs){ob(3,19,14,9,rb);R(3,19,1,9,C('#3d2a5e'));R(16,20,1,8,C('#150c24'));R(4,27,12,1,C('#150c24'))}
-      R(9,12,2,1,'#e050ff');R(9,14,2,1,'#e050ff');R(10,12,1,3,'#e050ff')},
-    post:C=>{const hd=C('#2a1a44'),hl=C('#3d2a5e');R(4,-2,12,3,hd);R(5,-3,10,1,hd);R(4,0,2,9,hd);R(14,0,2,9,hd);R(5,0,1,8,hl);R(6,1,8,1,C('#150c24'));
-      g.globalAlpha=.55;R(6,2,8,7,'#0c0814');g.globalAlpha=1;R(8,8,4,1,C('#150c24'));R(7,4,2,2,'#ff4fa0');R(11,4,2,2,'#ff4fa0')}},
- 5:{pre:C=>{R(8,10,4,8,C('#3a3450'));const p=.5+.5*Math.sin(ART_T*3);g.globalAlpha=.6+.4*p;R(9,12,2,3,'#ff3a3a');g.globalAlpha=1;R(5,10,1,8,C('#4a4468'));R(14,10,1,8,C('#14101e'))},
-    post:C=>{R(0,8,6,4,C('#2e2a3c'));R(0,8,6,1,C('#5a5470'));R(0,7,1,1,C('#8a8aa0'));R(2,6,1,2,'#8a8aa0');R(4,7,1,1,'#8a8aa0');
-      R(14,8,6,4,C('#2e2a3c'));R(14,8,6,1,C('#5a5470'));R(19,7,1,1,'#8a8aa0');R(17,6,1,2,'#8a8aa0');R(15,7,1,1,'#8a8aa0');
-      R(0,11,6,1,'#c01818');R(14,11,6,1,'#c01818');R(5,-1,1,2,'#7a1a1a');R(14,-1,1,2,'#7a1a1a')}},
-};
-function enStyle(ty,tint){const s=enStyle0(ty,tint),x=MOBX[ty];if(x){s.pre=x.pre;s.post=x.post}return s}
+// Enemy kinds (0 zombie, 1 skeleton, 2 bandit, 3 orc, 4 cultist, 5 boss death knight). Same fine-pixel units as the hero (see above).
+function enStyle(ty,tint){const d=rr(tint,.55);
+ if(ty==0)return{skin:'#7fae6a',hair:'#3a2a1a',tun:'#5a4a3a',leg:'#3a3a50',boot:'#2a2a2a',belt:'#2a1a10',
+  face:(st)=>{Rf(14,6,5,5,F('#2a1a10'));Rf(15,7,3,3,F('#e04040'));Rf(15,7,1,1,F('#ffb0b0'));Rf(22,7,4,4,F('#e8e0a0'));Rf(23,8,2,2,F('#2a1a10'));Rf(23,8,1,1,F('#fff'));  // mismatched eyes
+   Rf(14,4,5,1,F('#3a2a1a'));Rf(21,4,6,1,F('#3a2a1a'));Rf(20,10,1,3,F(shd(st.skin)));                                                                        // brows, nose
+   Rf(15,13,10,3,F('#2a1a10'));Rf(16,13,2,1,F('#e8e0c4'));Rf(21,13,2,1,F('#e8e0c4'));Rf(24,15,1,4,F('#9ad07a'));                                             // slack jaw, teeth, drool
+   Rf(18,1,1,5,F('#2a1a10'));Rf(17,2,3,1,F('#2a1a10'));Rf(17,4,3,1,F('#2a1a10'))},                                                                           // stitched scar
+  pre:()=>{Rf(11,25,6,4,F('#8a2a2a'));Rf(12,27,4,1,F('#e8c4c0'));Rf(22,23,6,1,F('#2a1a10'));for(const x of[23,25,27])Rf(x,22,1,3,F('#2a1a10'));                // wound, stitches
+   for(const x of[9,13,17,22,26])Rf(x,38,2,2,F('#1a0f24'))}};                                                                                                // torn hem
+ if(ty==1)return{skin:'#e8e0c4',hair:null,tun:'#d6ceb2',leg:'#d6ceb2',boot:'#b9b196',belt:'#b9b196',
+  body:(e)=>{const B='#e8e0c4',B2='#d6ceb2',B3='#b9b196',hb=e.head?baseOf(e.head):'';
+   for(const x of[13,24]){blk(x,42,4,10,B2);blk(x-1,48,6,3,B)}                                       // thigh bones with knee joints
+   for(const x of[11,22]){blk(x,52,9,5,B3);Rf(x+1,52,7,1,F(lit(B3)))}                              // feet
+   blk(12,37,16,5,B3);Rf(19,39,2,3,F('#1a0f24'));                                                                // pelvis
+   Rf(18,17,4,5,F(B3));Rf(19,21,2,17,F(B3));for(let k=0;k<5;k++)blk(10+(k===4?3:0),21+k*3,20-(k===4?6:0),2,B);   // neck, spine, ribs
+   Rf(19,21,2,13,F(lit(B3)));                                                                                    // sternum
+   for(const x of[2,34]){blk(x+1,20,3,8,B2);blk(x,27,5,3,B);blk(x+1,30,3,7,B2);blk(x,36,5,5,B);Rf(x+1,39,1,2,F(shd(B)));Rf(x+3,39,1,2,F(shd(B)))}  // arm bones, hands
+   {blk(12,0,16,13,B);blk(14,12,12,6,B2);for(let i=0;i<5;i++)Rf(15+i*2,14,1,3,F('#1a0f24'));                         // skull, jaw, teeth
+    Rf(14,5,5,5,F('#1a0f24'));Rf(22,5,5,5,F('#1a0f24'));Rf(15,7,2,2,F('#ff4630'));Rf(24,7,2,2,F('#ff4630'));Rf(15,7,1,1,F('#ffd0c0'));Rf(24,7,1,1,F('#ffd0c0')); // sockets
+    Rf(19,10,3,4,F('#1a0f24'));Rf(24,1,1,5,F(B3));Rf(23,5,2,1,F(B3))}},                                         // nose cavity, crack
+  pre:()=>{Rf(12,38,16,6,F('#5a3a3a'));Rf(14,42,3,3,F('#3a2222'));Rf(22,43,4,3,F('#3a2222'))}};              // ragged loincloth
+ if(ty==2)return{skin:'#e8b890',hair:'#c0392b',tun:d,leg:'#4a3a2a',boot:'#2a1a10',belt:'#2a1a10',
+  face:(st)=>{Rf(15,7,4,2,F('#16141f'));Rf(22,7,4,2,F('#16141f'));Rf(16,7,1,1,F('#fff'));Rf(23,7,1,1,F('#fff'));Rf(14,5,5,1,F('#3a1a10'));Rf(22,5,5,1,F('#3a1a10'));Rf(18,6,1,1,F('#3a1a10'));Rf(22,6,1,1,F('#3a1a10')); // narrowed eyes, scowl
+   blk(13,10,15,6,'#8a2a20');Rf(14,11,13,1,F('#b04030'));Rf(11,3,19,3,F('#8a2a20'));Rf(11,3,19,1,F('#b04030'));Rf(29,4,4,2,F('#8a2a20'));Rf(31,6,2,3,F('#6a1a14'))}, // mask, headband and knot
+  pre:()=>{for(let k=0;k<11;k++){Rf(10+k*2,21+k*2,3,3,F('#6a4a2a'));Rf(10+k*2,21+k*2,3,1,F('#8a6a3a'))}blk(18,29,4,4,'#e8c050');blk(30,33,3,9,'#6a6a78');Rf(30,33,3,1,F('#cfd6e6'))}}; // bandolier, buckle, dagger
+ if(ty==3)return{skin:'#5a9a4a',hair:'#2a2a20',tun:d,leg:'#5a4a3a',boot:'#3a2a1a',belt:'#2a1a10',sc:1.15,tx:7,tw:26,
+  face:(st)=>{Rf(13,4,14,2,F('#2a2a20'));Rf(15,7,4,3,F('#ffd24a'));Rf(23,7,4,3,F('#ffd24a'));Rf(16,8,1,2,F('#2a1a10'));Rf(24,8,1,2,F('#2a1a10'));Rf(15,7,1,1,F('#fff3b0')); // brow ridge, eyes
+   Rf(19,9,4,3,F(shd(st.skin)));Rf(14,13,14,3,F('#2a1a10'));Rf(15,11,2,6,F('#f4ecd0'));Rf(25,11,2,6,F('#f4ecd0'));Rf(16,16,1,1,F('#c8c0a0'));                     // nose, mouth, tusks
+   Rf(13,2,3,1,F('#c03030'));Rf(25,2,3,1,F('#c03030'));Rf(13,9,2,1,F('#c03030'));Rf(27,9,2,1,F('#c03030'))},                                                          // war paint
+  pre:()=>{for(const x of[11,15,19,23,27])blk(x,21,3,3,'#e8e0c4');blk(19,34,4,4,'#e8e0c4');Rf(20,36,1,1,F('#1a0f24'));Rf(22,36,1,1,F('#1a0f24'))},                       // bone necklace, skull belt
+  post:(e)=>{if(!e.chest)for(const x of[0,33]){blk(x,17,8,7,'#6a6a78');Rf(x+1,17,6,1,F('#9a9aa8'));Rf(x+1,13,2,4,F('#cfd6e6'));Rf(x+3,12,2,5,F('#cfd6e6'));Rf(x+5,14,2,3,F('#cfd6e6'))}}}; // spiked pauldrons
+ if(ty==4)return{skin:'#9a8aa0',hair:rr(tint,.45),tun:rr(tint,.5),leg:rr(tint,.5),boot:'#1a1424',belt:'#d0b040',robe:true,
+  pre:(e,st)=>{blk(7,36,26,22,st.tun,{tex:1});Rf(7,36,26,2,F(shd(st.tun)));for(const x of[12,18,24,29])Rf(x,40,1,16,F(shd(st.tun)));Rf(16,50,8,1,F('#e050ff'));           // robe skirt with fold lines and a rune hem
+   blk(18,24,4,11,'#e050ff');Rf(19,25,1,9,F('#ff9aff'));Rf(18,34,4,2,F('#d0b040'))},                                                                                      // rune sash
+  post:(e,st)=>{const hd=st.tun,hl=lit(hd);shape([[8,-5,24,8],[7,2,6,19],[27,2,6,19]],hd);Rf(10,-4,18,1,F(hl));blk(13,3,14,15,'#0c0814');Rf(13,3,14,1,F(shd(hd)));       // hood and its dark opening
+   Rf(15,8,3,3,F('#ff4fa0'));Rf(23,8,3,3,F('#ff4fa0'));Rf(15,8,1,1,F('#ffd0ec'));Rf(23,8,1,1,F('#ffd0ec'));Rf(18,13,4,1,F('#4a3a50'))}};                                  // glowing eyes
+ return{skin:'#cfc8dc',hair:'#8a2ab0',tun:'#2a2438',leg:'#2a2438',boot:'#1a1424',belt:'#d0b040',sc:1.3,tx:7,tw:26,
+  face:()=>{Rf(14,6,5,4,F('#1a0f24'));Rf(22,6,5,4,F('#1a0f24'));Rf(15,7,3,2,F('#ff3a3a'));Rf(23,7,3,2,F('#ff3a3a'));Rf(15,7,1,1,F('#fff'));Rf(23,7,1,1,F('#fff'));Rf(14,4,5,1,F('#3a1a50'));Rf(22,4,5,1,F('#3a1a50'));Rf(15,13,11,2,F('#1a0f24'));Rf(17,13,1,2,F('#cfc8dc'));Rf(21,13,1,2,F('#cfc8dc'))},
+  pre:()=>{blk(14,20,12,16,'#3a3450');Rf(14,20,12,1,F('#5a5470'));const p=.5+.5*Math.sin(ART_T*3);g.globalAlpha=.6+.4*p;Rf(18,25,4,6,'#ff3a3a');g.globalAlpha=1;Rf(19,26,2,2,'#ffb0a0')},   // plate with a pulsing core
+  post:(e)=>{if(!e.chest)for(const x of[0,33]){blk(x,15,8,9,'#2e2a3c');Rf(x+1,15,6,1,F('#5a5470'));Rf(x,22,8,1,F('#c01818'));Rf(x+1,10,2,5,F('#8a8aa0'));Rf(x+3,8,2,7,F('#8a8aa0'));Rf(x+5,11,2,4,F('#8a8aa0'))} // pauldrons with spikes
+   shape([[12,-3,16,4]],'#d0b040');for(const x of[13,17,21,25])Rf(x,-6+(x===17||x===21?-2:0),2,5,F('#d0b040'));Rf(19,-2,2,2,F('#c01818'));Rf(12,-3,16,1,F('#f0d878'))}}}   // crown
 function eqFromDrops(d){const e={},best=(k,it)=>{if(!e[k]||it.ri>e[k].ri)e[k]=it},am=[],hands=[];
  for(const it of d){const t=it.ty;if(t=='head')best('head',it);else if(t=='chest')best('chest',it);else if(t=='gloves')best('gloves',it);else if(t=='legs')best('legs',it);else if(t=='boots')best('boots',it);else if(t=='amulet')am.push(it);else hands.push(it)}
  am.sort((a,b)=>b.ri-a.ri).slice(0,3).forEach((it,i)=>{e['amu'+(i+1)]=it});hands.sort((a,b)=>b.ri-a.ri);
@@ -152,8 +191,7 @@ export function drawPortrait(n){n=n||0;const c=document.getElementById('pv');if(
  try{g.setTransform(4,0,0,4,0,0);g.imageSmoothingEnabled=false;R(0,0,48,40,'#0c0912');
   for(let a=0;a<7;a++)for(let q=-1;q<5;q++)R(q*12+(a%2?6:0),a*6,11,5,(q+a)%3?'#17121f':'#1f1829');
   for(let y=0;y<36;y++)for(let x=14;x<34;x++)if(Math.hypot(x-24,y-14)<11&&(x+y)%2==0)R(x,y,1,1,'#33283d');
-  R(0,38,48,2,'#1a1420');R(0,38,48,1,'#2c2234');{const eqs=Object.values(S.eq).filter(Boolean),gri=eqs.reduce((m,it)=>Math.max(m,it.ri),-1),cc=capeColor(gri,gri>=0?RC[gri]:'#fff');if(cc)drawCape(g,9,8,ART_T,cc,false)}drawHero(9,8,false)}finally{g=g0}
- if(n<12&&Object.values(S.eq).some(it=>it&&!itImg(it)))setTimeout(()=>drawPortrait(n+1),120)}
+  R(0,38,48,2,'#1a1420');R(0,38,48,1,'#2c2234');{const eqs=Object.values(S.eq).filter(Boolean),gri=eqs.reduce((m,it)=>Math.max(m,it.ri),-1),cc=capeColor(gri,gri>=0?RC[gri]:'#fff');if(cc)drawCape(g,9,8,ART_T,cc,false)}drawHero(9,8,false)}finally{g=g0}}
 function drawEnemy(ty,x,y,col,t,fl){const o='#1a0f24',d=rr(col,.65),W=p=>{if(fl)for(const k in p)p[k]='#fff';return p},f=Math.sin(t*14)>0?0:1;
  if(ty==0)spr(SLM,W({o,g:col,G:d,w:'#fff',e:'#2b2150'}),x,y-9);
  if(ty==1)spr(BTM,W({o,P:col,w:'#fff',e:'#ff3a3a',f:'#fff'}),x,y-15+f-Math.round(Math.sin(t*4)*2));

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>running</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+</head><body><div id="app">
+<header><h1>Delve</h1><div id="top"></div></header>
+<section id="battle" hidden>
+ <div class="cv"><canvas id="c" width="192" height="108"></canvas><div id="fxl"></div>
+  <div id="over" hidden><div class="px" style="font-size:12px">Defeated</div><div id="ovt"></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button data-a="delveAgain" style="background:#d94a4a;color:#fff;border-color:#fff">⚔ Delve Again</button><button data-a="camp">Go to camp</button></div></div></div>
+ <div class="bar"><i id="hpb"></i><span id="hpt"></span></div>
+ <div class="bar m" id="mpw"><i id="mpb"></i><span id="mpt"></span></div>
+ <div class="bar e"><i id="ehb"></i><span id="ent"></span></div>
+ <div class="row sp" style="margin:6px 0"><div class="row" id="spells"></div><div class="row"><button class="s alt" data-a="spd" id="spdb"></button><button class="s alt" data-a="end">End run</button></div></div>
+ <div class="mute">Last drop</div><div id="last"></div><div class="mute" style="margin-top:6px">Loot this run</div><div id="feed"></div>
+</section>
+<section id="camp" hidden>
+ <div class="row sp"><div class="tabs"><button data-a="tab" data-v="g" id="tg">Gear</button><button data-a="tab" data-v="u" id="tu">Upgrades</button><button data-a="tab" data-v="v" id="tv">Vault</button><button data-a="tab" data-v="m" id="tm">Magic</button><button data-a="tab" data-v="p" id="tp">Pets</button><button data-a="tab" data-v="r" id="tr2">Auras</button><button data-a="tab" data-v="i" id="ti">Idle</button><button data-a="tab" data-v="a" id="ta">Ascend</button><button data-a="tab" data-v="l" id="tl">Scores</button><button data-a="tab" data-v="x" id="tx">Account</button></div></div>
+ <div style="margin:8px 0"><button data-a="delve" style="width:100%;font-size:22px;padding:10px;background:var(--btn);border-width:4px;box-shadow:5px 5px 0 var(--ink)">⚔ DELVE</button></div>
+ <div id="sdw" class="row" style="margin:6px 0"></div><div id="cbody"></div><div style="margin:16px 0"><button class="s alt" data-a="reset">Reset save</button></div>
+</section>
+</div>
+<script type="module">
+// Worn-gear art (src/gearart.js): every base item type must draw without errors at every rarity, visibly change the hero portrait,
+// and look different from the other items in its slot. Uses the Gear-tab portrait (static clock, so pixel hashes are deterministic).
+const out=[],ck=(n,c,x)=>out.push(n+':'+(c?'ok':'FAIL'+(x!==undefined?'('+x+')':'')));
+let errs=[];window.onerror=(m,u,l)=>errs.push(String(m).slice(0,80)+' @'+String(u).split('/').pop()+':'+l);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+try{
+ await import('/src/main.js');
+ const st=await import('/src/state.js'),cp=await import('/src/camp.js'),it=await import('/src/items.js'),ga=await import('/src/gearart.js');
+ const KEY='hollow-delve-2',S=()=>st.S;
+ localStorage.removeItem(KEY);st.load();
+ const hash=()=>{const c=document.querySelector('#pv');const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let h=7;for(let i=0;i<d.length;i++)h=(h*31+d[i]+i)%1000003;return h};
+ const show=async(eq)=>{S().eq=eq;st.setTab('g');cp.camp();await sleep(30);return hash()};
+ const SLOTS={head:['head',['Cap','Helm','Hood','Crown']],chest:['chest',['Tunic','Mail','Plate','Robe']],legs:['legs',['Breeches','Greaves','Trousers']],boots:['boots',['Boots','Sandals','Treads']],gloves:['gloves',['Mitts','Gauntlets','Wraps']],amu1:['amulet',['Charm','Amulet','Talisman','Locket']],rhand:['weapon',['Sword','Axe','Dagger','Mace','Spear']],lhand:['shield',['Buckler','Shield','Aegis']]};
+ const bare=await show({});
+ ck('pal-mixes-colours',ga.mix('#000000','#ffffff',.5)==='#808080'&&ga.mix('#102030','#102030',.7)==='#102030');
+ ck('geometry-follows-the-style',ga.geometry({}).cx===20&&ga.geometry({tx:7,tw:26}).bx===33&&ga.geometry({tx:7,tw:26}).hx===11);
+ let total=0;
+ for(const [slot,[ty,bases]] of Object.entries(SLOTS)){
+  const hashes=new Map();
+  for(const b of bases){
+   const h=await show({[slot]:it.gen(30,3,ty,b)});total++;
+   ck('draws-and-changes-the-portrait:'+b,h!==bare&&errs.length===0,errs.join('|'));hashes.set(b,h);
+  }
+  ck('slot-'+slot+'-every-design-is-different',new Set(hashes.values()).size===bases.length,[...hashes].map(e=>e[0]+':'+e[1]).join(' '));
+ }
+ // every rarity, including the generated high tiers, for every type: no errors and rarity changes the look
+ let rarityOk=true,rarityWhy='';
+ for(const [slot,[ty,bases]] of Object.entries(SLOTS))for(const b of bases){const seen=new Set();for(const ri of [0,1,3,5,8,9,15,40,399]){seen.add(await show({[slot]:it.gen(30,ri,ty,b)}));if(errs.length){rarityOk=false;rarityWhy=b+' ri'+ri+': '+errs[0];errs=[];}}
+  if(seen.size<4){rarityOk=false;rarityWhy+=' '+b+' only '+seen.size+' distinct looks'}}
+ ck('all-rarities-render-and-rarity-is-visible',rarityOk,rarityWhy);
+ // a full outfit, and dual-wield, and a shield in the right hand
+ const full={};for(const [slot,[ty,bases]] of Object.entries(SLOTS))full[slot]=it.gen(30,4,ty,bases[0]);
+ const hf=await show(full);ck('a-full-outfit-draws',hf!==bare&&errs.length===0,errs.join('|'));
+ const dual=await show({rhand:it.gen(30,3,'weapon','Sword'),lhand:it.gen(30,3,'weapon','Dagger')});ck('dual-wield-draws',dual!==bare&&errs.length===0,errs.join('|'));
+ const rs=await show({rhand:it.gen(30,3,'shield','Shield')});ck('a-shield-in-the-right-hand-draws',rs!==bare&&errs.length===0,errs.join('|'));
+ const three=await show({amu1:it.gen(30,3,'amulet','Charm'),amu2:it.gen(30,3,'amulet','Amulet'),amu3:it.gen(30,3,'amulet','Locket')});ck('three-amulets-draw',three!==bare&&errs.length===0,errs.join('|'));
+ out.push('items-checked: '+total);
+}catch(e){out.push('EXC '+e.message+' | '+(e.stack||'').split(String.fromCharCode(10))[1])}
+document.title=out.join(' ');
+</script></body></html>

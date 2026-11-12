@@ -27,9 +27,26 @@ await import('/src/main.js');
 const st=await import('/src/state.js'),bt=await import('/src/battle.js'),it=await import('/src/items.js');
 localStorage.removeItem('hollow-delve-2');st.load();
 window.__gear=(ri)=>{const S=st.S;S.eq={};if(ri<0)return;const mk=(ty)=>it.gen(30,ri,ty);S.eq={rhand:mk('weapon'),lhand:mk('shield'),head:mk('head'),chest:mk('chest'),gloves:mk('gloves'),legs:mk('legs'),boots:mk('boots'),amu1:mk('amulet')}};
-window.__go=(s,drops)=>{bt.startRun();const r=st.run;r.stage=s;r.boss=s%10==0;r.eType=r.boss?5:(s-1)%5;r.eDrops=drops?[it.gen(s,2,'weapon'),it.gen(s,2,'chest')]:[];r.eEq=null;r.hp=r.maxHp=1e15;r.eHp=r.eMax=1e18;r.eAtk=0;r.t=0;return JSON.stringify({stage:r.stage,type:r.eType,boss:r.boss})};
+window.__go=(s,drops)=>{bt.startRun();const r=st.run;r.stage=s;r.boss=s%10==0;r.eType=r.boss?5:(s-1)%5;r.eDrops=drops?[it.gen(s,2,'weapon'),it.gen(s,2,'chest')]:[];r.eEq=null;r.hp=r.maxHp=1e15;r.eHp=r.eMax=1e18;r.eAtk=0;r.t=0;r.hT=-1e9;r.pT=-1e9;r.ef=0;r.hf=0; // no attacks, so no hit flashes or slash arcs in screenshots
+ return JSON.stringify({stage:r.stage,type:r.eType,boss:r.boss})};
 window.__look=(o)=>{st.S.look=o};
 const sk=await import('/src/skilltree.js'),cp=await import('/src/camp.js');
 window.__tree=(tab,all)=>{const S=st.S;S.tr={};if(all)for(const k in sk.NODE)S.tr[k]=1;S.rl={rMagic:1};S.magic=true;S.tr.den=1;st.setMode('camp');cp.view();st.setTab(tab);cp.camp();const f=document.querySelector('[data-z=fit]');if(f)f.click();return document.querySelectorAll('#cbody .tn').length};
+const as=await import('/src/assets.js');
+window.__icons=()=>{const names=Object.keys(as.IMG),W=8,cell=140,c=document.createElement('canvas');c.width=W*cell;c.height=Math.ceil(names.length/W)*cell;const g=c.getContext('2d');g.fillStyle='#241b3d';g.fillRect(0,0,c.width,c.height);g.font='14px monospace';const info={};
+ names.forEach((n,i)=>{const im=as.IMG[n];if(!im||!im.naturalWidth)return;const x=(i%W)*cell,y=Math.floor(i/W)*cell,t=document.createElement('canvas');t.width=im.naturalWidth;t.height=im.naturalHeight;const tg=t.getContext('2d');tg.drawImage(im,0,0);const d=tg.getImageData(0,0,t.width,t.height).data;let x0=1e9,y0=1e9,x1=-1,y1=-1;for(let yy=0;yy<t.height;yy++)for(let xx=0;xx<t.width;xx++)if(d[(yy*t.width+xx)*4+3]>40){x0=Math.min(x0,xx);x1=Math.max(x1,xx);y0=Math.min(y0,yy);y1=Math.max(y1,yy)}
+  info[n]=[im.naturalWidth,im.naturalHeight,x0,y0,x1,y1];const s=120/Math.max(t.width,t.height);g.imageSmoothingEnabled=false;g.drawImage(im,x+10,y+10,t.width*s,t.height*s);g.strokeStyle='#ff4fa0';g.strokeRect(x+10+x0*s,y+10+y0*s,(x1-x0+1)*s,(y1-y0+1)*s);g.fillStyle='#fff';g.fillText(n,x+4,y+cell-6)});
+ document.body.appendChild(c);c.id='iconsheet';c.style.cssText='position:fixed;left:0;top:0;z-index:99999';window.__iconinfo=info;return JSON.stringify(info)};
+window.__weapons=(names)=>{const c=document.createElement('canvas');c.width=names.length*200;c.height=230;const g=c.getContext('2d');g.fillStyle='#241b3d';g.fillRect(0,0,c.width,c.height);g.imageSmoothingEnabled=false;g.font='16px monospace';
+ names.forEach((n,i)=>{const im=as.IMG[n];g.drawImage(im,i*200+4,4,192,192);g.fillStyle='#fff';g.fillText(n,i*200+8,220);g.strokeStyle='#ff4fa0';g.beginPath();g.moveTo(i*200+100,4);g.lineTo(i*200+100,196);g.moveTo(i*200+4,100);g.lineTo(i*200+196,100);g.stroke()});
+ c.id='wsheet';c.style.cssText='position:fixed;left:0;top:0;z-index:99999';document.body.appendChild(c);return c.width};
+const SETS=[{head:'Helm',chest:'Plate',legs:'Greaves',boots:'Boots',gloves:'Gauntlets',rhand:'Sword',lhand:'Shield',amu1:'Amulet',ri:3},
+ {head:'Cap',chest:'Tunic',legs:'Breeches',boots:'Treads',gloves:'Mitts',rhand:'Axe',lhand:'Buckler',amu1:'Charm',ri:2},
+ {head:'Hood',chest:'Robe',legs:'Trousers',boots:'Sandals',gloves:'Wraps',rhand:'Mace',lhand:'Aegis',amu1:'Locket',ri:5},
+ {head:'Crown',chest:'Mail',legs:'Greaves',boots:'Boots',gloves:'Gauntlets',rhand:'Spear',lhand:'Dagger',amu1:'Talisman',ri:4}];
+const TY={head:'head',chest:'chest',legs:'legs',boots:'boots',gloves:'gloves',rhand:'weapon',lhand:'shield',amu1:'amulet'};
+// deterministic outfits for before/after screenshots: hero wears set n; the enemy (when drops=1) wears the same set
+window.__outfit=(n)=>{const o=SETS[n],S=st.S;S.eq={};for(const k in TY)S.eq[k]=it.gen(30,o.ri,TY[k],o[k]);if(o.lhand==='Dagger'){S.eq.lhand=it.gen(30,o.ri,'weapon','Dagger')}return n};
+window.__enemyOutfit=(n)=>{const o=SETS[n],r=st.run;r.eDrops=Object.keys(TY).map(k=>it.gen(30,o.ri,k==='lhand'&&o.lhand==='Dagger'?'weapon':TY[k],o[k]));r.eEq=null};
 document.title='ready';
 </script></body></html>

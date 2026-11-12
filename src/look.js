@@ -11,7 +11,12 @@ export const LOOK_GROUPS = [
   { k: 'tun', n: 'Outfit', opts: [sw('Blue', '#3d8bff'), sw('Red', '#d94a4a'), sw('Green', '#3fa86a'), sw('Purple', '#8a5ad0'), sw('Gold', '#d9a63a'), sw('Teal', '#2fb5b0'), sw('Black', '#34303f'), sw('White', '#d8d8e8'), sw('Orange', '#e0803a'), sw('Pink', '#e070a8')] },
   { k: 'scarf', n: 'Scarf', opts: [sw('Red', '#d94a4a'), sw('None', null), sw('Blue', '#3d8bff'), sw('Gold', '#e8c050'), sw('Green', '#3fa86a'), sw('Purple', '#8a5ad0'), sw('White', '#e8e8f0'), sw('Black', '#2a2434')] },
   { k: 'cape', n: 'Cape', opts: [sw('Auto', 'auto'), sw('None', null), sw('Crimson', '#b02838'), sw('Royal', '#2a50b8'), sw('Forest', '#2a7a3a'), sw('Violet', '#7a3ab8'), sw('Gold', '#c8982a'), sw('Black', '#26202e'), sw('White', '#d8d8e8')] },
-  { k: 'eye', n: 'Eyes', opts: [sw('Night', '#2b2150'), sw('Sky', '#2a6fd0'), sw('Emerald', '#2a9a4a'), sw('Brown', '#6a3a1a'), sw('Violet', '#8a2ab0'), sw('Ember', '#d02a2a'), sw('Gold', '#d0a020')] },
+  { k: 'eye', n: 'Eye colour', opts: [sw('Night', '#2b2150'), sw('Sky', '#2a6fd0'), sw('Emerald', '#2a9a4a'), sw('Brown', '#6a3a1a'), sw('Violet', '#8a2ab0'), sw('Ember', '#d02a2a'), sw('Gold', '#d0a020')] },
+  // Face: shapes are drawn by HERO_ST.face in render.js (all four default to the original look at index 0). Append new options at the END of a group.
+  { k: 'es', n: 'Eye shape', opts: [sw('Round', null), sw('Narrow', null), sw('Wide', null), sw('Sleepy', null), sw('Happy', null)] },
+  { k: 'br', n: 'Brows', opts: [sw('Neutral', null), sw('Angry', null), sw('Worried', null), sw('Raised', null), sw('None', null)] },
+  { k: 'mo', n: 'Mouth', opts: [sw('Smile', null), sw('Grin', null), sw('Neutral', null), sw('Smirk', null), sw('Frown', null), sw('Surprised', null)] },
+  { k: 'ch', n: 'Cheeks', opts: [sw('Blush', null), sw('None', null), sw('Freckles', null), sw('Both', null)] },
 ];
 const G = Object.fromEntries(LOOK_GROUPS.map((g) => [g.k, g]));
 
@@ -25,7 +30,7 @@ const opt = (k) => G[k].opts[lookIdx(k)];
 // What the figure renderer needs for the hero.
 export function lookStyle() {
   const hs = lookIdx('hs');
-  return { skin: opt('skin').c, hs, hair: hs === 4 ? null : opt('hair').c, hairCol: opt('hair').c, tun: opt('tun').c, scarf: opt('scarf').c, eye: opt('eye').c };
+  return { skin: opt('skin').c, hs, hair: hs === 4 ? null : opt('hair').c, hairCol: opt('hair').c, tun: opt('tun').c, scarf: opt('scarf').c, eye: opt('eye').c, es: lookIdx('es'), br: lookIdx('br'), mo: lookIdx('mo'), ch: lookIdx('ch') };
 }
 
 // Cape colour for the battle scene and portrait: null = no cape, 'auto' = crimson, or the colour of the best gear from Epic up.
