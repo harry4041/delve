@@ -1,4 +1,5 @@
 import {petInfo} from './pets.js';
+import {drawBackdrop,drawShadows,drawForeground,drawEffects,drawCape,drawHeroAura,drawMobFx} from './scene.js';
 import {$,PET,RC,S,SP,mode,run,save} from './state.js';
 import {activeAuras} from './auras.js';
 import {L,fmtN,mpMax,pReq,petStars,stats} from './stats.js';
@@ -111,19 +112,17 @@ function wear(ty,x,d,t){if(!d)return;const[w,h]=DM[ty],y=44-(ty==1?8+Math.sin(t*
   if(it.ri>=3){const q=sh(k,x,y,w,h,2);g.globalAlpha=.3+.15*Math.sin(t*8);R(q[0]+o,q[1],q[2],q[3],c);g.globalAlpha=1}
   const q=sh(k,x,y,w,h,0);R(q[0]+o-1,q[1]-1,q[2]+2,q[3]+2,'#1a0f24');R(q[0]+o,q[1],q[2],q[3],c)})}
 function draw(){const r=run,t=r.t,tier=Math.floor((r.stage-1)/5)%6,z=ZONES[tier],k=[rr(z.wall,1.1),rr(z.wall,1.5),z.floor,rr(z.floor,1.8),rr(z.glow,.4),'#ff8a2a'],fl=Math.floor(t*7)%3;
- g.setTransform(2,0,0,2,0,0);g.imageSmoothingEnabled=false;R(0,0,96,54,rr(k[0],.45));
- for(let a=0;a<7;a++)for(let q=-1;q<9;q++)R(q*12+(a%2?6:0),a*6,11,5,(q+a)%3?k[0]:k[1]);
- for(let y=0;y<44;y++)for(let x=30;x<66;x++)if(Math.hypot(x-48,y-20)<13+fl&&(x+y)%2==0)R(x,y,1,1,k[4]);
- R(46,24,4,2,'#4a3a2a');R(47,26,2,6,'#4a3a2a');R(46,17+(fl?1:0),4,6,k[5]);R(47,15+fl,2,6,'#ffe45c');
- R(0,44,96,10,k[2]);R(0,44,96,1,k[3]);for(let x=2;x<96;x+=11)R(x,48+(x%2),6,1,rr(k[3],.8));
- if(S.ap>=0){const P=PET[S.ap],b=Math.sin(t*8)>0?0:1;drawPet(P,t,2,44,b)}
+ const shk=r.shakeT>0;g.setTransform(2,0,0,2,shk?Math.round(Math.random()*6-3):0,shk?Math.round(Math.random()*6-3):0);g.imageSmoothingEnabled=false;drawBackdrop(g,tier,t,z);
+ const tint=TINT[tier],es=enStyle(r.eType,tint),sc=es.sc||1,ex=(r.boss?58:68)-(r.elunge>0?3:0);drawShadows(g,14+(r.lunge>0?5:0),ex,sc,S.ap>=0);
+ if(S.ap>=0){const P=PET[S.ap],b=Math.sin(t*8)>0?0:1;drawPet(P,t,2+(r.petT>0?Math.round(Math.sin((1-r.petT/.25)*Math.PI)*9):0),44,b)}
  const hx=14+(r.lunge>0?5:0),hy=14+(Math.sin(t*6)>0?0:1);
  // aura glow rings around hero
  const aa=activeAuras();if(aa.length){aa.forEach((aur,ai)=>{const alpha=(.1+.08*Math.sin(t*5+ai*1.2));g.globalAlpha=alpha;R(hx-1-ai,hy-5-ai,22+ai*2,34+ai*2,aur.c)});g.globalAlpha=1}
- drawHero(hx,hy,r.hf>0);
+ const eqs=Object.values(S.eq).filter(Boolean),gearRi=eqs.reduce((m,it)=>Math.max(m,it.ri),-1),rcol=gearRi>=0?RC[gearRi]:'#ffffff',wi=S.eq.rhand||S.eq.lhand,wcol=wi?RC[wi.ri]:'#ffe45c';
+ drawHeroAura(g,hx,hy,t,gearRi,rcol);drawCape(g,hx,hy,t,gearRi>=3?rcol:'#b02838',r.lunge>0);drawHero(hx,hy,r.hf>0);
  if(r.rn>0){for(let q=0;q<r.rn;q++){R(hx+2+q*4,hy-7,3,1,'#ff8a2a');R(hx+3+q*4,hy-8,1,1,'#ffd34d')}}
  if(r.swT>0){frame(hx-3,hy-4,26,38,'#ffd34d',Math.min(.9,r.swT));for(let q=0;q<5;q++){const sp=(Math.floor(t*12)+q*5)%9;R(hx-2+((q*7+sp*3)%24),hy-3+((q*13+sp*5)%36),1,1,'#fff3b0')}}
- const tint=TINT[tier],es=enStyle(r.eType,tint),sc=es.sc||1,ey=44-30*sc,ex=(r.boss?58:68)-(r.elunge>0?3:0);if(!r.eEq)r.eEq=eqFromDrops(r.eDrops||[]);
+ const ey=44-30*sc-(Math.sin(t*4+r.stage)>.3?1:0);if(!r.eEq)r.eEq=eqFromDrops(r.eDrops||[]);
  const bestRi=(r.eDrops||[]).reduce((m,it)=>Math.max(m,it.ri),0);if(bestRi>=2){g.globalAlpha=.25+.15*Math.sin(t*6);R(ex-2,43,Math.round(24*sc),2,RC[bestRi]);g.globalAlpha=1}
  drawFigure(ex,ey,r.eEq,es,r.ef>0,true,sc);
  if(r.golden){frame(ex-1,ey-1,Math.round(20*sc)+2,Math.round(30*sc)+2,'#ffd34d',.55+.3*Math.sin(t*9));for(let q=0;q<4;q++){const sp=Math.floor(t*6+q*7)%12;R(ex+((q*7+sp)%20)*sc,ey+((q*11+sp*3)%30)*sc,1,1,sp%2?'#fff3b0':'#ffd34d')}}
@@ -132,9 +131,9 @@ function draw(){const r=run,t=r.t,tier=Math.floor((r.stage-1)/5)%6,z=ZONES[tier]
  if(r.psnStacks>0){g.globalAlpha=.08+.03*r.psnStacks;R(ex,ey,Math.round(20*sc),Math.round(30*sc),'#40c060');g.globalAlpha=1}
  if(r.boss&&r.eHp/r.eMax<.35){g.globalAlpha=.6+.3*Math.sin(t*22);R(ex-6,30,6,3,'#ff7700');R(ex-10,32,5,2,'#ff4400');g.globalAlpha=1}
  g.globalAlpha=1
- if(r.ef>0){const sy=Math.round(ey+12*sc);R(ex-4,sy+1,5,1,'#ffe45c');R(ex-2,sy-1,1,5,'#ffe45c');R(ex-3,sy,3,3,'#fff')}
+ drawMobFx(g,r,t,ex,ey,sc);drawEffects(g,r,t,ex,ey,sc,hx,hy,wcol);
  for(const o of r.orbs){R(o.x-1,o.y-1,4,4,'#1a0f24');R(o.x,o.y,2,2,o.c)}
- const fs=Math.max(10,Math.round((cv.clientWidth||380)/30));$('#fxl').innerHTML='<i style="color:'+z.glow+'">'+z.name+'</i>'+r.fx.map(f=>{const s=String(f.t),big=s[0]=='!';return '<b style="left:'+(f.x/96*100).toFixed(2)+'%;top:'+(f.y/54*100).toFixed(2)+'%;color:'+f.c+';opacity:'+Math.max(0,1-f.a/.8).toFixed(2)+';font-size:'+Math.round(big?fs*1.4:fs)+'px">'+(big?s.slice(1)+'!':s)+'</b>'}).join('');g.globalAlpha=1}
+ drawForeground(g,tier,t,z,r.boss);const fs=Math.max(10,Math.round((cv.clientWidth||380)/30));$('#fxl').innerHTML='<i style="color:'+z.glow+'">'+z.name+'</i>'+r.fx.map(f=>{const s=String(f.t),big=s[0]=='!';return '<b style="left:'+(f.x/96*100).toFixed(2)+'%;top:'+(f.y/54*100).toFixed(2)+'%;color:'+f.c+';opacity:'+Math.max(0,1-f.a/.8).toFixed(2)+';font-size:'+Math.round(big?fs*1.4:fs)+'px">'+(big?s.slice(1)+'!':s)+'</b>'}).join('');g.globalAlpha=1}
 
 export function hud(){const st=stats(),r=run;$('#hpb').style.width=r.hp/st.hp*100+'%';$('#hpt').textContent=Math.ceil(r.hp)+' / '+Math.round(st.hp);
  $('#mpw').hidden=!hasMagic();$('#mpb').style.width=r.mp/mpMax()*100+'%';$('#mpt').textContent=Math.floor(r.mp)+' mana';

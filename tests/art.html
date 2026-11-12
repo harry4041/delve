@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>running</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+</head><body><div id="app">
+<header><h1>Delve</h1><div id="top"></div></header>
+<section id="battle" hidden>
+ <div class="cv"><canvas id="c" width="192" height="108"></canvas><div id="fxl"></div>
+  <div id="over" hidden><div class="px" style="font-size:12px">Defeated</div><div id="ovt"></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button data-a="delveAgain" style="background:#d94a4a;color:#fff;border-color:#fff">⚔ Delve Again</button><button data-a="camp">Go to camp</button></div></div></div>
+ <div class="bar"><i id="hpb"></i><span id="hpt"></span></div>
+ <div class="bar m" id="mpw"><i id="mpb"></i><span id="mpt"></span></div>
+ <div class="bar e"><i id="ehb"></i><span id="ent"></span></div>
+ <div class="row sp" style="margin:6px 0"><div class="row" id="spells"></div><div class="row"><button class="s alt" data-a="spd" id="spdb"></button><button class="s alt" data-a="end">End run</button></div></div>
+ <div class="mute">Last drop</div><div id="last"></div><div class="mute" style="margin-top:6px">Loot this run</div><div id="feed"></div>
+</section>
+<section id="camp" hidden>
+ <div class="row sp"><div class="tabs"><button data-a="tab" data-v="g" id="tg">Gear</button><button data-a="tab" data-v="u" id="tu">Upgrades</button><button data-a="tab" data-v="v" id="tv">Vault</button><button data-a="tab" data-v="m" id="tm">Magic</button><button data-a="tab" data-v="p" id="tp">Pets</button><button data-a="tab" data-v="r" id="tr2">Auras</button><button data-a="tab" data-v="i" id="ti">Idle</button><button data-a="tab" data-v="a" id="ta">Ascend</button><button data-a="tab" data-v="l" id="tl">Scores</button><button data-a="tab" data-v="x" id="tx">Account</button></div></div>
+ <div style="margin:8px 0"><button data-a="delve" style="width:100%;font-size:22px;padding:10px;background:var(--btn);border-width:4px;box-shadow:5px 5px 0 var(--ink)">⚔ DELVE</button></div>
+ <div id="sdw" class="row" style="margin:6px 0"></div><div id="cbody"></div><div style="margin:16px 0"><button class="s alt" data-a="reset">Reset save</button></div>
+</section>
+</div>
+<script type="module">
+// Art stress test: drives every zone, a boss, each spell effect, mob deaths and all six pets through the real render loop.
+const out=[],errs=[];window.onerror=(m,u,l)=>errs.push(m+' @'+String(u).split('/').pop()+':'+l);
+const ck=(n,c,x)=>out.push(n+':'+(c?'ok':'FAIL'+(x!==undefined?'('+x+')':'')));
+let prog='';const frames=n=>new Promise(r=>{let i=0;const f=()=>{if(++i>=n)r();else requestAnimationFrame(f)};requestAnimationFrame(f);setTimeout(r,n*60)}); // timeout guard: rAF can be paused in background tabs
+try{
+ await import('/src/main.js');
+ const st=await import('/src/state.js'),bt=await import('/src/battle.js');
+ const it=(ty,nm,ri,stt)=>({id:Math.floor(Math.random()*1e9),ty,ri,lv:1,il:60,nm,st:stt});
+ const setup=(sd,ri,pet)=>{localStorage.removeItem('hollow-delve-2');st.load();const S=st.S;S.tr={vigor:30,might:20,mender:1,frost:1,arcana:5,spFirePow:8,spMeteor:1,rampage:3,goblin:10,den:1};S.rl={rStart:9,rMagic:1};S.sd=sd;S.gold=1e6;S.best=30;S.mp=999;
+  S.pets=st.PET.map(()=>({own:1,lvl:3,star:0}));S.ap=pet;
+  S.eq={rhand:it('weapon','Sim Sword',ri,{atk:40}),head:it('head','Sim Helm',ri,{def:15}),chest:it('chest','Sim Plate',ri,{def:25}),legs:it('legs','Sim Greaves',ri,{def:10}),boots:it('boots','Sim Boots',ri,{def:5}),gloves:it('gloves','Sim Gauntlets',ri,{def:5}),lhand:it('shield','Sim Shield',ri,{def:12})};
+  bt.startRun();return st.run};
+ let total=0;
+ // every zone (and bosses) with rarities 0..8 and every pet
+ for(const [sd,ri,pet] of [[0,0,-1],[2,1,0],[4,3,1],[6,4,2],[8,6,3],[9,8,4],[3,5,5],[1,2,0]]){
+  document.title='running: setup '+sd+','+ri+','+pet;const r=setup(sd,ri,pet);r.hp=r.maxHp;r.eAtk=0;
+  r.golden=true;r.rn=4;r.rt=5;r.swT=1;r.pb={n:5,t:4,k:0,d:5};r.critT=.3;r.shakeT=.14;r.lunge=.1;r.ef=.15;r.petT=.2;r.stun=2;
+  document.title='running: cast '+sd;for(let i=0;i<4;i++)bt.cast(i);                 // fire, heal, frost, meteor effects
+  await frames(20);total+=20;
+  for(let k=0;k<3;k++){r.eHp=1;r.hT=1e9;bt.tick(.05);await frames(8);total+=8}   // kills -> death bursts
+ }
+ ck('no-render-errors-across-zones-bosses-spells-and-pets',errs.length===0,errs.slice(0,3).join(' | '));
+ ck('frames-rendered',total>=100,total);
+}catch(e){out.push('EXC '+e.message+' | '+(e.stack||'').split(String.fromCharCode(10))[1])}
+document.title=out.join(' ');
+</script>
+</body></html>
