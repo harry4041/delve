@@ -43,7 +43,7 @@ try{
  };
  for(const [name,raw] of Object.entries(hostile)){
   const before=errs.length;localStorage.setItem(KEY,raw);let ok=true,msg='';
-  try{st.load();for(const t of ['g','u','v','m','p','r','i','a','l','x']){st.setTab(t);cp.camp()}bt.startRun();for(let i=0;i<40;i++)bt.tick(.1);}catch(e){ok=false;msg=e.message.slice(0,60)}
+  try{st.load();for(const t of ['g','u','v','m','p','r','i','a','l','x','w','n']){st.setTab(t);cp.camp()}bt.startRun();for(let i=0;i<40;i++)bt.tick(.1);}catch(e){ok=false;msg=e.message.slice(0,60)}
   ck('hostile-save:'+name,ok&&errs.length===before&&!({}).polluted&&!({}).polluted2,msg||errs.slice(before).join('|'));
  }
  document.title='running p2 '+Math.round(performance.now())+'ms';await new Promise(r=>setTimeout(r)); // ---- 2 huge-number save: nothing may turn into NaN/Infinity once ticking (late-game "exponential range" claim in CLAUDE.md)
@@ -53,7 +53,7 @@ try{
  document.title='running p3 '+Math.round(performance.now())+'ms';await new Promise(r=>setTimeout(r)); // ---- 3 random-click fuzz
  localStorage.removeItem(KEY);st.load();const S=()=>st.S;S().gold=5e6;S().gems=50;S().relics=50;S().best=25;
  const SKIP=new Set(['reset','lbClear']);let clicks=0,byAction={};
- const tabs=['g','u','v','m','p','r','i','a','l','x'];
+ const tabs=['g','u','v','m','p','r','i','a','l','x','w','n'];
  for(let i=0;i<N;i++){
   try{
    if(st.mode==='camp'){ if(rnd()<.2){st.setTab(tabs[Math.floor(rnd()*tabs.length)])} cp.camp();

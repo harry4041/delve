@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>running</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+</head><body><div id="app">
+<header><h1>Delve</h1><div id="top"></div></header>
+<section id="battle" hidden>
+ <div class="cv"><canvas id="c" width="192" height="108"></canvas><div id="fxl"></div>
+  <div id="over" hidden><div class="px" style="font-size:12px">Defeated</div><div id="ovt"></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button data-a="delveAgain" style="background:#d94a4a;color:#fff;border-color:#fff">⚔ Delve Again</button><button data-a="camp">Go to camp</button></div></div></div>
+ <div class="bar"><i id="hpb"></i><span id="hpt"></span></div>
+ <div class="bar m" id="mpw"><i id="mpb"></i><span id="mpt"></span></div>
+ <div class="bar e"><i id="ehb"></i><span id="ent"></span></div>
+ <div class="row sp" style="margin:6px 0"><div class="row" id="spells"></div><div class="row"><button class="s alt" data-a="spd" id="spdb"></button><button class="s alt" data-a="end">End run</button></div></div>
+ <div class="mute">Last drop</div><div id="last"></div><div class="mute" style="margin-top:6px">Loot this run</div><div id="feed"></div>
+</section>
+<section id="camp" hidden>
+ <div class="row sp"><div class="tabs"><button data-a="tab" data-v="g" id="tg">Gear</button><button data-a="tab" data-v="u" id="tu">Upgrades</button><button data-a="tab" data-v="v" id="tv">Vault</button><button data-a="tab" data-v="m" id="tm">Magic</button><button data-a="tab" data-v="p" id="tp">Pets</button><button data-a="tab" data-v="r" id="tr2">Auras</button><button data-a="tab" data-v="i" id="ti">Idle</button><button data-a="tab" data-v="a" id="ta">Ascend</button><button data-a="tab" data-v="l" id="tl">Scores</button><button data-a="tab" data-v="x" id="tx">Account</button><button data-a="tab" data-v="w" id="tw">Wiki</button><button data-a="tab" data-v="n" id="tn">Updates</button></div></div>
+ <div style="margin:8px 0"><button data-a="delve" style="width:100%;font-size:22px;padding:10px;background:var(--btn);border-width:4px;box-shadow:5px 5px 0 var(--ink)">⚔ DELVE</button></div>
+ <div id="sdw" class="row" style="margin:6px 0"></div><div id="cbody"></div><div style="margin:16px 0"><button class="s alt" data-a="reset">Reset save</button></div>
+</section>
+</div>
+<script type="module">
+const out=[],ck=(n,c,x)=>out.push(n+':'+(c?'ok':'FAIL'+(x!==undefined?'('+x+')':'')));
+window.onerror=(m,u,l)=>out.push('ERR '+m+' @'+String(u).split('/').pop()+':'+l);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+try{
+ await import('/src/main.js');
+ const st=await import('/src/state.js'),cp=await import('/src/camp.js'),w=await import('/src/wiki.js'),as=await import('/src/ascension.js'),au=await import('/src/auras.js'),sts=await import('/src/stats.js');
+ const KEY='hollow-delve-2',S=()=>st.S,body=()=>document.querySelector('#cbody').innerHTML;
+ localStorage.removeItem(KEY);st.load();
+ const go=t=>{st.setTab(t);cp.camp()};
+ ck('tab-buttons-exist',!!document.querySelector('#tw')&&!!document.querySelector('#tn'));
+ // new-update dot
+ go('g');ck('dot-shown-until-seen',document.querySelector('#tn').textContent.includes('•')&&w.hasNewUpdate());
+ go('n');ck('updates-lists-every-entry',w.CHANGELOG.every(c=>body().includes(c.title)));
+ ck('latest-is-marked',body().includes('(latest)'));
+ go('g');ck('dot-gone-after-viewing',!document.querySelector('#tn').textContent.includes('•')&&!w.hasNewUpdate()&&S().seenUp===w.LATEST_UPDATE);
+ st.load();ck('seen-flag-defaults-for-old-saves',typeof S().seenUp==='string');
+ ck('changelog-ids-unique',new Set(w.CHANGELOG.map(c=>c.id)).size===w.CHANGELOG.length);
+ // every wiki section renders
+ go('w');const secs=[...document.querySelectorAll('[data-wk]')].map(b=>b.dataset.wk);
+ ck('ten-sections',secs.length===10,secs.join(','));
+ for(const k of secs){document.querySelector('[data-wk='+k+']').click();await sleep(30);ck('section-renders:'+k,body().length>400&&!body().includes('undefined')&&!body().includes('NaN'),body().length)}
+ const sec=async k=>{document.querySelector('[data-wk='+k+']').click();await sleep(30);return body()};
+ // content comes from the game's data
+ let h=await sec('items');ck('first-twelve-rarities-listed',st.RN.slice(0,12).every(n=>h.includes(n)));ck('items-page-is-a-sane-length',document.querySelectorAll('#cbody tr').length<30,document.querySelectorAll('#cbody tr').length);ck('no-scientific-notation-or-zero-chances',!/e-\d/.test(body())&&!body().includes('>0%<'));
+ const rows=[...document.querySelectorAll('#cbody table')[0].rows].slice(1);
+ ck('tier-unlock-stages-match-the-game',rows.every((r,i)=>{const s=r.cells[3].textContent.split(' / ').map(Number);return s.every((x,l)=>as.maxStep(x)>=3*i+l&&(x<=1||as.maxStep(x-1)<3*i+l))}),rows.map(r=>r.cells[3].textContent).join('|'));
+ ck('common-I-from-stage-1',rows[0].cells[3].textContent.startsWith('1 /'));
+ ck('stat-power-column-matches-RM',rows.every((r,i)=>r.cells[1].textContent==='x'+(+st.RM[i].toFixed(1))));
+ h=await sec('gear');ck('every-base-type-listed',Object.values(st.BASE).flat().every(b=>h.includes(b)));
+ ck('every-suffix-listed',Object.keys(st.SUFS).every(s=>h.includes(s)));
+ h=await sec('stats');ck('stat-glossary-has-all-eleven',['Attack','Defense','Health','Crit chance','Attack speed','Lifesteal','Dodge','Gold find','Thorns','Mana regen','Poison'].every(s=>h.includes(s)));
+ h=await sec('pets');ck('every-pet-listed',st.PET.every(p=>h.includes(p.n)&&h.includes(p.ab)));
+ h=await sec('auras');ck('every-aura-listed',au.AURAS.every(a=>h.includes(a.n)));
+ h=await sec('power');ck('every-spell-listed',st.SP.every(s=>h.includes(s.n)));
+ h=await sec('asc');ck('every-relic-listed',as.RTREE.every(r=>h.includes(r.n)));
+ ck('every-milestone-listed',sts.ASC_MS.every(m=>h.includes(m[1])));
+ ck('shows-your-real-ascension-requirements',h.includes('<b>'+as.reqStage()+'</b>')&&h.includes(as.ascFee().toLocaleString()));
+ S().asc=3;h=await sec('asc');ck('requirements-follow-your-ascension-count',h.includes('<b>'+(15+12)+'</b>'),as.reqStage());
+ // facts quoted in the prose still true
+ ck('prose-first-ascension-stage-is-15',(()=>{S().asc=0;return as.reqStage()===15})());
+ h=await sec('start');ck('quotes-first-ascension-stage',h.includes('stage 15'));
+ // nav state survives re-render, and other tabs unaffected
+ await sec('pets');cp.camp();ck('section-survives-rerender',body().includes('Farm job'));
+ go('g');ck('other-tabs-still-render',body().length>200);
+ go('u');ck('upgrades-tab-still-renders',body().includes('svg'));
+}catch(e){out.push('EXC '+e.message+' | '+(e.stack||'').split(String.fromCharCode(10))[1])}
+document.title=out.join(' ');
+</script></body></html>

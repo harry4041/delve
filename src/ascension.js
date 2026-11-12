@@ -26,9 +26,9 @@ export function ascTab(){const ok=S.life>=reqStage()&&S.gold>=ascFee();
  return h+RTREE.map(n=>{const l=RL(n.k),mx=l>=n.m,c=rcost(n);return '<div class="it"><div><b>'+n.n+(n.m>=999?' '+l:n.m>1?' '+l+'/'+n.m:(mx?' ✓':''))+'</b><small>'+n.d+'</small></div>'+(mx?'<span class="mute">Max</span>':'<button class="s" data-a="rb" data-v="'+n.k+'" '+(S.relics<c?'disabled':'')+'>'+c+' relics</button>')+'</div>'}).join('')+'</div><div style="margin:10px 0"><button class="s alt" data-a="respec">Refund relic upgrades</button></div>'}
 export function hpG(){return (Math.min(1.25,1.22+.003*S.asc))}
 export function atG(){return (Math.min(1.24,1.22+.002*S.asc))}
-function reqStage(){return (15+4*S.asc)}
-function ascFee(){return (Math.round(300*Math.pow(1.8,S.asc)))}
-function STB(n){return (Math.round(1+9*n+.45*n*(n-1)))}
+export function reqStage(){return (15+4*S.asc)}
+export function ascFee(){return (Math.round(300*Math.pow(1.8,S.asc)))}
+export function STB(n){return (Math.round(1+9*n+.45*n*(n-1)))}
 function STG(n){return (Math.max(1,STB(n)-Math.round(10*RL('rMyth')*Math.min(1,Math.max(0,(n-14)/6)))))}
 export function maxStep(s){let n=0;const mx=RN.length*3-1;while(n<mx&&s>=STG(n+1))n++;return n}
 export function maxTier(s){return (Math.floor(maxStep(s)/3))}
