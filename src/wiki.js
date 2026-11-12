@@ -7,6 +7,10 @@ import { RTREE, STB, reqStage, ascFee } from './ascension.js';
 
 // ---------------------------------------------------------------- changelog (add new entries at the TOP; `id` must be unique)
 export const CHANGELOG = [
+  { id: '2026-11-12c', date: '2026-11-12', title: 'New hero and enemy art', items: [
+    'The hero is shaded and detailed: hair highlights, blinking eyes, a tunic emblem, a belt buckle and a red scarf that flutters.',
+    'Every enemy type now looks different: rotting zombies, ribbed skeletons, masked bandits, tusked orcs with spiked pauldrons, hooded cultists and the crowned death-knight boss.',
+  ] },
   { id: '2026-11-12b', date: '2026-11-12', title: 'Auto-delve, Wiki and Updates', items: [
     'Auto-delve: a toggle on the battle screen and the defeat screen starts the next run 1.5 seconds after you fall, banking your loot. It never runs from camp.',
     'Pet farm pays 30 times more gold per hour (about 15-20% of active income early on, still capped at 8 hours).',

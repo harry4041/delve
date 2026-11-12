@@ -56,8 +56,10 @@ try{
  // Moss: takes a share of damage and reflects it (hero and pet attacks paused)
  r=fresh(3);r.hT=-1e9;r.pT=-1e9;r.eHp=r.eMax=1e12;r.eAtk=500;r.hp=1e9;const hp0=r.hp;for(let n=0;n<30;n++)bt.tick(.1);
  const lost=hp0-r.hp;ck('moss-reflects-damage',r.totalDmg>0&&lost>0,'reflected='+r.totalDmg+' lost='+lost);
- const noPetLost=(()=>{r=fresh(3);st.S.ap=-1;r.hT=-1e9;r.pT=-1e9;r.eHp=r.eMax=1e12;r.eAtk=500;r.hp=1e9;const h=r.hp;for(let n=0;n<30;n++)bt.tick(.1);return h-r.hp})();
- ck('moss-reduces-damage-taken',lost<noPetLost,'with='+lost+' without='+noPetLost);
+ // damage taken is random (dodge), so compare averages over many fights instead of a single pair
+ const avgLoss=(withPet)=>{let tot=0;const N=12;for(let k=0;k<N;k++){r=fresh(3);if(!withPet)st.S.ap=-1;r.hT=-1e9;r.pT=-1e9;r.eHp=r.eMax=1e12;r.eAtk=500;r.hp=1e9;const h=r.hp;for(let n=0;n<30;n++)bt.tick(.1);tot+=h-r.hp}return tot/N};
+ const lossWith=avgLoss(true),lossWithout=avgLoss(false);
+ ck('moss-reduces-damage-taken',lossWith<lossWithout,'with='+Math.round(lossWith)+' without='+Math.round(lossWithout));
  // Pip slows enemies: fewer enemy attacks in the same time
  const hits=(i)=>{r=fresh(i,i===0?10:3);if(i<0)st.S.ap=-1;r.hT=-1e9;r.pT=-1e9;r.eHp=r.eMax=1e12;r.eAtk=1;let n0=0,last=r.hp;for(let n=0;n<300;n++){bt.tick(.1);if(r.hp<last)n0++;last=r.hp}return n0};
  const hNone=(()=>{r=fresh(0);st.S.ap=-1;r.hT=-1e9;r.pT=-1e9;r.eHp=r.eMax=1e12;r.eAtk=40;r.hp=1e9;let c=0,l=r.hp;for(let n=0;n<300;n++){bt.tick(.1);if(r.hp<l)c++;l=r.hp}return c})();

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>running</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+</head><body><div id="app">
+<header><h1>Delve</h1><div id="top"></div></header>
+<section id="battle" hidden>
+ <div class="cv"><canvas id="c" width="192" height="108"></canvas><div id="fxl"></div>
+  <div id="over" hidden><div class="px" style="font-size:12px">Defeated</div><div id="ovt"></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button data-a="delveAgain" style="background:#d94a4a;color:#fff;border-color:#fff">⚔ Delve Again</button><button data-a="camp">Go to camp</button></div></div></div>
+ <div class="bar"><i id="hpb"></i><span id="hpt"></span></div>
+ <div class="bar m" id="mpw"><i id="mpb"></i><span id="mpt"></span></div>
+ <div class="bar e"><i id="ehb"></i><span id="ent"></span></div>
+ <div class="row sp" style="margin:6px 0"><div class="row" id="spells"></div><div class="row"><button class="s alt" data-a="spd" id="spdb"></button><button class="s alt" data-a="end">End run</button></div></div>
+ <div class="mute">Last drop</div><div id="last"></div><div class="mute" style="margin-top:6px">Loot this run</div><div id="feed"></div>
+</section>
+<section id="camp" hidden>
+ <div class="row sp"><div class="tabs"><button data-a="tab" data-v="g" id="tg">Gear</button><button data-a="tab" data-v="u" id="tu">Upgrades</button><button data-a="tab" data-v="v" id="tv">Vault</button><button data-a="tab" data-v="m" id="tm">Magic</button><button data-a="tab" data-v="p" id="tp">Pets</button><button data-a="tab" data-v="r" id="tr2">Auras</button><button data-a="tab" data-v="i" id="ti">Idle</button><button data-a="tab" data-v="a" id="ta">Ascend</button><button data-a="tab" data-v="l" id="tl">Scores</button><button data-a="tab" data-v="x" id="tx">Account</button></div></div>
+ <div style="margin:8px 0"><button data-a="delve" style="width:100%;font-size:22px;padding:10px;background:var(--btn);border-width:4px;box-shadow:5px 5px 0 var(--ink)">⚔ DELVE</button></div>
+ <div id="sdw" class="row" style="margin:6px 0"></div><div id="cbody"></div><div style="margin:16px 0"><button class="s alt" data-a="reset">Reset save</button></div>
+</section>
+</div>
+<script type="module">
+// Art preview helper (not a test): window.__go(stage) freezes a battle at that stage; window.__gear(n) dresses the hero in
+// n pieces of Epic gear; window.__drops(true) gives the enemy random dropped gear. Used with headless Edge screenshots.
+await import('/src/main.js');
+const st=await import('/src/state.js'),bt=await import('/src/battle.js'),it=await import('/src/items.js');
+localStorage.removeItem('hollow-delve-2');st.load();
+window.__gear=(ri)=>{const S=st.S;S.eq={};if(ri<0)return;const mk=(ty)=>it.gen(30,ri,ty);S.eq={rhand:mk('weapon'),lhand:mk('shield'),head:mk('head'),chest:mk('chest'),gloves:mk('gloves'),legs:mk('legs'),boots:mk('boots'),amu1:mk('amulet')}};
+window.__go=(s,drops)=>{bt.startRun();const r=st.run;r.stage=s;r.boss=s%10==0;r.eType=r.boss?5:(s-1)%5;r.eDrops=drops?[it.gen(s,2,'weapon'),it.gen(s,2,'chest')]:[];r.eEq=null;r.hp=r.maxHp=1e15;r.eHp=r.eMax=1e18;r.eAtk=0;r.t=0;return JSON.stringify({stage:r.stage,type:r.eType,boss:r.boss})};
+document.title='ready';
+</script></body></html>

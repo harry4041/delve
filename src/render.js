@@ -50,16 +50,40 @@ const IM2={};
 function itImg(it){const b=baseOf(it);if(!b||!IMG[b]||!IMG[b].complete||!IMG[b].naturalWidth)return null;const k=b+it.ri;let im=IM2[k];if(!im){im=IM2[k]=new Image();im.src=iconSrc(it)}return im.complete&&im.naturalWidth?im:null}
 function put(it,cx,cy,s,sx,sy,sw,sh){const im=itImg(it);if(!im)return;if(sx===undefined){g.drawImage(im,cx-s/2,cy-s/2,s,s)}else{const w=s*sw/64,h=s*sh/64;g.drawImage(im,sx,sy,sw,sh,cx-w/2,cy-h/2,w,h)}}
 const HB={Cap:[1.8,13],Helm:[4.5,14],Hood:[5.5,15],Crown:[-.5,13]};
-const HERO_ST={skin:'#ffd5ac',hair:'#ff9a2e',tun:'#3d8bff',leg:'#6a4f8a',boot:'#8a5a2a',belt:'#6a4a2a',face:C=>{R(8,4,1,2,C('#2b2150'));R(11,4,1,2,C('#2b2150'));R(7,6,1,1,C('#ff9fb0'));R(12,6,1,1,C('#ff9fb0'));R(9,7,2,1,C('#c0705a'))}};
+// ---- character bodies -------------------------------------------------------------------------------------------
+// Heroes and enemies share one body (20x29 px grid) that is shaded and detailed here, then wearing gear icons on top.
+// A style may add `pre(C,e)` (drawn on the body, under the gear icons) and `post(C,e)` (drawn over the gear, e.g. hoods,
+// pauldrons, scarves). `C` maps a colour to white while the character flashes from a hit.
+let ART_T=0; // animation clock, set by draw(); drives blinking and cloth movement
+const lit=c=>rr(c,1.22),shd=c=>rr(c,.72);
+const blink=()=>ART_T%3.6<.13;
+const HERO_ST={skin:'#ffd5ac',hair:'#ff9a2e',tun:'#3d8bff',leg:'#6a4f8a',boot:'#8a5a2a',belt:'#6a4a2a',
+ face:C=>{const bl=blink(),ey=C('#2b2150');
+  if(bl){R(8,5,2,1,ey);R(11,5,2,1,ey)}else{R(8,4,2,2,ey);R(11,4,2,2,ey);R(8,4,1,1,C('#fff'));R(11,4,1,1,C('#fff'))}
+  R(8,3,2,1,C('#b8661c'));R(11,3,2,1,C('#b8661c'));R(7,6,1,1,C('#ff9fb0'));R(13,6,1,1,C('#ff9fb0'));R(9,7,2,1,C('#c0705a'))},
+ pre:(C)=>{ // tunic emblem and shoulder straps
+  R(9,12,2,2,C('#ffd34d'));R(9,12,1,1,C('#fff3b0'));R(5,10,1,4,C(shd('#3d8bff')));R(14,10,1,4,C(shd('#3d8bff')))},
+ post:(C,e)=>{ // red scarf that flutters
+  const w=Math.round(Math.sin(ART_T*5)),sc=C('#d94a4a'),sd=C('#8a2a2a');
+  R(6,8,8,2,sc);R(6,9,8,1,sd);R(13,9,2,1,sc);R(14,10+(w>0?1:0),2,3,sc);R(15,12+(w>0?1:0),1,1,sd)}};
 function drawFigure(x,y,e,st,fl,flip,sc){g.save();g.translate(x,y);if(sc&&sc!=1)g.scale(sc,sc);if(flip){g.translate(20,0);g.scale(-1,1)}
  const C=c=>fl?'#fff':c,sk=C(st.skin),hr=C(st.hair||'#000'),tun=C(st.tun),lg=C(st.leg),bt=C(st.boot),hb=e.head?baseOf(e.head):'';
- if(!e.legs){ob(6,20,4,7,lg);ob(10,20,4,7,lg)}
- if(!e.boots){ob(5,26,5,3,bt);ob(10,26,5,3,bt)}
- if(!e.chest){ob(4,9,12,11,tun);R(4,17,12,2,C(st.belt));ob(1,10,3,9,tun);ob(16,10,3,9,tun);if(st.ribs&&!fl){for(const yy of[11,13,15])R(5,yy,10,1,'#8a8266')}}
- else if(!e.gloves){ob(1,15,3,6,sk);ob(16,15,3,6,sk)}
- if(!e.gloves){ob(1,18,3,3,sk);ob(16,18,3,3,sk)}
- R(8,8,4,2,sk);
- if(hb!='Helm'&&hb!='Hood'){ob(6,0,8,9,sk);if(st.hair){R(6,0,8,3,hr);R(5,1,1,5,hr);R(14,1,1,5,hr)}st.face(C)}
+ // legs and boots with a lit and a shaded edge
+ if(!e.legs){ob(6,20,4,7,lg);ob(10,20,4,7,lg);R(6,20,1,7,C(lit(st.leg)));R(9,20,1,7,C(shd(st.leg)));R(10,20,1,7,C(lit(st.leg)));R(13,20,1,7,C(shd(st.leg)))}
+ if(!e.boots){ob(5,26,5,3,bt);ob(10,26,5,3,bt);R(5,26,5,1,C(lit(st.boot)));R(10,26,5,1,C(lit(st.boot)));R(5,28,5,1,C(shd(st.boot)));R(10,28,5,1,C(shd(st.boot)))}
+ // torso, belt and sleeves
+ if(!e.chest){ob(4,9,12,11,tun);R(4,9,12,1,C(lit(st.tun)));R(4,10,1,9,C(lit(st.tun)));R(15,10,1,9,C(shd(st.tun)));R(5,18,10,1,C(shd(st.tun)));
+  R(4,17,12,2,C(st.belt));R(4,17,12,1,C(lit(st.belt)));R(9,17,2,2,C('#e8c050'));R(9,17,1,1,C('#fff3b0'));
+  ob(1,10,3,9,tun);R(1,10,1,9,C(lit(st.tun)));R(3,10,1,9,C(shd(st.tun)));ob(16,10,3,9,tun);R(16,10,1,9,C(lit(st.tun)));R(18,10,1,9,C(shd(st.tun)));
+  if(st.ribs&&!fl){for(const yy of[11,13,15])R(5,yy,10,1,'#8a8266');R(9,10,2,8,'#a39b80')}
+  if(st.pre)st.pre(C,e)}
+ else{if(!e.gloves){ob(1,15,3,6,sk);ob(16,15,3,6,sk)}if(st.pre)st.pre(C,e)}
+ if(!e.gloves){ob(1,18,3,3,sk);ob(16,18,3,3,sk);R(1,20,3,1,C(shd(st.skin)));R(16,20,3,1,C(shd(st.skin)))}
+ R(8,8,4,2,C(shd(st.skin)));
+ // head: ears, shading, hair with a highlight
+ if(hb!='Helm'&&hb!='Hood'){ob(6,0,8,9,sk);R(5,4,1,2,sk);R(14,4,1,2,sk);R(13,1,1,8,C(shd(st.skin)));R(6,8,8,1,C(shd(st.skin)));R(7,3,2,1,C(lit(st.skin)))
+  if(st.hair){R(6,0,8,3,hr);R(5,1,1,5,hr);R(14,1,1,5,hr);R(8,-1,3,1,hr);R(11,-1,2,1,hr);R(7,1,3,1,C(lit(st.hair)));R(7,3,1,1,hr);R(10,3,2,1,hr)}
+  st.face(C)}
  g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';
  if(e.legs)put(e.legs,10,22.2,11);
  if(e.boots)put(e.boots,10,27.6,11,0,35,64,29);
@@ -70,15 +94,38 @@ function drawFigure(x,y,e,st,fl,flip,sc){g.save();g.translate(x,y);if(sc&&sc!=1)
  const lh=e.lhand,rh=e.rhand;
  if(lh){if(lh.ty=='shield')put(lh,.5,17,14);else{g.save();g.translate(20,0);g.scale(-1,1);put(lh,20.5,14.5,17);g.restore()}}
  if(rh){if(rh.ty=='shield')put(rh,19.5,17,14);else put(rh,20.5,14.5,17)}
+  if(st.post)st.post(C,e);
  g.imageSmoothingEnabled=false;g.restore()}
 function drawHero(x,y,fl){drawFigure(x,y,S.eq,HERO_ST,fl,false,1)}
-function enStyle(ty,tint){const d=rr(tint,.55);
+function enStyle0(ty,tint){const d=rr(tint,.55);
  if(ty==0)return{skin:'#7fae6a',hair:'#3a2a1a',tun:'#5a4a3a',leg:'#3a3a50',boot:'#2a2a2a',belt:'#2a1a10',face:C=>{R(7,3,2,3,C('#e04040'));R(11,4,2,2,C('#e8e0a0'));R(8,7,4,1,C('#2a1a10'));R(9,7,1,1,C('#e8e0c4'))}};
  if(ty==1)return{skin:'#e8e0c4',hair:null,tun:'#d6ceb2',leg:'#d6ceb2',boot:'#b9b196',belt:'#b9b196',ribs:1,face:C=>{R(7,3,2,3,'#1a0f24');R(11,3,2,3,'#1a0f24');R(8,4,1,1,'#ff4630');R(12,4,1,1,'#ff4630');R(9,7,2,2,'#1a0f24');R(8,7,1,1,C('#e8e0c4'));R(11,7,1,1,C('#e8e0c4'))}};
  if(ty==2)return{skin:'#e8b890',hair:'#c0392b',tun:d,leg:'#4a3a2a',boot:'#2a1a10',belt:'#2a1a10',face:C=>{R(7,4,2,2,C('#2b2150'));R(11,4,2,2,C('#2b2150'));R(8,7,4,1,C('#a0583a'));R(7,2,6,1,C('#8a2a20'))}};
  if(ty==3)return{skin:'#5a9a4a',hair:'#2a2a20',tun:d,leg:'#5a4a3a',boot:'#3a2a1a',belt:'#2a1a10',sc:1.15,face:C=>{R(7,3,6,1,C('#2a2a20'));R(7,4,2,2,C('#ffd24a'));R(11,4,2,2,C('#ffd24a'));R(7,7,1,2,'#fff');R(12,7,1,2,'#fff');R(8,7,4,1,C('#2a1a10'))}};
  if(ty==4)return{skin:'#9a8aa0',hair:rr(tint,.45),tun:rr(tint,.5),leg:rr(tint,.5),boot:'#1a1424',belt:'#d0b040',face:C=>{R(7,4,2,2,'#ff4fa0');R(11,4,2,2,'#ff4fa0');R(9,7,2,1,C('#4a3a50'))}};
  return{skin:'#cfc8dc',hair:'#8a2ab0',tun:'#2a2438',leg:'#2a2438',boot:'#1a1424',belt:'#d0b040',sc:1.4,face:C=>{R(7,4,2,2,'#ff3a3a');R(11,4,2,2,'#ff3a3a');R(8,7,4,1,'#1a0f24');R(6,-2,1,3,'#d0b040');R(9,-3,2,4,'#d0b040');R(13,-2,1,3,'#d0b040')}}}
+// Extra detail per enemy type (0 zombie, 1 skeleton, 2 bandit, 3 orc, 4 cultist, 5 boss death knight).
+const MOBX={
+ 0:{pre:C=>{R(6,12,3,2,C('#8a2a2a'));R(7,13,1,1,C('#e8c4c0'));R(11,11,3,1,C('#2a1a10'));R(12,10,1,3,C('#2a1a10'));R(4,19,2,1,'#1a0f24');R(8,19,1,1,'#1a0f24');R(12,19,2,1,'#1a0f24')},
+    post:C=>{R(9,8,1,2,C('#9ad07a'));R(7,0,2,1,C('#6a7a5a'))}},
+ 1:{pre:C=>{R(5,18,4,3,C('#5a3a3a'));R(6,19,2,2,C('#3a2222'))},
+    post:C=>{for(let q=0;q<4;q++)R(8+q,8,1,1,q%2?'#8a8266':'#f4ecd0');R(12,1,1,3,'#8a8266');R(11,3,1,1,'#8a8266')}},
+ 2:{pre:C=>{for(let q=0;q<6;q++)R(5+q,10+q,2,1,C('#6a4a2a'));R(9,13,2,2,C('#e8c050'));R(13,17,3,1,C('#6a6a78'));R(14,18,1,4,C('#cfd6e6'))},
+    post:C=>{R(7,6,6,2,C('#6a1a14'));R(8,6,4,1,C('#8a2a20'));R(7,3,6,1,C('#2a1a10'))}},
+ 3:{pre:C=>{R(6,10,8,1,C('#e8e0c4'));for(const q of[7,9,11,13])R(q,11,1,1,C('#e8e0c4'));R(9,17,2,2,C('#e8e0c4'));R(9,18,2,1,C('#8a8266'))},
+    post:C=>{R(7,2,2,1,C('#c03030'));R(11,2,2,1,C('#c03030'));R(8,8,1,2,C('#f4ecd0'));R(11,8,1,2,C('#f4ecd0'));
+      R(0,9,5,3,C('#6a6a78'));R(0,9,5,1,C('#9a9aa8'));R(0,8,1,1,C('#cfd6e6'));R(2,7,1,2,C('#cfd6e6'));R(4,8,1,1,C('#cfd6e6'));
+      R(15,9,5,3,C('#6a6a78'));R(15,9,5,1,C('#9a9aa8'));R(19,8,1,1,C('#cfd6e6'));R(17,7,1,2,C('#cfd6e6'));R(15,8,1,1,C('#cfd6e6'))}},
+ 4:{pre:(C,e)=>{const rb=C('#2a1a44');if(!e.legs){ob(3,19,14,9,rb);R(3,19,1,9,C('#3d2a5e'));R(16,20,1,8,C('#150c24'));R(4,27,12,1,C('#150c24'))}
+      R(9,12,2,1,'#e050ff');R(9,14,2,1,'#e050ff');R(10,12,1,3,'#e050ff')},
+    post:C=>{const hd=C('#2a1a44'),hl=C('#3d2a5e');R(4,-2,12,3,hd);R(5,-3,10,1,hd);R(4,0,2,9,hd);R(14,0,2,9,hd);R(5,0,1,8,hl);R(6,1,8,1,C('#150c24'));
+      g.globalAlpha=.55;R(6,2,8,7,'#0c0814');g.globalAlpha=1;R(8,8,4,1,C('#150c24'));R(7,4,2,2,'#ff4fa0');R(11,4,2,2,'#ff4fa0')}},
+ 5:{pre:C=>{R(8,10,4,8,C('#3a3450'));const p=.5+.5*Math.sin(ART_T*3);g.globalAlpha=.6+.4*p;R(9,12,2,3,'#ff3a3a');g.globalAlpha=1;R(5,10,1,8,C('#4a4468'));R(14,10,1,8,C('#14101e'))},
+    post:C=>{R(0,8,6,4,C('#2e2a3c'));R(0,8,6,1,C('#5a5470'));R(0,7,1,1,C('#8a8aa0'));R(2,6,1,2,'#8a8aa0');R(4,7,1,1,'#8a8aa0');
+      R(14,8,6,4,C('#2e2a3c'));R(14,8,6,1,C('#5a5470'));R(19,7,1,1,'#8a8aa0');R(17,6,1,2,'#8a8aa0');R(15,7,1,1,'#8a8aa0');
+      R(0,11,6,1,'#c01818');R(14,11,6,1,'#c01818');R(5,-1,1,2,'#7a1a1a');R(14,-1,1,2,'#7a1a1a')}},
+};
+function enStyle(ty,tint){const s=enStyle0(ty,tint),x=MOBX[ty];if(x){s.pre=x.pre;s.post=x.post}return s}
 function eqFromDrops(d){const e={},best=(k,it)=>{if(!e[k]||it.ri>e[k].ri)e[k]=it},am=[],hands=[];
  for(const it of d){const t=it.ty;if(t=='head')best('head',it);else if(t=='chest')best('chest',it);else if(t=='gloves')best('gloves',it);else if(t=='legs')best('legs',it);else if(t=='boots')best('boots',it);else if(t=='amulet')am.push(it);else hands.push(it)}
  am.sort((a,b)=>b.ri-a.ri).slice(0,3).forEach((it,i)=>{e['amu'+(i+1)]=it});hands.sort((a,b)=>b.ri-a.ri);
@@ -113,7 +160,7 @@ function wear(ty,x,d,t){if(!d)return;const[w,h]=DM[ty],y=44-(ty==1?8+Math.sin(t*
  d.slice(0,10).forEach(it=>{const k=it.ty,n=cn[k]=(cn[k]||0)+1,o=(n-1)*3,c=RC[it.ri];
   if(it.ri>=3){const q=sh(k,x,y,w,h,2);g.globalAlpha=.3+.15*Math.sin(t*8);R(q[0]+o,q[1],q[2],q[3],c);g.globalAlpha=1}
   const q=sh(k,x,y,w,h,0);R(q[0]+o-1,q[1]-1,q[2]+2,q[3]+2,'#1a0f24');R(q[0]+o,q[1],q[2],q[3],c)})}
-function draw(){const r=run,t=r.t,tier=Math.floor((r.stage-1)/5)%6,z=ZONES[tier],k=[rr(z.wall,1.1),rr(z.wall,1.5),z.floor,rr(z.floor,1.8),rr(z.glow,.4),'#ff8a2a'],fl=Math.floor(t*7)%3;
+function draw(){const r=run,t=r.t;ART_T=t;const tier=Math.floor((r.stage-1)/5)%6,z=ZONES[tier],k=[rr(z.wall,1.1),rr(z.wall,1.5),z.floor,rr(z.floor,1.8),rr(z.glow,.4),'#ff8a2a'],fl=Math.floor(t*7)%3;
  const shk=r.shakeT>0;g.setTransform(2,0,0,2,shk?Math.round(Math.random()*6-3):0,shk?Math.round(Math.random()*6-3):0);g.imageSmoothingEnabled=false;drawBackdrop(g,tier,t,z);
  const tint=TINT[tier],es=enStyle(r.eType,tint),sc=es.sc||1,ex=(r.boss?58:68)-(r.elunge>0?3:0);drawShadows(g,14+(r.lunge>0?5:0),ex,sc,S.ap>=0);
  if(S.ap>=0){const P=PET[S.ap],b=Math.sin(t*8)>0?0:1;drawPet(P,t,2+(r.petT>0?Math.round(Math.sin((1-r.petT/.25)*Math.PI)*9):0),44,b)}

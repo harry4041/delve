@@ -68,6 +68,8 @@ function ensureLoaded() {
   loadBoard(ui.sub).catch((e) => { ui.err = cloudErr(e); }).finally(() => { ui.loading = false; emit(); });
 }
 
+// Publishing is refused by firestore.rules when a first entry is above the start ceilings or scores rise faster than is plausible.
+function pubErr(e) { return e && e.code === 'permission-denied' ? 'The leaderboard refused your scores. A new entry can start at up to stage 300, power 500,000, 60 ascensions and 60 pet stars, and scores can only rise at a realistic pace. Verify your email, then try again in a few minutes.' : cloudErr(e); }
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const medal = (i) => (i === 0 ? '#ffd34d' : i === 1 ? '#cfd6e6' : i === 2 ? '#d9955a' : 'var(--mute)');
 
@@ -135,7 +137,7 @@ document.addEventListener('submit', async (e) => {
   if (!v.ok) { ui.err = v.why; emit(); return; }
   S.lbName = v.name; ui.err = ''; ui.msg = '';
   try { await publish(true); clearCache(); ui.msg = 'You are on the boards!'; toast('Joined the leaderboards as ' + v.name); }
-  catch (err) { S.lbName = null; ui.err = cloudErr(err); }
+  catch (err) { S.lbName = null; ui.err = pubErr(err); }
   emit();
 });
 
