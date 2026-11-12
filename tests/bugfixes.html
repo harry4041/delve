@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>running</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+</head><body><div id="app">
+<header><h1>Delve</h1><div id="top"></div></header>
+<section id="battle" hidden>
+ <div class="cv"><canvas id="c" width="192" height="108"></canvas><div id="fxl"></div>
+  <div id="over" hidden><div class="px" style="font-size:12px">Defeated</div><div id="ovt"></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button data-a="delveAgain" style="background:#d94a4a;color:#fff;border-color:#fff">⚔ Delve Again</button><button data-a="camp">Go to camp</button></div></div></div>
+ <div class="bar"><i id="hpb"></i><span id="hpt"></span></div>
+ <div class="bar m" id="mpw"><i id="mpb"></i><span id="mpt"></span></div>
+ <div class="bar e"><i id="ehb"></i><span id="ent"></span></div>
+ <div class="row sp" style="margin:6px 0"><div class="row" id="spells"></div><div class="row"><button class="s alt" data-a="spd" id="spdb"></button><button class="s alt" data-a="end">End run</button></div></div>
+ <div class="mute">Last drop</div><div id="last"></div><div class="mute" style="margin-top:6px">Loot this run</div><div id="feed"></div>
+</section>
+<section id="camp" hidden>
+ <div class="row sp"><div class="tabs"><button data-a="tab" data-v="g" id="tg">Gear</button><button data-a="tab" data-v="u" id="tu">Upgrades</button><button data-a="tab" data-v="v" id="tv">Vault</button><button data-a="tab" data-v="m" id="tm">Magic</button><button data-a="tab" data-v="p" id="tp">Pets</button><button data-a="tab" data-v="r" id="tr2">Auras</button><button data-a="tab" data-v="i" id="ti">Idle</button><button data-a="tab" data-v="a" id="ta">Ascend</button><button data-a="tab" data-v="l" id="tl">Scores</button><button data-a="tab" data-v="x" id="tx">Account</button></div></div>
+ <div style="margin:8px 0"><button data-a="delve" style="width:100%;font-size:22px;padding:10px;background:var(--btn);border-width:4px;box-shadow:5px 5px 0 var(--ink)">⚔ DELVE</button></div>
+ <div id="sdw" class="row" style="margin:6px 0"></div><div id="cbody"></div><div style="margin:16px 0"><button class="s alt" data-a="reset">Reset save</button></div>
+</section>
+</div>
+<script type="module">
+// Regression tests for the seven reported bugs.
+const out=[],ck=(n,c,x)=>out.push(n+':'+(c?'ok':'FAIL'+(x!==undefined?'('+x+')':'')));
+window.onerror=(m,u,l)=>out.push('ERR '+m+' @'+String(u).split('/').pop()+':'+l);
+try{
+ await import('/src/main.js');
+ const st=await import('/src/state.js'),bt=await import('/src/battle.js'),cp=await import('/src/camp.js'),stats=await import('/src/stats.js'),asc=await import('/src/ascension.js'),au=await import('/src/auras.js');
+ const KEY='hollow-delve-2';
+ const reset=()=>{localStorage.removeItem(KEY);st.load();st.S.gold=1e9;st.S.best=30;st.S.ap=-1;st.S.tr={might:40,vigor:40}};
+ const item=(ty,nm,stt)=>({id:Math.floor(Math.random()*1e9),ty,ri:1,lv:1,il:10,nm,st:stt});
+ const fresh=()=>{bt.startRun();const r=st.run;r.hT=-1e9;r.pT=-1e9;r.eHp=r.eMax=1e15;r.eAtk=0;r.stun=1e9;r.hp=1;return r};
+
+ // 1 Reset save must leave a complete, usable save
+ reset();st.S.gold=500;const btn=document.createElement('button');btn.dataset.a='reset';document.body.appendChild(btn);btn.click();btn.click();
+ ck('reset-builds-the-full-pet-roster',st.S.pets.length===st.PET.length&&st.S.pets.every(p=>p&&p.own===0),st.S.pets.length+' vs '+st.PET.length);
+ ck('reset-includes-giftsClaimed',Array.isArray(st.S.giftsClaimed));
+ let bad='';for(const t of ['g','u','v','m','p','i','a','l','r','x']){try{st.setTab(t);cp.camp()}catch(e){bad+=t+'='+e.message+' '}}
+ ck('every-screen-renders-after-reset',bad==='',bad);
+
+ // 2 spell cooldowns count down once per tick, not once per tick times the speed setting
+ reset();st.S.tr={sim1:1,sim2:1,might:5};st.S.rl={rMagic:1};st.S.speed=4;
+ let r=fresh();r.mp=999;bt.cast(0);const c0=r.cd[0];bt.tick(.1);
+ ck('cooldown-not-scaled-by-battle-speed',Math.abs((c0-r.cd[0])-.1)<.005,'dropped '+(c0-r.cd[0]).toFixed(3)+' (expect 0.100)');
+ st.S.speed=1;
+
+ // 3 ascension buffs add to stats and the normal caps then apply
+ const S=()=>st.S;
+ reset();S().tr={haste:100};let b=stats.stats().spd;S().ascBuff='swiftness';let a=stats.stats().spd;
+ ck('swiftness-adds-speed-even-above-1.5',a-b>.2&&a>1.5,b.toFixed(2)+' -> '+a.toFixed(2));
+ reset();S().tr={fury:400};b=stats.stats();S().ascBuff='sharpened';a=stats.stats();
+ ck('sharpened-adds-crit-and-overflow-becomes-crit-damage',a.crit===75&&a.critDmg>b.critDmg+.1&&b.crit<75,b.crit.toFixed(1)+' -> '+a.crit+', critDmg '+b.critDmg.toFixed(2)+' -> '+a.critDmg.toFixed(2));
+ reset();S().eq={amu1:item('amulet','Sim Amulet',{dodge:40})};b=stats.stats();S().ascBuff='evasion';a=stats.stats();
+ ck('ghost-step-caps-dodge-at-50-and-overflow-adds-defense',a.dodge===50&&Math.abs(a.def/b.def-1.05)<.01,'dodge '+b.dodge+' -> '+a.dodge+', def x'+(a.def/b.def).toFixed(3));
+
+ // 4 venom aura deals real damage from your attack
+ reset();S().auras={aura_venom:1};r=fresh();r.psnStacks=5;r.psnT=.8;r.totalDmg=0;bt.tick(.001);
+ const expect=Math.round(stats.stats().atk*.02*5*.8);
+ ck('venom-aura-damage-scales-with-attack',r.totalDmg>10&&Math.abs(r.totalDmg-expect)<=Math.max(2,expect*.05),r.totalDmg+' (expect ~'+expect+')');
+ ck('venom-aura-description-updated',au.AURAS.find(x=>x.k==='aura_venom').d.includes('2%'));
+
+ // 5 set bonuses are used: Arcane Scholar (spell power) and Lucky Wanderer (drop chance)
+ const scholar={head:item('head','Sim Crown',{def:1}),chest:item('chest','Sim Robe',{def:1})};
+ const fireDmg=(eq)=>{reset();S().rl={rMagic:1};S().tr={might:40,vigor:40,arcana:5};S().eq=eq;const q=fresh();q.mp=999;q.totalDmg=0;bt.cast(0);return q.totalDmg};
+ reset();S().eq=scholar;ck('arcane-scholar-sets-the-bonus',Math.abs(stats.stats()._spellBonus-1.25)<1e-9);
+ const f0=fireDmg({}),f1=fireDmg(scholar);ck('arcane-scholar-boosts-fireball',Math.abs(f1/f0-1.25)<.03,'x'+(f1/f0).toFixed(3));
+ const healAmt=(eq)=>{reset();S().rl={rMagic:1};S().tr={might:40,vigor:40,mender:1};S().eq=eq;const q=fresh();q.mp=999;q.hp=1;bt.cast(1);return q.hp-1};
+ const h0=healAmt({}),h1=healAmt(scholar);ck('arcane-scholar-boosts-mend',h0>0&&Math.abs(h1/h0-1.25)<.03,'x'+(h1/h0).toFixed(3));
+ const wander={head:item('head','Sim Cap',{def:1}),chest:item('chest','Sim Tunic',{def:1}),gloves:item('gloves','Sim Mitts',{def:1})};
+ reset();S().eq=wander;ck('lucky-wanderer-sets-the-bonus',Math.abs(stats.stats()._luckBonus-.1)<1e-9);
+ const meanDrops=(eq,n=500)=>{let t=0;for(let i=0;i<n;i++){reset();S().eq=eq;bt.startRun();t+=st.run.eDrops.length}return t/n};
+ const d0=meanDrops({}),d1=meanDrops(wander);ck('lucky-wanderer-raises-drops',d1-d0>.2&&d1-d0<.6,d0.toFixed(2)+' -> '+d1.toFixed(2)+' (expect +0.4)');
+
+ // 6 the forge selection counter shows 1, 2, ... not -1
+ reset();const ids=[];S().bag=[0,1,2,3].map(()=>{const it=item('head','Sim Cap',{def:1});ids.push(it.id);return it});
+ st.setForgeMode(true);st.setForgeSelected([ids[1],ids[3]]);st.setTab('g');cp.camp();
+ const html=document.querySelector('#cbody').innerHTML;
+ ck('forge-counter-counts-from-1',html.includes('✓ 1')&&html.includes('✓ 2')&&!html.includes('✓ -1'),(html.match(/✓ -?\d/g)||[]).join(','));
+ st.setForgeMode(false);st.setForgeSelected([]);
+
+ // 7 enemy scaling per stage stays close to the hero's growth after ascending
+ reset();S().asc=10;
+ ck('enemy-growth-softened',Math.abs(asc.hpG()-1.25)<1e-9&&Math.abs(asc.atG()-1.24)<1e-9,asc.hpG()+' / '+asc.atG());
+ ck('stage-50-boss-no-longer-explodes',Math.pow(asc.hpG()/1.22,50)<5,'x'+Math.pow(asc.hpG()/1.22,50).toFixed(1)+' vs old x157');
+ S().asc=0;ck('ascension-0-unchanged',Math.abs(asc.hpG()-1.22)<1e-9&&Math.abs(asc.atG()-1.22)<1e-9);
+}catch(e){out.push('EXC '+e.message+' | '+(e.stack||'').split(String.fromCharCode(10))[1])}
+document.title=out.join(' ');
+</script>
+
+</body></html>

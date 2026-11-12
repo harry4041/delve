@@ -8,12 +8,12 @@ export const SETS=[
 export const ASC_BUFFS=[
  {k:'bloodlust',n:'Bloodlust',d:'+30% attack',fn:(s)=>{s.atk*=1.3}},
  {k:'ironhide',n:'Iron Hide',d:'+40% health',fn:(s)=>{s.hp*=1.4}},
- {k:'swiftness',n:'Swiftness',d:'+25% attack speed',fn:(s)=>{s.spd=Math.min(1.5,s.spd+.25)}},
- {k:'sharpened',n:'Sharpened',d:'+20% crit chance',fn:(s)=>{s.crit=Math.min(75,s.crit+20)}},
+ {k:'swiftness',n:'Swiftness',d:'+25% attack speed',fn:(s)=>{s.spd+=.25}},
+ {k:'sharpened',n:'Sharpened',d:'+20% crit chance',fn:(s)=>{s.crit+=20}},
  {k:'fortune',n:'Fortune\'s Smile',d:'+25% gold find',fn:(s)=>{s.gf+=25}},
  {k:'thorn_wall',n:'Thorn Wall',d:'+30% defense',fn:(s)=>{s.def*=1.3}},
  {k:'lifesteal',n:'Vampiric',d:'+10% lifesteal',fn:(s)=>{s.ls+=10}},
- {k:'evasion',n:'Ghost Step',d:'+15% dodge',fn:(s)=>{s.dodge=Math.min(50,s.dodge+15)}},
+ {k:'evasion',n:'Ghost Step',d:'+15% dodge',fn:(s)=>{s.dodge+=15}},
 ];
 export const ASC_DEBUFFS=[
  {k:'brittle',n:'Brittle',d:'-20% max health',fn:(s)=>{s.hp*=0.8}},

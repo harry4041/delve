@@ -24,8 +24,8 @@ export function ascTab(){const ok=S.life>=reqStage()&&S.gold>=ascFee();
   (S.asc===0?'<div class="mute" style="margin:6px 0">First ascension unlocks random buffs and debuffs each life.</div>':'');
  let h='<div class="box"><div class="row sp"><b>Relics: '+S.relics+'</b><span class="mute">Ascension '+S.asc+'</span></div>'+modHtml+asBonusHtml()+'<div style="margin:6px 0">Ascending resets gold, upgrades, pets, bag and gear (unless kept by relics). You earn relics from the deepest stage cleared this life ('+S.life+'). Relics never reset. Ascending needs stage '+reqStage()+' and '+fmtN(ascFee())+' gold. Each ascension makes enemies tougher at higher stages (now +'+Math.round((Math.pow(hpG()/1.2,10)-1)*100)+'% health by stage 10), but the first stages stay beatable.</div><button data-a="asc" '+(ok?'':'disabled')+'>'+(ok?'Ascend for '+relicGain()+' relics ('+fmtN(ascFee())+'g)':S.life<reqStage()?'Clear stage '+reqStage()+' to ascend':'Need '+fmtN(ascFee())+' gold to ascend')+'</button></div><h2>Relic upgrades</h2><div class="box">';
  return h+RTREE.map(n=>{const l=RL(n.k),mx=l>=n.m,c=rcost(n);return '<div class="it"><div><b>'+n.n+(n.m>=999?' '+l:n.m>1?' '+l+'/'+n.m:(mx?' ✓':''))+'</b><small>'+n.d+'</small></div>'+(mx?'<span class="mute">Max</span>':'<button class="s" data-a="rb" data-v="'+n.k+'" '+(S.relics<c?'disabled':'')+'>'+c+' relics</button>')+'</div>'}).join('')+'</div><div style="margin:10px 0"><button class="s alt" data-a="respec">Refund relic upgrades</button></div>'}
-export function hpG(){return (Math.min(1.35,1.22+.013*S.asc))}
-export function atG(){return (Math.min(1.28,1.22+.008*S.asc))}
+export function hpG(){return (Math.min(1.25,1.22+.003*S.asc))}
+export function atG(){return (Math.min(1.24,1.22+.002*S.asc))}
 function reqStage(){return (15+4*S.asc)}
 function ascFee(){return (Math.round(300*Math.pow(1.8,S.asc)))}
 function STB(n){return (Math.round(1+9*n+.45*n*(n-1)))}

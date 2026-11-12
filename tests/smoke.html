@@ -58,6 +58,7 @@ try{
  st.setTab('g');
  const rs=document.createElement('button');rs.dataset.a='reset';document.body.appendChild(rs);rs.click();rs.click();
  ck('reset',st.S.gold===0&&st.uid===1&&st.tab==='g');
+ let rb='';for(const tb of ['g','u','v','m','p','i','a','l','r','x']){try{st.setTab(tb);cp.camp()}catch(e){rb+=tb+':'+e.message+' '}}ck('every-screen-renders-after-reset',rb==='',rb);
 }catch(e){out.push('EXC '+e.message+' | '+(e.stack||'').split('\n')[1])}
 document.title=out.join(' ');
 </script>
