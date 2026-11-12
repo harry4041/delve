@@ -20,16 +20,24 @@ function tvLayout(G){
  const junc={};
  G.arms.forEach((a,i)=>{
   const multi=roots[i].length>1,jk='_j'+i,at=(u,v)=>a.d=='N'?{x:v,y:-u}:a.d=='S'?{x:v,y:u}:a.d=='E'?{x:u,y:v}:{x:-u,y:v};
-  if(multi){pos[jk]=at(TV_GAP,0);junc[jk]=i;edges.push([hubK,jk])}
+  if(multi){pos[jk]=at(TV_GAP,0);junc[jk]=i;edges.push([hubK,jk,a.d])}
   const place=(k,depth,left,up)=>{const v=(left+wd(k)/2)*TV_VS,u=Math.max(TV_GAP+(depth-1+(multi?1:0))*TV_STEP,up+TV_STEP*.75,Math.abs(v)+TV_WEDGE);
    pos[k]=at(u,v);
-   let l=left;for(const c of kids[k]){place(c,depth+1,l,u);l+=wd(c);edges.push([k,c])}};
+   let l=left;for(const c of kids[k]){place(c,depth+1,l,u);l+=wd(c);edges.push([k,c,a.d])}};
   let cur=-roots[i].reduce((s,k)=>s+wd(k),0)/2;
-  for(const r of roots[i]){place(r,1,cur,0);cur+=wd(r);edges.push([multi?jk:hubK,r])}});
+  for(const r of roots[i]){place(r,1,cur,0);cur+=wd(r);edges.push([multi?jk:hubK,r,a.d])}});
  let x0=0,x1=0,y0=0,y1=0;for(const k in pos){const p=pos[k];x0=Math.min(x0,p.x);x1=Math.max(x1,p.x);y0=Math.min(y0,p.y);y1=Math.max(y1,p.y)}
  return G._lay={pos,edges,arm,junc,hubK,b:{x0,x1,y0,y1}};
 }
-function tvFit(G){const b=tvLayout(G).b,m=80;let w=b.x1-b.x0+2*m,h=b.y1-b.y0+2*m;if(w/h<TV_AR)w=h*TV_AR;else h=w/TV_AR;
+// A node is shown once you own it or its prerequisites are met. The hub is always shown; a junction dot only when one of its roots is.
+function tvVisible(G,k){
+ const lay=tvLayout(G);
+ if(k===lay.hubK)return true;
+ if(k in lay.junc)return lay.edges.some(([a,b])=>a===k&&tvVisible(G,b));
+ return L(k)>0||can(NODE[k]);
+}
+function tvBounds(G){const lay=tvLayout(G);let x0=0,x1=0,y0=0,y1=0;for(const k in lay.pos){if(!tvVisible(G,k))continue;const p=lay.pos[k];x0=Math.min(x0,p.x);x1=Math.max(x1,p.x);y0=Math.min(y0,p.y);y1=Math.max(y1,p.y)}return{x0,x1,y0,y1}}
+function tvFit(G){const b=tvBounds(G),m=80;let w=Math.max(720,b.x1-b.x0+2*m),h=Math.max(720/TV_AR,b.y1-b.y0+2*m);if(w/h<TV_AR)w=h*TV_AR;else h=w/TV_AR;
  return{x:(b.x0+b.x1)/2-w/2,y:(b.y0+b.y1)/2-h/2,w,h}}
 function tvHubView(G){const w=820,h=w/TV_AR;return{x:-w/2,y:-h/2,w,h}}
 function tvStart(G){const f=tvFit(G);return f.w<=1000?f:tvHubView(G)}
@@ -52,11 +60,15 @@ function tvSvg(G,st){
  const lay=tvLayout(G),pos=lay.pos,E=[],T=[],N=[];
  const owned=k=>k[0]==='_'||L(k)>0;
  const colOf=k=>k in lay.junc?G.arms[lay.junc[k]].c:NODEC[k]||G.arms[lay.arm[k]].c;
- for(const[a,b]of lay.edges){const pa=pos[a],pb=pos[b],lit=owned(a);
-  E.push('<line x1="'+pa.x+'" y1="'+pa.y+'" x2="'+pb.x+'" y2="'+pb.y+'" style="stroke:'+(lit?'var('+colOf(b)+')':'var(--mute)')+';stroke-width:'+(lit?5:3)+';opacity:'+(lit?1:.5)+'"'+(lit?'':' stroke-dasharray="6 6"')+'/>')}
- G.arms.forEach(a=>{const h=TV_GAP/2+(a.d=='N'||a.d=='S'?-8:6),o=12;const x=a.d=='E'?h:a.d=='W'?-h:o,y=a.d=='N'?-h:a.d=='S'?h+8:-o;
+ for(const[a,b,d]of lay.edges){if(!tvVisible(G,b))continue;const pa=pos[a],pb=pos[b],lit=owned(a),vert=d==='N'||d==='S';
+  let pts;
+  if(pa.x===pb.x||pa.y===pb.y)pts=pa.x+','+pa.y+' '+pb.x+','+pb.y;                                                   // already in line
+  else if(vert){const my=pa.y+(pb.y-pa.y)*(d==='N'?.3:.7);pts=pa.x+','+pa.y+' '+pa.x+','+my+' '+pb.x+','+my+' '+pb.x+','+pb.y}        // up/down, across, up/down
+  else{const mx=(pa.x+pb.x)/2;pts=pa.x+','+pa.y+' '+mx+','+pa.y+' '+mx+','+pb.y+' '+pb.x+','+pb.y}                  // along, up/down, along
+  E.push('<polyline points="'+pts+'" fill="none" stroke-linejoin="round" style="stroke:'+(lit?'var('+colOf(b)+')':'var(--mute)')+';stroke-width:'+(lit?5:3)+';opacity:'+(lit?1:.5)+'"'+(lit?'':' stroke-dasharray="6 6"')+'/>')}
+ G.arms.forEach(a=>{if(!a.ks.some(k=>tvVisible(G,k)))return;const h=TV_GAP/2+(a.d=='N'||a.d=='S'?-8:6),o=12;const x=a.d=='E'?h:a.d=='W'?-h:o,y=a.d=='N'?-h:a.d=='S'?h+8:-o;
   T.push('<text x="'+x+'" y="'+y+'" text-anchor="'+(a.d=='N'||a.d=='S'?'start':'middle')+'" style="font-size:19px;fill:var(--mute);paint-order:stroke;stroke:var(--panel);stroke-width:4px">'+a.n+'</text>')});
-for(const k in pos){const p=pos[k];
+for(const k in pos){const p=pos[k];if(!tvVisible(G,k))continue;
   if(k in lay.junc){N.push('<circle cx="'+p.x+'" cy="'+p.y+'" r="8" style="fill:var('+colOf(k)+');stroke:var(--ink)" stroke-width="3"/>');continue}
   const real=k!=='_'&&NODE[k],hub=k===lay.hubK,r=hub?TV_HR:TV_R;let fill,fo,stroke,dash='',sw=3,txt='';
   if(!real){fill='var(--ink)';fo=1;stroke='var(--ink)';txt=''}
@@ -77,7 +89,7 @@ for(const k in pos){const p=pos[k];
    +(st.sel===k?'<circle r="'+(r+8)+'" fill="none" style="stroke:var(--ink)" stroke-width="3" stroke-dasharray="5 4"/>':'')
    +'<circle r="'+(r+10)+'" fill="transparent"/>'+ring+shape(r,fill,fo,stroke,sw,dash)+glow
    +(hub?'<text y="'+(real?-3:7)+'" text-anchor="middle" style="font-size:19px;fill:var('+(real?'--btnt':'--bg')+')">'+(real?NODE[k].n:G.hubName)+'</text>'+(real&&txt!==''?'<text y="19" text-anchor="middle" style="font-size:22px;fill:var(--btnt)">'+txt+'</text>':''):txt!==''?'<text y="7" text-anchor="middle" style="font-size:26px;fill:var(--btnt)">'+txt+'</text>':'')
-   +lines.map((s,i)=>'<text y="'+(ly+i*19)+'" text-anchor="middle" style="font-size:21px;'+''+'">'+s+'</text>').join('')+'</g>')}
+   +lines.map((s,i)=>'<text y="'+(ly+i*19)+'" text-anchor="middle" style="font-size:21px;paint-order:stroke;stroke:var(--panel);stroke-width:5px;'+''+'">'+s+'</text>').join('')+'</g>')}
  return'<svg class="tvsvg" viewBox="'+tvVbStr(st.vb)+'" xmlns="http://www.w3.org/2000/svg">'+'<defs><pattern id="tvg" width="44" height="44" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.6" style="fill:var(--mute);opacity:.28"/></pattern>'+'<radialGradient id="tvh"><stop offset="0" style="stop-color:var(--c2);stop-opacity:.38"/><stop offset="1" style="stop-color:var(--c2);stop-opacity:0"/></radialGradient></defs>'+'<rect x="-6000" y="-6000" width="12000" height="12000" fill="url(#tvg)"/><circle r="230" fill="url(#tvh)"/>'+E.join('')+T.join('')+N.join('')+'</svg>'}
 
 function tvPanel(G,k){

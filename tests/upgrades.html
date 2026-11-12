@@ -35,7 +35,7 @@ try{
  const inArm=k=>sk.GRAPHS.u.arms.some(a=>a.ks.includes(k));
  ck('all-16-nodes-in-the-upgrades-web',NEW.every(inArm));
  ck('prereqs-are-real-nodes',NEW.every(k=>Object.keys(sk.NODE[k].r).every(q=>sk.NODE[q])));
- const th=tv.tree(sk.GRAPHS.u);ck('upgrades-web-renders',th.includes('<svg')&&['Bulwark','Vampirism','Evasion','Rampage','Appraiser'].every(w=>th.includes(w)));
+ reset();Object.keys(sk.NODE).forEach(k=>{st.S.tr[k]=3});const th=tv.tree(sk.GRAPHS.u);ck('upgrades-web-renders',th.includes('<svg')&&['Bulwark','Vampirism','Evasion','Rampage','Appraiser'].every(w=>th.includes(w)));
  reset();NEW.forEach(k=>{st.S.tr[k]=3});ck('every-node-has-a-value-label',NEW.every(k=>gear.treeVal(k).length>0),NEW.filter(k=>!gear.treeVal(k)).join(','));
  // 2 plain stats
  reset();const b0=stats.stats();st.S.tr.vamp=5;st.S.tr.evasion=7;st.S.tr.deadlyAim=4;const b1=stats.stats();
@@ -98,6 +98,17 @@ try{
  ck('mastery-recovery-heals-more-per-kill',heal(10)>heal(0),heal(10).toFixed(1)+' vs '+heal(0).toFixed(1));
  const bossHit=(lvl)=>avgHit(mk({bossSlayer:5,mSlayer:lvl},r=>{r.boss=true}));
  const bs0=bossHit(0),bs10=bossHit(10);ck('mastery-slaying-boosts-boss-damage',bs10/bs0>1.45&&bs10/bs0<1.8,'x'+(bs10/bs0).toFixed(2)+' (expect 1.63)');
+ // 11 nodes stay hidden until their prerequisites are met, and connectors are straight
+ st.S.tr={};const fresh=tv.tree(sk.GRAPHS.u);
+ ck('new-player-sees-the-starting-nodes',['Might','Vigor','Haste','Greed'].every(w=>fresh.includes(w)));
+ ck('locked-nodes-are-hidden',['Bulwark','Vampirism','Second','Executioner','Rampage','Gem hunter','Appraiser','Grit'].every(w=>!fresh.includes(w)),['Bulwark','Grit','Rampage','Appraiser'].filter(w=>fresh.includes(w)).join(','));
+ st.S.tr={vigor:2};const v2=tv.tree(sk.GRAPHS.u);ck('node-appears-when-its-prerequisite-is-met',v2.includes('Grit')&&v2.includes('Recovery')&&!v2.includes('Bulwark'));
+ st.S.tr={vigor:2,grit:3};const v3=tv.tree(sk.GRAPHS.u);ck('next-node-appears-after-buying',v3.includes('Bulwark')&&!v3.includes('Evasion'));
+ const lines=[...v3.matchAll(/<polyline points="([^"]+)"/g)].map(m=>m[1].trim().split(' ').map(p=>p.split(',').map(Number)));
+ const straight=lines.every(pts=>pts.every((p,i)=>i===0||p[0]===pts[i-1][0]||p[1]===pts[i-1][1]));
+ ck('connectors-are-straight-horizontal-or-vertical-only',lines.length>3&&straight&&!/<line /.test(v3),lines.length+' lines');
+ st.S.tr={};const pet0=tv.tree(sk.GRAPHS.p);ck('pet-skills-hidden-until-the-den-is-bought',!pet0.includes('Sticky')&&!pet0.includes('Pickpocket')&&pet0.includes('Pet den'));
+ st.S.tr={den:1};const pet1=tv.tree(sk.GRAPHS.p);ck('pet-skills-appear-with-the-den',pet1.includes('Sticky')&&pet1.includes('Pickpocket'));
  // 9 a complete run with everything maxed still works
  reset();NEW.forEach(k=>{st.S.tr[k]=sk.NODE[k].m});bt.startRun();r=st.run;let err='';try{for(let i=0;i<1500&&!r.over;i++)bt.tick(.1)}catch(e){err=e.message}
  ck('run-with-everything-maxed',err==='',err);
