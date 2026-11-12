@@ -1,6 +1,7 @@
 // Account tab: email/password sign-in, verification, cloud-save status and conflict resolution.
 import { $ } from './state.js';
 import { claimGifts } from './gifts.js';
+import { usernameBlock } from './username.js';
 import { cloudState, cloudErr, setCloudError, setCloudMessage, syncManual, signUp, signIn, resetPassword, resendVerification, recheckVerified, signOutCloud, resolveConflict } from './cloud.js';
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -33,6 +34,7 @@ export function accountTab() {
   } else {
     h += '<div class="it"><div><b>' + esc(u.email) + '</b><small>' + (u.verified ? 'Email verified' : 'Email not verified yet') + '</small></div>'
       + '<button class="s alt" data-c="signout"' + off + '>Sign out</button></div>';
+    if (u.verified) h += usernameBlock(off);
     if (!u.verified) {
       h += '<div class="mute" style="margin:8px 0">Open the link we emailed you, then come back and press the button. Cloud saving starts once your email is verified.</div>'
         + '<div class="row"><button data-c="recheck"' + off + '>I verified my email</button><button class="s alt" data-c="resend"' + off + '>Resend email</button></div>';

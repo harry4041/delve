@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>running</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+</head><body><div id="app">
+<header><h1>Delve</h1><div id="top"></div></header>
+<section id="battle" hidden>
+ <div class="cv"><canvas id="c" width="192" height="108"></canvas><div id="fxl"></div>
+  <div id="over" hidden><div class="px" style="font-size:12px">Defeated</div><div id="ovt"></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button data-a="delveAgain" style="background:#d94a4a;color:#fff;border-color:#fff">⚔ Delve Again</button><button data-a="camp">Go to camp</button></div></div></div>
+ <div class="bar"><i id="hpb"></i><span id="hpt"></span></div>
+ <div class="bar m" id="mpw"><i id="mpb"></i><span id="mpt"></span></div>
+ <div class="bar e"><i id="ehb"></i><span id="ent"></span></div>
+ <div class="row sp" style="margin:6px 0"><div class="row" id="spells"></div><div class="row"><button class="s alt" data-a="spd" id="spdb"></button><button class="s alt" data-a="end">End run</button></div></div>
+ <div class="mute">Last drop</div><div id="last"></div><div class="mute" style="margin-top:6px">Loot this run</div><div id="feed"></div>
+</section>
+<section id="camp" hidden>
+ <div class="row sp"><div class="tabs"><button data-a="tab" data-v="g" id="tg">Gear</button><button data-a="tab" data-v="u" id="tu">Upgrades</button><button data-a="tab" data-v="v" id="tv">Vault</button><button data-a="tab" data-v="m" id="tm">Magic</button><button data-a="tab" data-v="p" id="tp">Pets</button><button data-a="tab" data-v="r" id="tr2">Auras</button><button data-a="tab" data-v="i" id="ti">Idle</button><button data-a="tab" data-v="a" id="ta">Ascend</button><button data-a="tab" data-v="l" id="tl">Scores</button><button data-a="tab" data-v="x" id="tx">Account</button></div></div>
+ <div style="margin:8px 0"><button data-a="delve" style="width:100%;font-size:22px;padding:10px;background:var(--btn);border-width:4px;box-shadow:5px 5px 0 var(--ink)">⚔ DELVE</button></div>
+ <div id="sdw" class="row" style="margin:6px 0"></div><div id="cbody"></div><div style="margin:16px 0"><button class="s alt" data-a="reset">Reset save</button></div>
+</section>
+</div>
+<script type="module">
+const out=[],ck=(n,c,x)=>out.push(n+':'+(c?'ok':'FAIL'+(x!==undefined?'('+x+')':'')));
+window.onerror=(m,u,l)=>out.push('ERR '+m+' @'+String(u).split('/').pop()+':'+l);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+try{
+ localStorage.removeItem('hd-cloud'); // a flag left by an earlier run would make the app start the REAL Firebase SDK, whose 'no user' callback races with the fake sign-in
+ await import('/src/main.js');
+ const st=await import('/src/state.js'),cloud=await import('/src/cloud.js'),un=await import('/src/username.js'),lb=await import('/src/leaderboard.js'),cp=await import('/src/camp.js'),T=cloud._test;
+ const KEY='hollow-delve-2',S=()=>st.S,q=s=>document.querySelector(s),body=()=>q('#cbody').innerHTML;
+ // in-memory Firestore with transactions that apply their writes at the end
+ const docs=new Map();
+ const F={doc:(db,c,id)=>({path:c+'/'+id,c,id}),serverTimestamp:()=>({ts:1}),collection:(db,c)=>({coll:c}),orderBy:()=>({}),limit:()=>({}),where:()=>({}),query:(c)=>c,
+  async getDoc(ref){const d=docs.get(ref.path);return{exists:()=>!!d,data:()=>d}},
+  async getDocs(){return{docs:[]}},
+  async setDoc(ref,data){docs.set(ref.path,data)},async deleteDoc(ref){docs.delete(ref.path)},
+  async runTransaction(db,fn){const w=[],tx={async get(ref){const d=docs.get(ref.path);return{exists:()=>!!d,data:()=>d}},set(ref,data){w.push(['set',ref.path,data])},delete(ref){w.push(['del',ref.path])}};await fn(tx);for(const x of w){if(x[0]==='set')docs.set(x[1],{...x[2]});else docs.delete(x[1])}}};
+ T.inject({A:{},F,auth:{},db:{}});
+ const user=v=>({uid:'u1',email:'a@b.c',emailVerified:v});
+ const settle=async()=>{for(let i=0;i<120;i++){await sleep(25);const c=cloud.cloudState();if(c.user&&c.user.verified&&!c.busy&&c.syncAt>0){await sleep(40);return}}};
+ const reset=()=>{localStorage.removeItem(KEY);localStorage.removeItem('hd-lb-pub');lb.resetPublishState();st.load();T.reset();docs.clear();lb.clearCache()};
+ const fails=async(p)=>{try{await p;return null}catch(e){return e.code||e.message}};
+ let heard=0;window.addEventListener('hd-lb',()=>heard++);
+ // 1 validation
+ ck('valid-usernames',['Harry','a_b-c.d','Delver_42','xyz','x'.repeat(18)].every(n=>un.validUsername(n).ok));
+ ck('invalid-usernames',['ab','x'.repeat(19),'has space',"o'brien",'<b>x</b>','a@b','','  ','ünïcode','sl/ash','dot..'.repeat(5)].every(n=>!un.validUsername(n).ok));
+ ck('trims-whitespace',un.validUsername('  Harry  ').name==='Harry');
+ ck('rude-and-reserved-names-rejected',['sh1t','FuckYou','Hitler99','admin','Admin','SUPPORT','Delve'].every(n=>!un.validUsername(n).ok));
+ ck('innocent-substrings-are-fine',['Grape','Dickens','Peacock'].every(n=>un.validUsername(n).ok));
+ // 2 who may claim
+ reset();ck('signed-out-cannot-claim',(await fails(un.claimUsername('Harry')))==='username-unverified'&&docs.size===0);
+ reset();await T.onUser(user(false));ck('unverified-cannot-claim',(await fails(un.claimUsername('Harry')))==='username-unverified'&&![...docs.keys()].some(k=>k.startsWith('usernames/')));
+ // 3 claiming
+ reset();await T.onUser(user(true));await settle();heard=0;
+ const got=await un.claimUsername('Harry');
+ ck('claim-returns-the-name-and-saves-it',got==='Harry'&&S().username==='Harry');
+ ck('name-doc-id-is-the-lowercase-name',docs.has('usernames/harry')&&docs.get('usernames/harry').uid==='u1'&&docs.get('usernames/harry').name==='Harry');
+ ck('users-doc-written',docs.get('users/u1')&&docs.get('users/u1').name==='Harry'&&docs.get('users/u1').lower==='harry'&&docs.get('users/u1').v===1);
+ ck('docs-have-exactly-the-fields-the-rules-allow',Object.keys(docs.get('usernames/harry')).sort().join()==='name,t,uid'&&Object.keys(docs.get('users/u1')).sort().join()==='lower,name,t,v');
+ ck('no-email-is-stored-with-the-name',!JSON.stringify([...docs.entries()].filter(([k])=>/^(users|usernames)\//.test(k))).includes('a@b.c'));
+ ck('claim-tells-the-leaderboard-tab-to-redraw',heard>0);
+ // 4 uniqueness
+ docs.set('usernames/bob',{uid:'other',name:'Bob',t:1});
+ const before=JSON.stringify([...docs.entries()]),sBefore=S().username;
+ ck('taken-name-is-refused',(await fails(un.claimUsername('Bob')))==='username-taken');
+ ck('taken-is-case-insensitive',(await fails(un.claimUsername('BOB')))==='username-taken'&&(await fails(un.claimUsername('bOb')))==='username-taken');
+ ck('a-refused-claim-writes-nothing-and-keeps-the-old-name',JSON.stringify([...docs.entries()])===before&&S().username===sBefore);
+ // 5 own name: recase and rename
+ await un.claimUsername('harry');
+ ck('changing-the-case-of-your-own-name-is-allowed',docs.get('usernames/harry').name==='harry'&&S().username==='harry'&&[...docs.keys()].filter(k=>k.startsWith('usernames/')).length===2);
+ await un.claimUsername('Henry');
+ ck('renaming-claims-the-new-name',docs.get('usernames/henry').uid==='u1'&&docs.get('users/u1').name==='Henry'&&S().username==='Henry');
+ ck('renaming-releases-the-old-name',!docs.has('usernames/harry'));
+ ck('other-peoples-names-are-untouched',docs.get('usernames/bob').uid==='other');
+ // 6 invalid claims write nothing
+ const snap=JSON.stringify([...docs.entries()]);
+ ck('invalid-claims-are-refused-with-a-reason',(await fails(un.claimUsername('a')))==='username-invalid'&&(await fails(un.claimUsername('Brave Delver')))==='username-invalid'&&JSON.stringify([...docs.entries()])===snap);
+ ck('messages-are-human',un.usernameMessage({code:'username-taken'}).includes('taken')&&un.usernameMessage({code:'username-invalid',why:'Use 3-18'}).includes('Use 3-18')&&un.usernameMessage({code:'permission-denied'}).includes('once a minute'));
+ // 7 the server is the source of truth
+ reset();docs.set('users/u1',{v:1,name:'Server_Name',lower:'server_name',t:1});await T.onUser(user(true));await settle();
+ ck('sign-in-loads-the-username-from-the-server',S().username==='Server_Name');
+ S().username='Leftover';docs.delete('users/u1');await un.loadUsername();
+ ck('no-server-record-clears-a-leftover-local-name',S().username==='');
+ docs.set('users/u1',{v:1,name:'<b>evil</b>',lower:'x',t:1});await un.loadUsername();ck('a-malformed-server-name-is-ignored',S().username==='');
+ // 8 the save
+ localStorage.setItem(KEY,JSON.stringify({...st.def(),username:'ok_name'}));st.load();ck('valid-username-survives-load',S().username==='ok_name');
+ for(const bad of ['<script>','ab',42,null,{a:1},'x'.repeat(40),'sp ace']){localStorage.setItem(KEY,JSON.stringify({...st.def(),username:bad}));st.load();if(S().username!==''){ck('bad-saved-username-is-dropped',false,JSON.stringify(bad));break}}
+ ck('bad-saved-usernames-are-dropped',S().username===''); localStorage.setItem(KEY,JSON.stringify({...st.def(),username:undefined}));st.load();ck('old-save-without-username-gets-an-empty-one',S().username==='');
+ ck('new-game-has-an-empty-username',st.def().username==='');
+ // 9 the Account tab
+ reset();await T.onUser(user(false));st.setTab('x');cp.camp();ck('unverified-account-tab-has-no-username-form',!q('#un-form'));
+ reset();await T.onUser(user(true));await settle();st.setTab('x');cp.camp();
+ ck('verified-account-tab-offers-a-username-form',!!q('#un-form')&&!!q('#un-name')&&body().includes('Choose a public username')&&q('#un-form button').textContent==='Save');
+ q('#un-name').value='Brave_Delver';q('#un-form').dispatchEvent(new Event('submit',{cancelable:true,bubbles:true}));await sleep(250);
+ ck('submitting-the-form-claims-the-name',S().username==='Brave_Delver'&&docs.has('usernames/brave_delver'));
+ st.setTab('x');cp.camp();ck('tab-now-shows-the-name-and-a-change-button',body().includes('Brave_Delver')&&q('#un-form button').textContent==='Change');
+ docs.set('usernames/taken_one',{uid:'other',name:'Taken_One',t:1});q('#un-name').value='Taken_One';q('#un-form').dispatchEvent(new Event('submit',{cancelable:true,bubbles:true}));await sleep(250);
+ st.setTab('x');cp.camp();ck('a-taken-name-shows-an-error-and-keeps-the-old-one',body().includes('taken')&&S().username==='Brave_Delver');
+ q('#un-name').value='no good!';q('#un-form').dispatchEvent(new Event('submit',{cancelable:true,bubbles:true}));await sleep(200);
+ st.setTab('x');cp.camp();ck('an-invalid-name-shows-the-rule',body().includes('3-18')&&S().username==='Brave_Delver');
+ // 10 the leaderboard follows the username
+ reset();await T.onUser(user(true));await settle();await un.claimUsername('Harry');S().lbName='Harry';S().bestOverall=12;S().best=12;
+ ck('join-publishes-the-username',(await lb.publish(true))==='published'&&docs.get('lb/u1').name==='Harry');
+ await un.claimUsername('Henry');await sleep(250);
+ ck('renaming-while-on-the-boards-renames-the-entry',S().lbName==='Henry'&&docs.get('lb/u1').name==='Henry'&&docs.get('lb/u1').stage===12,JSON.stringify(docs.get('lb/u1')));
+ S().username='';S().lbName='Henry';lb.resetPublishState();ck('no-username-means-no-publish',(await lb.publish(true))==='skipped');
+ const nm=lb.snapshot().name;S().username='Zed';ck('snapshot-uses-the-username-as-the-name',lb.snapshot().name==='Zed'&&nm==='Henry');
+}catch(e){out.push('EXC '+e.message+' | '+(e.stack||'').split(String.fromCharCode(10))[1])}
+document.title=out.join(' ');
+</script></body></html>

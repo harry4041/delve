@@ -7,6 +7,11 @@ import { RTREE, STB, reqStage, ascFee } from './ascension.js';
 
 // ---------------------------------------------------------------- changelog (add new entries at the TOP; `id` must be unique)
 export const CHANGELOG = [
+  { id: '2026-11-12g', date: '2026-11-12', title: 'Usernames and a tidier tab bar', items: [
+    'Choose a unique username on the Account tab (once your email is verified). It is the name shown on the leaderboards, and it lets support find your account.',
+    'Joining the leaderboards is now one tap: you join under your username.',
+    'The tab bar is shorter: Gear, Upgrades, Magic, Pets and Ascend stay in view, and everything else (Vault, Look, Auras, Idle, Leaderboards, Wiki, Updates, Account) is under More.',
+  ] },
   { id: '2026-11-12f', date: '2026-11-12', title: 'Leaderboard fix after Reset save', items: [
     'Joining the leaderboards after a Reset save no longer fails: your old entry stays at its best-ever scores until your new game overtakes them.',
     'When the leaderboard refuses an update, the message now says why (verify your email, wait 5 minutes, or the score limits).',
@@ -207,7 +212,7 @@ function online() {
   return h('Accounts and cloud saves')
     + p('Open the Account tab to sign in with your email. Verify your email to turn on cloud saves, then your progress follows you between devices. Your game always saves on the device first; the cloud copy is updated every few minutes and when you leave the page. If two devices disagree you are asked which one to keep.')
     + h('Leaderboards')
-    + p('The Leaderboards tab lists the top players for deepest stage, power level, ascensions and pet stars. To appear on it you must be signed in with a verified email and pick a public name (3 to 18 letters, numbers, spaces and . _ \' -). Only your name and four scores are shown, never your email. Scores come from each player\'s own game, so impossible entries may be removed. You can leave the boards at any time.')
+    + p('The Leaderboards tab lists the top players for deepest stage, power level, ascensions and pet stars. To appear on it you must be signed in with a verified email and have chosen a <b>username</b> on the Account tab (3 to 18 letters, numbers, dots, dashes or underscores; every username is unique). Joining is then one tap. Only your username and four scores are shown, never your email. Scores come from each player\'s own game, so impossible entries may be removed. You can leave the boards at any time.')
     + h('Gifts')
     + p('Sometimes we send gifts (gold, gems or items) to everyone or to one player. They are collected automatically after signing in, or with the button on the Account tab, and each can only be claimed once.');
 }

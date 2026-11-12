@@ -9,6 +9,7 @@ import { powerLevel, petStars, fmtN } from './stats.js';
 import { cloudState, withFirebase, setAfterSync, setAfterPush, cloudErr } from './cloud.js';
 import { lbTab as runsTab } from './vault-leaderboard.js';
 import { toast } from './toast.js';
+import { validUsername, onUsernameChange } from './username.js';
 
 export const BOARDS = [
   { k: 'stage', n: 'Deepest stage', f: 'stage', unit: 'stage' },
@@ -17,23 +18,13 @@ export const BOARDS = [
   { k: 'stars', n: 'Pet stars', f: 'stars', unit: 'stars' },
 ];
 const TTL = 10 * 60e3, PUBLISH_EVERY = 10 * 60e3, REFRESH_MIN = 60e3, LIMIT = 25, AT = 'hd-lb-pub';
-const NAME_RE = /^[A-Za-z0-9 _.'-]{3,18}$/;
-const BAD = ['fuck', 'shit', 'cunt', 'nigg', 'nazi', 'hitler', 'whore', 'slut', 'bitch']; // unambiguous words only; the real tools are `banned/<uid>` and deleting entries
-// Known tradeoff: substring matching also blocks names that merely contain a listed word (e.g. "Scunthorpe"); the player can pick another name.
-const LEET = { 0: 'o', 1: 'i', 3: 'e', 4: 'a', 5: 's', 7: 't', 8: 'b', '@': 'a', $: 's' };
 const ui = { sub: 'stage', loading: false, err: '', msg: '' };
 const cache = {}; // board key -> { t, rows }
 const emit = () => window.dispatchEvent(new CustomEvent('hd-lb'));
 
-export function validName(raw) {
-  const n = String(raw || '').trim().replace(/\s+/g, ' ');
-  if (!NAME_RE.test(n)) return { ok: false, why: 'Use 3-18 letters, numbers, spaces or . _ \' -' };
-  const flat = n.toLowerCase().replace(/[013457 8@$]/g, (c) => LEET[c] || '').replace(/[^a-z]/g, '');
-  if (BAD.some((w) => flat.includes(w))) return { ok: false, why: 'Please pick a different name.' };
-  return { ok: true, name: n };
-}
+export const validName = validUsername; // leaderboard names ARE usernames now (see username.js)
 export function snapshot() {
-  return { v: 1, name: S.lbName, stage: Math.max(0, Math.floor(S.bestOverall || S.best || 0)), power: Math.max(0, Math.floor(powerLevel())), asc: Math.max(0, Math.floor(S.asc || 0)), stars: Math.max(0, Math.floor(petStars())) };
+  return { v: 1, name: S.username || S.lbName, stage: Math.max(0, Math.floor(S.bestOverall || S.best || 0)), power: Math.max(0, Math.floor(powerLevel())), asc: Math.max(0, Math.floor(S.asc || 0)), stars: Math.max(0, Math.floor(petStars())) };
 }
 
 let lastSig = '', lastAt = 0, known = null; // known: this account's entry as last read or written; stage/asc/stars in it can never fall (firestore.rules)
@@ -41,7 +32,7 @@ try { lastAt = +localStorage.getItem(AT) || 0; } catch (e) { /* ignore */ }
 export function resetPublishState() { lastSig = ''; lastAt = 0; known = null; } // for tests and for switching accounts
 export async function publish(force) {
   const c = cloudState();
-  if (!c.user || !c.user.verified || !S.lbName) return 'skipped';
+  if (!c.user || !c.user.verified || !S.lbName || !S.username) return 'skipped'; // the entry's name must be the player's username (firestore.rules)
   const e = snapshot(), sig = JSON.stringify(e);
   if (!force && (Date.now() - lastAt < PUBLISH_EVERY || sig === lastSig)) return 'skipped';
   const { F, db } = await withFirebase(), ref = F.doc(db, 'lb', c.user.uid);
@@ -89,10 +80,13 @@ function joinBlock() {
   const c = cloudState();
   if (!c.user) return '<div class="mute">Sign in on the Account tab and verify your email to put yourself on the boards. You can always view them.</div>';
   if (!c.user.verified) return '<div class="mute">Verify your email (Account tab) to join the boards.</div>';
+  if (!S.username) {
+    return '<div class="mute" style="margin-bottom:4px">' + (S.lbName ? 'Your entry stays on the boards, but to update it you now need a username. ' : '')
+      + 'Choose a username on the Account tab. It is the name shown here, and it is all that is shown besides your four scores.</div><button class="s" data-a="tab" data-v="x">Choose a username</button>';
+  }
   if (!S.lbName) {
-    return '<div class="mute" style="margin-bottom:4px">Join with a public name. Only the name and your four scores are shown, never your email.</div>'
-      + '<form id="lb-form" class="row"><input id="lb-name" maxlength="18" placeholder="Your name" autocomplete="off" style="font:inherit;padding:6px;border:3px solid var(--ink);background:var(--bg);color:var(--ink);min-width:0;flex:1">'
-      + '<button type="submit" class="s">Join</button></form>';
+    return '<div class="row sp"><span>Join as <b>' + esc(S.username) + '</b></span><button class="s" data-lbl="join">Join</button></div>'
+      + '<div class="mute" style="margin-top:4px">Only your username and four scores are shown, never your email.</div>';
   }
   return '<div class="row sp"><span>On the boards as <b>' + esc(S.lbName) + '</b></span><span class="row"><button class="s alt" data-lbr="refresh">Refresh</button><button class="s alt" data-lbl="leave">Leave</button></span></div>';
 }
@@ -133,6 +127,13 @@ document.addEventListener('click', async (e) => {
   const rf = e.target.closest('[data-lbr]');
   if (rf) { ui.loading = true; emit(); try { await publish(true).catch(() => {}); clearCache(); await loadBoard(ui.sub, true); } catch (err) { ui.err = cloudErr(err); } ui.loading = false; emit(); return; }
   const lv = e.target.closest('[data-lbl]');
+  if (lv && lv.dataset.lbl === 'join') {
+    if (!S.username) { ui.err = 'Choose a username on the Account tab first.'; emit(); return; }
+    S.lbName = S.username; ui.err = ''; ui.msg = '';
+    try { await publish(true); clearCache(); ui.msg = 'You are on the boards!'; toast('Joined the leaderboards as ' + S.username); }
+    catch (err) { S.lbName = null; ui.err = pubErr(err); }
+    emit(); return;
+  }
   if (lv) {
     try {
       const c = cloudState(), { F, db } = await withFirebase();
@@ -142,16 +143,8 @@ document.addEventListener('click', async (e) => {
     emit();
   }
 });
-document.addEventListener('submit', async (e) => {
-  if (!e.target || e.target.id !== 'lb-form') return;
-  e.preventDefault();
-  const v = validName(document.getElementById('lb-name').value);
-  if (!v.ok) { ui.err = v.why; emit(); return; }
-  S.lbName = v.name; ui.err = ''; ui.msg = '';
-  try { await publish(true); clearCache(); ui.msg = 'You are on the boards!'; toast('Joined the leaderboards as ' + v.name); }
-  catch (err) { S.lbName = null; ui.err = pubErr(err); }
-  emit();
-});
+// A username change renames the player's entry (when on the boards); if the server refuses it right now the next background publish retries.
+onUsernameChange(() => { if (S.lbName) { S.lbName = S.username; publish(true).catch(() => {}); } });
 
 setAfterSync(() => publish(false));
 setAfterPush(() => publish(false));

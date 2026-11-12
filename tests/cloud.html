@@ -26,6 +26,7 @@ window.onerror=(m,u,l)=>out.push('ERR '+m+' @'+String(u).split('/').pop()+':'+l)
 window.addEventListener('unhandledrejection',e=>out.push('REJ '+(e.reason&&e.reason.message||e.reason)));
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 try{
+ localStorage.removeItem('hd-cloud'); // a flag left by an earlier run would make the app start the REAL Firebase SDK, whose 'no user' callback races with the fake sign-in
  await import('/src/main.js');
  const st=await import('/src/state.js'),cloud=await import('/src/cloud.js'),gifts=await import('/src/gifts.js'),itemsMod=await import('/src/items.js'),T=cloud._test;
  const KEY='hollow-delve-2',cs=cloud.cloudState,dec=cloud.decodeSave;

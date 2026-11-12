@@ -39,7 +39,7 @@ export function nextUid(){return (uid++)}
 export function setForgeMode(v){return (forgeMode=v)}
 export function setForgeSelected(v){return (forgeSelected=v)}
 
-export function def(){return{gold:0,gems:0,best:0,bestOverall:0,tr:{},eq:{rhand:{id:0,ty:'weapon',ri:0,il:1,nm:'Rusty Sword',st:{atk:2}}},bag:[],magic:false,petsOn:false,pets:PET.map(()=>({own:0,lvl:0})),giftsClaimed:[],autoDelve:false,seenUp:'',look:{},farm:{t:Date.now(),gold:0,gems:0},ap:-1,speed:1,uid:1,rl:{},relics:0,asc:0,life:0,sd:0,vault:[],vaultLvl:0,vaultUnlocked:false,ascBuff:null,ascDebuff:null,bagLvl:0,auras:{}}}
+export function def(){return{gold:0,gems:0,best:0,bestOverall:0,tr:{},eq:{rhand:{id:0,ty:'weapon',ri:0,il:1,nm:'Rusty Sword',st:{atk:2}}},bag:[],magic:false,petsOn:false,pets:PET.map(()=>({own:0,lvl:0})),giftsClaimed:[],autoDelve:false,seenUp:'',look:{},username:'',farm:{t:Date.now(),gold:0,gems:0},ap:-1,speed:1,uid:1,rl:{},relics:0,asc:0,life:0,sd:0,vault:[],vaultLvl:0,vaultUnlocked:false,ascBuff:null,ascDebuff:null,bagLvl:0,auras:{}}}
 // Repairs a save whose fields have the wrong type (hand-edited, damaged or from a bad cloud doc) so the game never crashes on load.
 // Healthy saves pass through untouched. Items must have a known type and a stats object.
 function sanitize(){
@@ -56,6 +56,7 @@ function sanitize(){
   for(const k of Object.keys(S.eq))if(!okItem(S.eq[k]))delete S.eq[k];
   S.pets=S.pets.map((p)=>(p&&typeof p==='object'?p:{own:0,lvl:0}));
   S.pets.forEach((p)=>{num(p,'own');num(p,'lvl');if(p.star!==undefined)num(p,'star')});
+  if(typeof S.username!=='string'||!/^[A-Za-z0-9_.-]{3,18}$/.test(S.username))S.username=''; // the server copy (users/<uid>) is the source of truth after sign-in
   if(!S.farm||typeof S.farm!=='object'||Array.isArray(S.farm))S.farm={t:Date.now(),gold:0,gems:0};
   num(S.farm,'t');num(S.farm,'gold');num(S.farm,'gems');
 }
