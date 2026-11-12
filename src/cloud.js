@@ -22,8 +22,10 @@ const emit = (t) => window.dispatchEvent(new CustomEvent('hd-cloud', { detail: t
 export function setCloudError(msg) { st.err = msg; st.msg = ''; emit('state'); }
 export function setCloudMessage(msg) { st.msg = msg; st.err = ''; emit('state'); }
 
-let fb = null, timer = 0, lastPushAt = 0, lastSig = '', afterSync = null;
-export function setAfterSync(f) { afterSync = f; }
+let fb = null, timer = 0, lastPushAt = 0, lastSig = '';
+const afterSyncFns = [], afterPushFns = []; // features (gifts, leaderboard) that run after a sync / a successful push
+export function setAfterSync(f) { afterSyncFns.push(f); }
+export function setAfterPush(f) { afterPushFns.push(f); }
 export const withFirebase = () => init();
 
 function init() {
@@ -129,7 +131,7 @@ async function syncNow() {
     st.conflict = { cloud: c.summary || {}, local: summ(S), doc: c, version: c.clientT }; // both changed: ask the player
   } catch (e) { st.err = cloudErr(e); } finally {
     st.busy = false; emit('state');
-    if (!st.err && !st.conflict && afterSync) afterSync().catch(() => { /* gifts are best-effort */ });
+    if (!st.err && !st.conflict) for (const f of afterSyncFns) Promise.resolve().then(f).catch(() => { /* best-effort extras */ });
   }
 }
 
@@ -145,6 +147,7 @@ async function push(force) {
   });
   writeBase({ uid: st.user.uid, version: clientT, localT: S.lastT || 0 });
   st.syncAt = lastPushAt = Date.now(); st.dirty = false; st.trimmed = trimmed; lastSig = sig;
+  for (const f of afterPushFns) Promise.resolve().then(f).catch(() => { /* best-effort extras */ });
   return 'pushed';
 }
 

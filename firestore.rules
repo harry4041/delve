@@ -3,8 +3,32 @@ rules_version = '2';
 // saves/<uid>: one save per player. Only the owner, only with a verified email, only the expected fields, a size cap,
 // a server-stamped time, and at most one write per 60 s (cost/abuse control, enforced server-side).
 // gifts/global and gifts/<uid>: read-only for players; you create them in the Firebase console.
+// lb/<uid>: the public leaderboard entry of a player who opted in (see leaderboard.js). Anyone may read (max 50 rows per
+// query); only the verified owner may write, with sane values that never go down and cannot rise unrealistically fast.
+// banned/<uid>: create a document here in the console to stop an account publishing (delete lb/<uid> to remove its entry).
+// These rules cannot prove a score is real: the game runs in the player's browser.
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    function lbShape(d) {
+      return d.keys().hasOnly(['v', 'name', 'stage', 'power', 'asc', 'stars', 't'])
+        && d.keys().hasAll(['v', 'name', 'stage', 'power', 'asc', 'stars', 't'])
+        && d.v == 1
+        && d.name is string && d.name.matches("^[A-Za-z0-9 _.'-]{3,18}$")
+        && d.stage is int && d.stage >= 0 && d.stage <= 5000
+        && d.power is int && d.power >= 0 && d.power <= 100000000
+        && d.asc is int && d.asc >= 0 && d.asc <= 500
+        && d.stars is int && d.stars >= 0 && d.stars <= 500
+        && d.t == request.time;
+    }
+
+    function lbGrowth(old, d) {
+      return request.time > old.t + duration.value(5, 'm')
+        && d.stage >= old.stage && d.asc >= old.asc && d.stars >= old.stars
+        && d.stage <= old.stage + 100 + (request.time.toMillis() - old.t.toMillis()) / 6000
+        && d.asc <= old.asc + 5;
+    }
+
     match /saves/{uid} {
       allow read: if request.auth != null && request.auth.uid == uid;
 
@@ -30,6 +54,22 @@ service cloud.firestore {
         && request.auth.token.email_verified == true
         && (giftDoc == 'global' || giftDoc == request.auth.uid);
       allow write: if false;
+    }
+
+    match /lb/{uid} {
+      allow get: if true;
+      allow list: if request.query.limit <= 50;
+      allow create, update: if request.auth != null
+        && request.auth.uid == uid
+        && request.auth.token.email_verified == true
+        && !exists(/databases/$(database)/documents/banned/$(uid))
+        && lbShape(request.resource.data)
+        && (resource == null || lbGrowth(resource.data, request.resource.data));
+      allow delete: if request.auth != null && request.auth.uid == uid;
+    }
+
+    match /banned/{uid} {
+      allow read, write: if false;
     }
 
     match /{document=**} {

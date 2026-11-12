@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>running</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+</head><body><div id="app">
+<header><h1>Delve</h1><div id="top"></div></header>
+<section id="battle" hidden>
+ <div class="cv"><canvas id="c" width="192" height="108"></canvas><div id="fxl"></div>
+  <div id="over" hidden><div class="px" style="font-size:12px">Defeated</div><div id="ovt"></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button data-a="delveAgain" style="background:#d94a4a;color:#fff;border-color:#fff">⚔ Delve Again</button><button data-a="camp">Go to camp</button></div></div></div>
+ <div class="bar"><i id="hpb"></i><span id="hpt"></span></div>
+ <div class="bar m" id="mpw"><i id="mpb"></i><span id="mpt"></span></div>
+ <div class="bar e"><i id="ehb"></i><span id="ent"></span></div>
+ <div class="row sp" style="margin:6px 0"><div class="row" id="spells"></div><div class="row"><button class="s alt" data-a="spd" id="spdb"></button><button class="s alt" data-a="end">End run</button></div></div>
+ <div class="mute">Last drop</div><div id="last"></div><div class="mute" style="margin-top:6px">Loot this run</div><div id="feed"></div>
+</section>
+<section id="camp" hidden>
+ <div class="row sp"><div class="tabs"><button data-a="tab" data-v="g" id="tg">Gear</button><button data-a="tab" data-v="u" id="tu">Upgrades</button><button data-a="tab" data-v="v" id="tv">Vault</button><button data-a="tab" data-v="m" id="tm">Magic</button><button data-a="tab" data-v="p" id="tp">Pets</button><button data-a="tab" data-v="r" id="tr2">Auras</button><button data-a="tab" data-v="i" id="ti">Idle</button><button data-a="tab" data-v="a" id="ta">Ascend</button><button data-a="tab" data-v="l" id="tl">Leaderboards</button><button data-a="tab" data-v="x" id="tx">Account</button></div></div>
+ <div style="margin:8px 0"><button data-a="delve" style="width:100%;font-size:22px;padding:10px;background:var(--btn);border-width:4px;box-shadow:5px 5px 0 var(--ink)">⚔ DELVE</button></div>
+ <div id="sdw" class="row" style="margin:6px 0"></div><div id="cbody"></div><div style="margin:16px 0"><button class="s alt" data-a="reset">Reset save</button></div>
+</section>
+</div>
+<script type="module">
+const out=[],ck=(n,c,x)=>out.push(n+':'+(c?'ok':'FAIL'+(x!==undefined?'('+x+')':'')));
+window.onerror=(m,u,l)=>out.push('ERR '+m+' @'+String(u).split('/').pop()+':'+l);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+try{
+ await import('/src/main.js');
+ const st=await import('/src/state.js'),cloud=await import('/src/cloud.js'),lb=await import('/src/leaderboard.js'),cp=await import('/src/camp.js'),T=cloud._test;
+ const KEY='hollow-delve-2',S=()=>st.S;
+ // ---- in-memory Firestore with just what the leaderboard uses
+ const docs=new Map(),calls={getDocs:0,setDoc:0,deleteDoc:0};
+ const F={doc:(db,c,id)=>({path:c+'/'+id,c,id}),serverTimestamp:()=>({ts:1}),collection:(db,c)=>({coll:c}),
+  orderBy:(f,d)=>({o:[f,d]}),limit:n=>({l:n}),where:(f,op,v)=>({w:[f,op,v]}),query:(c,...cs)=>({coll:c.coll,cs}),
+  async getDoc(ref){const d=docs.get(ref.path);return{exists:()=>!!d,data:()=>d}},
+  async getDocs(q){calls.getDocs++;let rows=[...docs.entries()].filter(([p])=>p.startsWith(q.coll+'/')).map(([p,d])=>({id:p.split('/')[1],d}));
+   const o=q.cs.find(c=>c.o),l=q.cs.find(c=>c.l);if(o)rows.sort((a,b)=>(b.d[o.o[0]]-a.d[o.o[0]])*(o.o[1]==='desc'?1:-1));if(l)rows=rows.slice(0,l.l);
+   return{docs:rows.map(r=>({id:r.id,data:()=>r.d}))}},
+  async setDoc(ref,data){calls.setDoc++;docs.set(ref.path,data)},async deleteDoc(ref){calls.deleteDoc++;docs.delete(ref.path)},
+  async runTransaction(){},};
+ T.inject({A:{},F,auth:{},db:{}});
+ const user=v=>({uid:'u1',email:'a@b.c',emailVerified:v});
+ const reset=()=>{localStorage.removeItem(KEY);localStorage.removeItem('hd-lb-pub');lb.resetPublishState();st.load();T.reset();docs.clear();lb.clearCache();S().lbName=null;S().best=40;S().bestOverall=40;S().asc=2;calls.getDocs=calls.setDoc=calls.deleteDoc=0};
+ const q=s=>document.querySelector(s),body=()=>q('#cbody').innerHTML;
+ const render=async()=>{st.setTab('l');cp.camp();await sleep(120);cp.camp()};
+
+ // 1 names
+ ck('good-names-accepted',lb.validName('Delver_42').ok&&lb.validName("O'Brien-Smith").ok&&lb.validName('  Hi  there ').name==='Hi there');
+ ck('honest-names-with-innocent-substrings-are-fine',['Grape','Dickens','Peacock','Class Clown'].every(n=>lb.validName(n).ok));
+ ck('bad-names-rejected',['ab','x'.repeat(19),'<b>hi</b>','a@b.com','','Hit1er?','n4zi guy','sh1t'].every(n=>!lb.validName(n).ok)&&!lb.validName('FuckYou').ok);
+ // 2 what gets published
+ reset();S().lbName='Tester';const s=lb.snapshot();
+ ck('snapshot-has-the-four-scores',s.v===1&&s.name==='Tester'&&s.stage===40&&s.asc===2&&Number.isInteger(s.power)&&Number.isInteger(s.stars)&&Object.keys(s).length===6,JSON.stringify(s));
+ // 3 publishing rules of the road
+ reset();await T.onUser(user(false));S().lbName='Tester';ck('unverified-players-do-not-publish',(await lb.publish(true))==='skipped'&&docs.size===0);
+ reset();await T.onUser(user(true));await sleep(60);S().lbName=null;ck('no-name-no-entry',(await lb.publish(true))==='skipped'&&![...docs.keys()].some(k=>k.startsWith('lb/')));
+ reset();await T.onUser(user(true));await sleep(60);S().lbName='Tester';let r1=await lb.publish(true);
+ ck('verified-player-with-a-name-publishes',r1==='published'&&docs.get('lb/u1').name==='Tester'&&docs.get('lb/u1').stage===40&&docs.get('lb/u1').v===1&&!!docs.get('lb/u1').t);
+ ck('entry-never-contains-the-email',!JSON.stringify(docs.get('lb/u1')).includes('a@b.c'));
+ const before=calls.setDoc;ck('publish-is-throttled',(await lb.publish(false))==='skipped'&&calls.setDoc===before);
+ S().bestOverall=41;ck('force-publishes-anyway',(await lb.publish(true))==='published'&&docs.get('lb/u1').stage===41);
+ // 4 reading boards
+ reset();for(let i=0;i<40;i++)docs.set('lb/p'+i,{v:1,name:'Player'+i,stage:10+i,power:1000-i*10,asc:i%5,stars:i%7,t:1});
+ let c=await lb.loadBoard('stage');ck('board-returns-the-top-25-highest-first',c.rows.length===25&&c.rows[0].stage===49&&c.rows[24].stage===25&&c.rows.every((r,i)=>i===0||r.stage<=c.rows[i-1].stage));
+ const c2=await lb.loadBoard('power');ck('each-board-sorts-by-its-own-score',c2.rows[0].name==='Player0'&&c2.rows[0].power===1000);
+ const gd=calls.getDocs;await lb.loadBoard('stage');ck('boards-are-cached',calls.getDocs===gd);
+ await lb.loadBoard('stage',true);ck('manual-refresh-is-rate-limited',calls.getDocs===gd);
+ // 5 the screen
+ reset();for(let i=0;i<30;i++)docs.set('lb/p'+i,{v:1,name:i===28?'<img src=x onerror=alert(1)>':'Player'+i,stage:10+i,power:500+i,asc:i%4,stars:i%6,t:1});
+ await T.onUser(user(true));await sleep(60);await render();
+ ck('five-sub-tabs',['stage','power','asc','stars','runs'].every(k=>!!q('[data-lbt='+k+']')));
+ ck('rows-are-listed-with-ranks',body().includes('Player29')&&body().includes('<b>1</b>'));
+ ck('player-names-are-escaped',!body().includes('<img src=x')&&body().includes('&lt;img'));
+ ck('join-form-offered-when-verified-without-a-name',!!q('#lb-form'));
+ q('[data-lbt=power]').click();await sleep(150);ck('switching-boards-works',q('[data-lbt=power]').className.indexOf('alt')===-1&&body().includes('Power level'));
+ q('[data-lbt=runs]').click();await sleep(120);ck('my-runs-keeps-the-old-local-scores',body().includes('High Scores')||body().includes('No runs recorded'));
+ q('[data-lbt=stage]').click();await sleep(120);
+ // 6 joining and leaving
+ q('#lb-name').value='<b>x</b>';q('#lb-form').dispatchEvent(new Event('submit',{cancelable:true,bubbles:true}));await sleep(100);
+ ck('invalid-name-is-refused-with-a-reason',!S().lbName&&body().includes('Use 3-18')&&!docs.has('lb/u1'));
+ q('#lb-name').value='Brave Delver';q('#lb-form').dispatchEvent(new Event('submit',{cancelable:true,bubbles:true}));await sleep(200);
+ ck('joining-saves-the-name-and-publishes',S().lbName==='Brave Delver'&&docs.get('lb/u1').name==='Brave Delver');
+ await render();ck('you-are-marked-on-the-board-or-told-your-value',body().includes('(you)')||body().includes('not in the top 25'));
+ ck('leave-and-change-buttons-appear',!!q('[data-lbl=leave]')&&!!q('[data-lbr=refresh]'));
+ q('[data-lbl=leave]').click();await sleep(150);ck('leaving-removes-the-entry-and-the-name',!docs.has('lb/u1')&&!S().lbName);
+ // 7 signed out: viewable, with a nudge to sign in
+ reset();docs.set('lb/p1',{v:1,name:'Solo',stage:9,power:9,asc:0,stars:0,t:1});await render();
+ ck('signed-out-players-can-still-view',body().includes('Solo')&&body().includes('Sign in on the Account tab')&&!q('#lb-form'));
+ // 8 the sync hooks publish for opted-in players without any button press
+ reset();S().lbName='Hooked';await T.onUser(user(true));await sleep(300);
+ ck('publishes-automatically-after-a-cloud-sync',docs.has('lb/u1')&&docs.get('lb/u1').name==='Hooked');
+ // 9 the tab itself
+ ck('scores-tab-is-now-the-leaderboards-tab',document.querySelector('#tl').textContent==='Leaderboards');
+}catch(e){out.push('EXC '+e.message+' | '+(e.stack||'').split(String.fromCharCode(10))[1])}
+document.title=out.join(' ');
+</script>
+
+</body></html>

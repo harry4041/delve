@@ -1,3 +1,4 @@
+import {leaderboardTab} from './leaderboard.js';
 import {farmSettle,farmCollect} from './farm.js';
 import {toast} from './toast.js';
 import {bpView,bpControls} from './backpack.js';
@@ -26,7 +27,7 @@ export function camp(){const st=stats();$('#sdw').innerHTML=(RL('rStart')?'<span
  if(tab=='m'){$('#top').innerHTML=fmtN(S.gold)+' gold'+plHtml+gemHtml+'<br><span class="mute">'+(hasMagic()?'magic unlocked':'magic locked')+'</span>';$('#cbody').innerHTML=magicTab();return}
  if(tab=='i'){$('#top').innerHTML=fmtN(S.gold)+' gold'+plHtml+gemHtml+'<br><span class="mute">'+S.relics+' relics</span>';$('#cbody').innerHTML=idleTab();return}
  if(tab=='p'){$('#top').innerHTML=fmtN(S.gold)+' gold'+plHtml+gemHtml+'<br><span class="mute">'+petStars()+' pet stars</span>';$('#cbody').innerHTML=petTab();return}
- if(tab=='l'){$('#top').innerHTML=fmtN(S.gold)+' gold'+plHtml+gemHtml+'<br><span class="mute">asc '+S.asc+'</span>';$('#cbody').innerHTML=lbTab();return}
+ if(tab=='l'){$('#top').innerHTML=fmtN(S.gold)+' gold'+plHtml+gemHtml+'<br><span class="mute">asc '+S.asc+'</span>';$('#cbody').innerHTML=leaderboardTab();return}
  if(tab=='v'){$('#top').innerHTML=fmtN(S.gold)+' gold'+plHtml+gemHtml+'<br><span class="mute">best '+S.best+'</span>';$('#cbody').innerHTML=vaultTab();return}
  if(tab=='a'){$('#top').innerHTML=fmtN(S.gold)+' gold'+plHtml+gemHtml+'<br><span class="mute">'+S.relics+' relics</span>';$('#cbody').innerHTML=ascTab();return}
  if(tab=='r'){$('#top').innerHTML=fmtN(S.gold)+' gold'+gemHtml+'<br><span class="mute">'+plLbl+' · ⚡'+pl+'</span>';$('#cbody').innerHTML=auraTab();return}
@@ -76,7 +77,7 @@ export function camp(){const st=stats();$('#sdw').innerHTML=(RL('rStart')?'<span
   else h+=PET.map((P,i)=>{const p=S.pets[i],lc=Math.round(80*Math.pow(1.5,p.lvl)*(i+1));return '<div class="it"><div><b style="color:'+P.c+'">'+P.n+'</b>'+(p.own?' lv'+p.lvl:'')+'<small>'+Math.round(P.d*(1+.3*p.lvl)*100)+'% of your attack every '+P.iv+'s</small></div><div class="row">'+(p.own?'<button class="s'+(S.ap==i?'':' alt')+'" data-a="ap" data-v="'+i+'">'+(S.ap==i?'Active':'Send')+'</button><button class="s" data-a="pl" data-v="'+i+'" '+(S.gold<lc?'disabled':'')+'>'+lc+'g</button>':'<button class="s" data-a="bp" data-v="'+i+'" '+(S.gold<P.cost?'disabled':'')+'>'+P.cost+'g</button>')+'</div></div>'}).join('');
   h+='</div>'}
  $('#cbody').innerHTML=h;drawPortrait()}
-function bulkBtns(){let o='',any=false;for(let i=0;i<9+L('bulkX');i++)if(i<9?L('bulk'+(i+1)):L('bulkX')>=i-8){any=true;o+='<button class="s alt" data-a="sellr" data-v="'+i+'">Sell '+(i<9?RN[i].toLowerCase():RN[i])+(i?' and below':'')+'</button>'}return any?o:'<span class="mute">Bag tools unlock in Upgrades, under Camp.</span>'}
+function bulkBtns(){let o='',any=false;for(let i=0;i<9+L('bulkX');i++)if(i<9?L('bulk'+(i+1)):L('bulkX')>=i-8){any=true;o+='<button class="s alt" data-a="sellr" data-v="'+i+'">Sell '+(i<9?RN[i].toLowerCase():RN[i])+(i?' and below':'')+'</button>'}return any?o:'<span class="mute">Filter and sort your bag below, any time. More tools (quick equip, bulk selling) unlock in Upgrades, under Camp.</span>'}
 function sellBelow(m){S.bag=S.bag.filter(it=>{if(it.ri<=m){S.gold+=val(it);return false}return true})}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b||b.disabled)return;const a=b.dataset.a,v=b.dataset.v;
  if(a=='delve'||a=='delveAgain'){if(a=='delveAgain'&&run){S.bag.push(...run.loot);run.loot=[];const bc=bagCap();while(S.bag.length>bc&&bc!==Infinity){let m=0;S.bag.forEach((x,i)=>{if(val(x)<val(S.bag[m]))m=i});sell(S.bag[m].id)}}startRun();return}
