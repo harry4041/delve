@@ -68,38 +68,41 @@ function blk(x,y,w,h,c,o){o=o||{};const O=F(o.ink||inkOf(c)),Dk=F(shd(c));
  if(o.tex)for(let j=2;j<h-1;j+=3)for(let i=2+(j%2?2:0);i<w-1;i+=4)Rf(x+i,y+j,1,1,Dk)}
 
 const GCTX={Rf,blk,shape,F,lit,shd,ink:inkOf}; // what gearart.js needs from this module (functions read SC/FL at call time)
-const HERO_ST={skin:'#ffd5ac',hair:'#ff9a2e',tun:'#3d8bff',leg:'#6a4f8a',boot:'#8a5a2a',belt:'#6a4a2a',
- face:(st)=>{ // eye shape, brows, nose, mouth and cheeks are all player choices (look.js); index 0 of each is the original face
-  const eyc=st.eye||'#2b2150',ey=F(eyc),br=F(rr(st.hairCol||'#ff9a2e',.65)),sk=st.skin,es=st.es||0,bw=st.br||0,mo=st.mo||0,ch=st.ch||0,bl=blink();
-  const eye=(x,side)=>{ // x = left edge of this eye (4 wide); side -1 left eye, +1 right eye
-   if(bl){Rf(x,9,4,1,ey);return}
-   if(es===0){Rf(x,7,4,5,F('#fff'));Rf(x+1,7,3,5,ey);Rf(x+1,8,1,1,F('#fff'));Rf(x+1,11,3,1,F(rr(eyc,1.6)))}                       // round
-   else if(es===1){Rf(x,8,4,3,F('#fff'));Rf(x+1,8,3,3,ey);Rf(x+1,8,1,1,F('#fff'));Rf(x-1,7,6,1,F(shd(sk)))}                         // narrow, with a lid line
-   else if(es===2){Rf(x-1,6,6,6,F('#fff'));Rf(x,6,4,6,ey);Rf(x,7,1,2,F('#fff'));Rf(x+1,10,3,1,F(rr(eyc,1.6)))}                       // wide
-   else if(es===3){Rf(x,7,4,5,F('#fff'));Rf(x+1,8,3,4,ey);Rf(x+1,9,1,1,F('#fff'));Rf(x,7,4,2,F(shd(sk)));Rf(x,9,4,1,F(rr(sk,.5)))} // sleepy: heavy lids
-   else{Rf(x,10,1,1,ey);Rf(x+1,9,2,1,ey);Rf(x+3,10,1,1,ey);Rf(x+1,8,2,1,F(rr(eyc,1.6)))}                                          // happy: ^ ^
+const HERO_ST={skin:'#ffd5ac',hair:'#ff9a2e',tun:'#3d8bff',leg:'#6a4f8a',boot:'#8a5a2a',belt:'#6a4a2a',tx:7,tw:26,adult:true, // an adult build: broad shoulders, a smaller head, a calmer face
+ face:(st)=>{ // eye shape, brows, nose, mouth and cheeks are all player choices (look.js); coordinates are relative to the head box (hx = head x)
+  const hx=(st.tx||8)+4,R2=(x,y,w,h,c)=>Rf(hx+x,y,w,h,c),eyc=st.eye||'#2b2150',ey=F(eyc),br=F(rr(st.hairCol||'#ff9a2e',.6)),sk=st.skin,es=st.es||0,bw=st.br||0,mo=st.mo||0,ch=st.ch||0,bl=blink(),sh=F(shd(sk));
+  const eye=(x)=>{ // x = left edge of this eye (4 wide)
+   if(bl){R2(x,9,4,1,ey);return}
+   if(es===0){R2(x,8,4,3,F('#fff'));R2(x+1,8,2,3,ey);R2(x+1,8,1,1,F('#fff'))}                                  // round: whites, iris, a single glint
+   else if(es===1){R2(x,8,4,2,F('#fff'));R2(x+1,8,2,2,ey);R2(x-1,7,6,1,sh)}                                      // narrow, with a lid line
+   else if(es===2){R2(x-1,7,6,4,F('#fff'));R2(x+1,7,2,4,ey);R2(x+1,7,1,1,F('#fff'))}                             // wide
+   else if(es===3){R2(x,8,4,3,F('#fff'));R2(x+1,9,2,2,ey);R2(x,8,4,1,sh)}                                       // sleepy: heavy lids
+   else{R2(x,10,1,1,ey);R2(x+1,9,2,1,ey);R2(x+3,10,1,1,ey)}                                                      // happy: ^ ^
   };
-  eye(15,-1);eye(22,1);
-  if(bw===0){Rf(15,5,4,1,br);Rf(22,5,4,1,br)}                                                    // neutral
-  else if(bw===1){Rf(15,4,2,1,br);Rf(17,5,2,1,br);Rf(22,5,2,1,br);Rf(24,4,2,1,br)}              // angry: slanting down to the nose
-  else if(bw===2){Rf(15,5,2,1,br);Rf(17,4,2,1,br);Rf(22,4,2,1,br);Rf(24,5,2,1,br)}              // worried: slanting up to the middle
-  else if(bw===3){Rf(15,3,4,1,br);Rf(22,3,4,1,br)}                                               // raised
-  Rf(20,10,1,3,F(shd(sk)));Rf(19,12,2,1,F(shd(sk)));                                            // nose
+  eye(3);eye(9);
+  if(bw===0){R2(3,6,4,1,br);R2(9,6,4,1,br)}                                                                       // neutral
+  else if(bw===1){R2(3,5,2,1,br);R2(5,6,2,1,br);R2(9,6,2,1,br);R2(11,5,2,1,br)}                                   // angry: slanting down to the nose
+  else if(bw===2){R2(3,6,2,1,br);R2(5,5,2,1,br);R2(9,5,2,1,br);R2(11,6,2,1,br)}                                   // worried: slanting up to the middle
+  else if(bw===3){R2(3,4,4,1,br);R2(9,4,4,1,br)}                                                                   // raised
+  R2(7,9,2,4,sh);R2(6,12,4,1,sh);R2(7,9,1,1,F(lit(sk)));                                                          // nose with a bridge, shaded side and nostrils
   const lip=F('#a0503e'),dark=F('#5a1f1f');
-  if(mo===0){Rf(17,14,6,1,lip);Rf(16,13,1,1,lip);Rf(23,13,1,1,lip)}                              // smile
-  else if(mo===1){Rf(16,13,8,3,dark);Rf(17,13,6,1,F('#fff'));Rf(15,13,1,1,lip);Rf(24,13,1,1,lip);Rf(17,16,6,1,lip)} // grin with teeth
-  else if(mo===2){Rf(17,14,6,1,lip)}                                                              // neutral
-  else if(mo===3){Rf(17,14,4,1,lip);Rf(21,13,2,1,lip);Rf(23,12,1,1,lip)}                         // smirk
-  else if(mo===4){Rf(17,13,6,1,lip);Rf(16,14,1,1,lip);Rf(23,14,1,1,lip)}                         // frown
-  else{Rf(18,13,4,4,dark);Rf(19,14,2,2,F('#c0605a'));Rf(18,12,4,1,lip);Rf(18,17,4,1,lip)}       // surprised
-  if(ch===0||ch===3){Rf(13,11,3,2,F('#ffa6b4'));Rf(25,11,3,2,F('#ffa6b4'))}                       // blush
-  if(ch===2||ch===3){const fr=F(shd(rr(sk,.9)));for(const [x,y] of [[14,10],[16,12],[26,10],[24,12],[18,11],[22,11]])Rf(x,y,1,1,fr)} // freckles
+  if(mo===0){R2(5,13,6,1,lip);R2(4,12,1,1,lip);R2(11,12,1,1,lip)}                                                 // smile
+  else if(mo===1){R2(4,12,8,3,dark);R2(5,12,6,1,F('#fff'));R2(3,12,1,1,lip);R2(12,12,1,1,lip)}                     // grin with teeth
+  else if(mo===2){R2(5,13,6,1,lip)}                                                                                // neutral
+  else if(mo===3){R2(5,13,4,1,lip);R2(9,12,2,1,lip);R2(11,11,1,1,lip)}                                            // smirk
+  else if(mo===4){R2(5,12,6,1,lip);R2(4,13,1,1,lip);R2(11,13,1,1,lip)}                                            // frown
+  else{R2(6,12,4,3,dark);R2(7,13,2,1,F('#c0605a'));R2(6,11,4,1,lip)}                                              // surprised
+  if(ch===1||ch===3)for(const x of[2,11])R2(x,10,3,2,F(mixHex(sk,'#ff8fa6',.45)));                                // blush (soft, mixed with the skin tone)
+  if(ch===2||ch===3){const fr=F(rr(sk,.72));for(const [x,y] of [[3,10],[5,11],[11,10],[9,11],[7,10]])R2(x,y,1,1,fr)} // freckles
+  if(ch===4){const st2=F(rr(sk,.82));for(let y=11;y<15;y++)for(let x=3;x<13;x++)if((x+y)%2===0&&!(y===13&&x>=5&&x<=10))R2(x,y,1,1,st2)} // stubble
  },
  pre:(e,st)=>{ // tunic emblem and shoulder shading
-  Rf(18,24,4,5,F('#e8c050'));Rf(18,24,2,1,F('#fff3b0'));Rf(19,26,2,2,F('#b8861c'));Rf(10,20,2,8,F(shd(st.tun)));Rf(28,20,2,8,F(shd(st.tun)))},
+  const cx=(st.tx||8)+(st.tw||24)/2;Rf(cx-2,24,4,5,F('#e8c050'));Rf(cx-2,24,2,1,F('#fff3b0'));Rf(cx-1,26,2,2,F('#b8861c'));Rf(st.tx+3,20,2,8,F(shd(st.tun)));Rf(st.tx+st.tw-5,20,2,8,F(shd(st.tun)))},
  post:(e,st)=>{ // scarf that flutters (hidden under helmets and hoods, or when the player chose none)
-  if(!st.scarf||(e.head&&['Helm','Hood'].includes(baseOf(e.head))))return;const w=Math.round(Math.sin(ART_T*5));
-  blk(12,16,16,5,st.scarf);blk(27,19+(w>0?1:0),5,9,st.scarf);Rf(28,26+(w>0?1:0),3,1,F(shd(st.scarf)))}};
+  if(!st.scarf||(e.head&&['Helm','Hood'].includes(baseOf(e.head))))return;const w=Math.round(Math.sin(ART_T*5)),cx=(st.tx||8)+(st.tw||24)/2;
+  blk(cx-6,17,12,4,st.scarf);blk(cx+5,19+(w>0?1:0),5,9,st.scarf);Rf(cx+6,26+(w>0?1:0),3,1,F(shd(st.scarf)))}};
+// mix two #rrggbb colours (used for skin-tinted blush)
+function mixHex(a,b,t){const p=x=>[1,3,5].map(i=>parseInt(x.slice(i,i+2),16)),A=p(a),B=p(b);return '#'+A.map((v,i)=>Math.round(v+(B[i]-v)*t).toString(16).padStart(2,'0')).join('')}
 
 // Default humanoid body. Style knobs: tx/tw (torso x and width; arms hang outside it), robe (long skirt instead of legs), body (custom body fn).
 function bodyFine(e,st){
@@ -113,6 +116,7 @@ function bodyFine(e,st){
   for(const x of[ax,bx]){blk(x,20,6,16,st.tun,{tex:1});Rf(x,33,6,2,F(shd(st.tun)))}              // sleeves with cuffs
  }
  for(const x of[ax,bx]){blk(x,35,6,6,sk);Rf(x+1,39,1,2,F(shd(sk)));Rf(x+3,39,1,2,F(shd(sk)))} // hands with finger lines
+ if(st.adult){adultHead(e,st,hx,hb);return}
  {
   blk(hx-2,6,3,5,sk);blk(hx+15,6,3,5,sk);                                                          // ears
   blk(hx,0,16,17,sk);Rf(hx+1,15,14,1,F(shd(sk)));Rf(hx+3,2,5,1,F(lit(sk)));Rf(hx+13,1,1,14,F(shd(sk)));  // head, jaw shade, forehead light
@@ -122,6 +126,21 @@ function bodyFine(e,st){
    else if(hs===2){shape([[hx-1,-1,18,6],[hx-3,1,4,22],[hx+15,1,4,22]],hr);Rf(hx+3,0,6,1,F(h2));Rf(hx+2,5,3,2,F(hr));Rf(hx+9,5,5,2,F(hr));Rf(hx-3,21,4,2,F(shd(hr)));Rf(hx+15,21,4,2,F(shd(hr)))} // long
    else if(hs===3){shape([[hx+6,-7,4,10],[hx+4,-1,8,4]],hr);Rf(hx+6,-6,1,8,F(h2))}}                                                                                                       // mohawk
   if(st.face)st.face(st)}
+}
+
+// Adult head: 12x14 (vs the 16x17 cartoon head), longer neck, defined jaw; hair is fitted to it. hx is the head box x.
+function adultHead(e,st,hx,hb){
+ const sk=st.skin,hr=st.hair,hs=st.hs||0,h2=hr?lit(hr):null,hid=hb==='Helm'||hb==='Hood';
+ blk(hx+5,15,6,5,shd(sk));                                                       // neck
+ blk(hx,7,2,5,sk);blk(hx+14,7,2,5,sk);                                           // ears
+ blk(hx+2,2,12,14,sk);Rf(hx+3,14,10,1,F(shd(sk)));Rf(hx+13,3,1,12,F(shd(sk)));Rf(hx+2,12,1,3,F(shd(sk)));Rf(hx+4,3,4,1,F(lit(sk))); // head, jaw and cheek shading, forehead light
+ if(hr&&!hid){
+  if(hs===0){shape([[hx+1,0,14,5],[hx,2,2,9],[hx+14,2,2,9],[hx+3,-3,3,4],[hx+7,-5,3,6],[hx+11,-3,3,4]],hr);Rf(hx+4,0,5,1,F(h2));Rf(hx+3,4,3,2,F(hr));Rf(hx+9,4,4,2,F(hr))}   // spiky
+  else if(hs===1){shape([[hx+1,0,14,4],[hx,2,2,6],[hx+14,2,2,6]],hr);Rf(hx+4,0,5,1,F(h2));Rf(hx+3,3,4,2,F(hr));Rf(hx+9,3,4,2,F(hr))}                                         // short crop
+  else if(hs===2){shape([[hx+1,0,14,5],[hx-1,2,4,20],[hx+13,2,4,20]],hr);Rf(hx+4,0,5,1,F(h2));Rf(hx+3,4,3,2,F(hr));Rf(hx+9,4,4,2,F(hr));Rf(hx-1,20,4,2,F(shd(hr)));Rf(hx+13,20,4,2,F(shd(hr)))} // long
+  else if(hs===3){shape([[hx+6,-6,4,10],[hx+4,0,8,3]],hr);Rf(hx+6,-5,1,8,F(h2))}                                                                                             // mohawk
+ }
+ if(st.face)st.face(st);
 }
 
 function drawFigure(x,y,e,st,fl,flip,sc){sc=sc||1;g.save();g.translate(x,y);FL=!!fl;SC=sc;if(flip){g.translate(20*sc,0);g.scale(-1,1)}

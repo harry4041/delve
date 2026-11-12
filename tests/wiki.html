@@ -46,8 +46,8 @@ try{
  // content comes from the game's data
  let h=await sec('items');ck('first-twelve-rarities-listed',st.RN.slice(0,12).every(n=>h.includes(n)));ck('items-page-is-a-sane-length',document.querySelectorAll('#cbody tr').length<30,document.querySelectorAll('#cbody tr').length);ck('no-scientific-notation-or-zero-chances',!/e-\d/.test(body())&&!body().includes('>0%<'));
  const rows=[...document.querySelectorAll('#cbody table')[0].rows].slice(1);
- ck('tier-unlock-stages-match-the-game',rows.every((r,i)=>{const s=r.cells[3].textContent.split(' / ').map(Number);return s.every((x,l)=>as.maxStep(x)>=3*i+l&&(x<=1||as.maxStep(x-1)<3*i+l))}),rows.map(r=>r.cells[3].textContent).join('|'));
- ck('common-I-from-stage-1',rows[0].cells[3].textContent.startsWith('1 /'));
+ ck('tier-unlock-stages-match-the-game',rows.every((r,i)=>{const s=r.cells[2].textContent.split(' / ').map(Number);return s.every((x,l)=>as.maxStep(x)>=3*i+l&&(x<=1||as.maxStep(x-1)<3*i+l))}),rows.map(r=>r.cells[2].textContent).join('|'));
+ ck('common-I-from-stage-1',rows[0].cells[2].textContent.startsWith('1 /'));
  ck('stat-power-column-matches-RM',rows.every((r,i)=>r.cells[1].textContent==='x'+(+st.RM[i].toFixed(1))));
  h=await sec('gear');ck('every-base-type-listed',Object.values(st.BASE).flat().every(b=>h.includes(b)));
  ck('every-suffix-listed',Object.keys(st.SUFS).every(s=>h.includes(s)));

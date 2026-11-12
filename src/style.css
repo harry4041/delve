@@ -40,6 +40,7 @@ button.alt{background:var(--panel);color:var(--ink)}
 .tvc{position:absolute;right:10px;bottom:12px;display:flex;gap:4px}
 .tvp{margin-top:8px}.tvp small{display:block;color:var(--mute)}
 
+#gate{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--bg);overflow:auto}#gate[hidden]{display:none}body.gated #app{display:none}.gbox{width:100%;max-width:420px}
 .ac input{display:block;width:100%;margin:2px 0 8px;padding:8px;font:inherit;color:var(--ink);background:var(--bg);border:3px solid var(--ink)}
 .ac input:disabled{opacity:.5}
 .ac label{display:block}

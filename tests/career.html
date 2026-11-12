@@ -26,6 +26,7 @@
 const out=[];window.onerror=(m,u,l)=>out.push('ERR '+m+' @'+String(u).split('/').pop()+':'+l);
 const q=new URLSearchParams(location.search),POL=q.get('pol')||'cheap',PRIO=['might','vigor','haste','grit','regen','fury','greed'],HOURS=+(q.get('hours')||6),CAMP=+(q.get('camp')||15),STALL=+(q.get('stall')||4),BUDGET=+(q.get('budget')||150)*1000,RUNCAP=+(q.get('runcap')||900);
 try{
+ const lc=await import('/src/lootcfg.js');if(q.get('stb'))lc.LOOT.stb=q.get('stb').split(',').map(Number);if(q.get('top'))lc.LOOT.top=+q.get('top');if(q.get('dg'))lc.LOOT.dg=+q.get('dg');
  await import('/src/main.js');
  const st=await import('/src/state.js'),bt=await import('/src/battle.js'),asc=await import('/src/ascension.js'),sk=await import('/src/skilltree.js'),gear=await import('/src/gear.js'),farm=await import('/src/farm.js'),sts=await import('/src/stats.js');
  localStorage.removeItem('hollow-delve-2');localStorage.removeItem('hd-lb');st.load();
@@ -40,7 +41,10 @@ try{
  function buyRelics(){let n=0;for(;;){let best=null,bc=Infinity;for(const t of asc.RTREE){if(RL(t.k)>=t.m)continue;const c=asc.rcost(t);if(c<=S().relics&&c<bc){bc=c;best=t}}if(!best)break;S().relics-=bc;S().rl[best.k]=RL(best.k)+1;n++}return n}
  function pets(){const P=st.PET;for(let i=0;i<P.length;i++){const p=S().pets[i];if(!p.own&&L('den')+1&&S().gold>=P[i].cost*3){S().gold-=P[i].cost;p.own=1;if(S().ap<0)S().ap=i}}}
  const auto=(r,s)=>{if(!asc.hasSp(0))return;bt.cast(0);if(r.hp<r.maxHp*.5)bt.cast(1);if(r.stun<=0)bt.cast(2);bt.cast(3)};
- const T0=performance.now();let cycleIdx=0;let goldRun=0,maxRunCpu=0,slowest='',gearCh=0,runsWithGear=0,lootTot=0;const early=[],reach={};const snaps=[];let nextSnap=600;
+ const PROBE=q.get('probe')==='1',ablations=[];
+ function playOnce(){bt.startRun();const r=st.run;let g=0;while(!r.over&&g<RUNCAP){if(asc.hasMagic())auto(r);bt.tick(.1);g+=.1}return r.stage}
+ function ablate(){const eq0=S().eq,gold0=S().gold,N=5;let a=0,b=0;for(let i=0;i<N;i++)a+=playOnce();S().eq={rhand:{id:0,ty:'weapon',ri:0,il:1,nm:'Rusty Sword',st:{atk:2}}};for(let i=0;i<N;i++)b+=playOnce();S().eq=eq0;S().gold=gold0;return[a/N,b/N]}
+ const T0=performance.now();let cycleIdx=0;let eqRi=[],eqAvg=[],goldRun=0,maxRunCpu=0,slowest='',gearCh=0,runsWithGear=0,lootTot=0;const early=[],reach={};const snaps=[];let nextSnap=600;
  while(wall<HOURS*3600&&performance.now()-T0<BUDGET){
   if(runs%10===0){document.title='running wall='+Math.round(wall/60)+'m runs='+runs+' asc='+S().asc+' stage='+S().best+' cpu='+Math.round((performance.now()-T0)/1000)+'s';await new Promise(r=>setTimeout(r))}
   const tr0=performance.now();bt.startRun();const r=st.run;let g=0;
@@ -49,9 +53,9 @@ try{
   const spd=asc.maxSpd(),dur=g/spd;goldRun+=r.gold;wall+=dur+CAMP;runs++;while(wall>=nextSnap){snaps.push([S().bestOverall||0,S().asc,sts.petStars(),Math.round(sts.powerLevel()),Math.round(goldRun),Math.round(farm.farmRates().gold),S().pets.filter(p=>p.own).length]);nextSnap+=600}durs.push(dur);deaths.push(r.stage);
   const eqb=JSON.stringify(Object.entries(S().eq).map(([k,v])=>k+v.id));const lootN=r.loot.length;S().bag.push(...r.loot);r.loot=[];gear.autoEquip();const eqa=Object.entries(S().eq).map(([k,v])=>k+v.id);const gch=eqa.filter(x=>!eqb.includes(x)).length;gearCh+=gch;if(gch)runsWithGear++;lootTot+=lootN;
   for(const it of S().bag.slice())gear.sell(it.id);   // sell the rest
-  for(let X=10;X<=200;X+=10)if(reach[X]===undefined&&(S().bestOverall||0)>=X)reach[X]=Math.round(wall/60);const nb=S().best;if(nb>bestSeen){bestSeen=nb;newBests++;stall=0}else stall++;cycle.peak=Math.max(cycle.peak,r.stage);
+  for(let X=10;X<=200;X+=10)if(reach[X]===undefined&&(S().bestOverall||0)>=X)reach[X]=Math.round(wall/60);const riEq=Object.values(S().eq).map(x=>x.ri);eqRi.push(Math.max(...riEq));eqAvg.push(riEq.reduce((a,b)=>a+b,0)/riEq.length);const nb=S().best;if(nb>bestSeen){bestSeen=nb;newBests++;stall=0}else stall++;cycle.peak=Math.max(cycle.peak,r.stage);
   const g0=S().gold;const nb0=buyAll();pets();const nb1=buyAll();if(early.length<14&&S().asc===0)early.push(`r${runs}:st${r.stage}/${dur.toFixed(0)}s/g${Math.round(g0)}/buy${nb0+nb1}/gear${gch}`);
-  if(stall>=STALL){const a0=S().asc;asc.ascend();if(S().asc>a0){ascs.push({t:Math.round(wall/60),stage:cycle.peak,runs:cycle.runs+1,buys:cycle.buys,relicsAfter:S().relics,asc:S().asc});buyRelics();bestSeen=0;stall=0;cycle.runs=-1;cycle.buys=0;cycle.peak=0;cycleIdx++;buyAll()}}
+  if(stall>=STALL){if(PROBE){const [ge,na]=ablate();const gearN=Object.keys(S().eq).length;ablations.push({asc:S().asc,ge,na,gearN,wall:Math.round(wall/60)})}const a0=S().asc;asc.ascend();if(S().asc>a0){ascs.push({t:Math.round(wall/60),stage:cycle.peak,runs:cycle.runs+1,buys:cycle.buys,relicsAfter:S().relics,asc:S().asc});buyRelics();bestSeen=0;stall=0;cycle.runs=-1;cycle.buys=0;cycle.peak=0;cycleIdx++;buyAll()}}
   cycle.runs++;
  }
  const hrs=wall/3600;
@@ -59,7 +63,8 @@ try{
  out.push('runLen(s) p50='+pct(durs,.5).toFixed(0)+' p90='+pct(durs,.9).toFixed(0)+' max='+Math.max(...durs).toFixed(0));
  out.push('buyGap(s) p50='+pct(gaps,.5).toFixed(0)+' p90='+pct(gaps,.9).toFixed(0)+' max='+Math.max(0,...gaps).toFixed(0)+' buyEvents='+buys.length);
  out.push('ASCENTS: '+ascs.map(a=>`#${a.asc}@${a.t}m stage${a.stage} runs${a.runs} buys${a.buys}`).join(' | '));
- const dl=c=>Math.max(0,...snaps.map((x,i)=>x[c]-(i?snaps[i-1][c]:0)));out.push('HONEST max rise per 10min: stage='+dl(0)+' asc='+dl(1)+' stars='+dl(2)+' power='+dl(3)+' | at 1h/4h/end: '+[6,24,snaps.length-1].map(i=>snaps[i]?snaps[i].join('/'):'-').join(' , '));out.push('slowest run: '+slowest);
+ const dl=c=>Math.max(0,...snaps.map((x,i)=>x[c]-(i?snaps[i-1][c]:0)));out.push('HONEST max rise per 10min: stage='+dl(0)+' asc='+dl(1)+' stars='+dl(2)+' power='+dl(3)+' | at 1h/4h/end: '+[6,24,snaps.length-1].map(i=>snaps[i]?snaps[i].join('/'):'-').join(' , '));out.push('slowest run: '+slowest);out.push('EQUIPPED RARITY: top tier seen by an equipped item over all runs: max='+Math.max(...eqRi)+', mean of per-run top='+(eqRi.reduce((a,b)=>a+b,0)/eqRi.length).toFixed(2)+', mean equipped avg='+(eqAvg.reduce((a,b)=>a+b,0)/eqAvg.length).toFixed(2));
+ if(PROBE){out.push('ABLATE(geared/naked stage, slots filled) '+ablations.map(a=>'a'+a.asc+'@'+a.wall+'m:'+a.ge.toFixed(0)+'/'+a.na.toFixed(0)+'/'+a.gearN).join(' '));const tot=ablations.reduce((x,a)=>[x[0]+a.ge,x[1]+a.na],[0,0]);out.push('GEAR SHARE overall: geared '+(tot[0]/ablations.length).toFixed(1)+' vs naked '+(tot[1]/ablations.length).toFixed(1)+' => naked reaches '+Math.round(100*tot[1]/tot[0])+'% of the geared stage')}
  {const hr=i=>{const a=snaps[i],b=snaps[i-6];return a&&b?'heroGold/h='+Math.round((a[4]-b[4]))+' farmGold/h='+a[5]+' pets='+a[6]:'-'};out.push('ECON(last hour before) 1h['+hr(6)+'] 3h['+hr(18)+'] end['+hr(snaps.length-1)+']')}
  out.push('REACH(min) '+Object.entries(reach).map(e=>'st'+e[0]+'@'+e[1]).join(' '));out.push('EARLY '+early.join(' '));
  out.push('GEAR: equipChanges='+gearCh+' runsWithAnUpgrade='+runsWithGear+'/'+runs+' ('+Math.round(100*runsWithGear/runs)+'%) lootPerRun='+(lootTot/runs).toFixed(1));

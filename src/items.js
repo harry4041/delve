@@ -1,8 +1,9 @@
+import {LOOT} from './lootcfg.js';
 import {BASE,LVM,PRE,RM,RN,RW,SPEC,SUFS,TT,W,nextUid,pick,rollLv} from './state.js';
 import {L,RL,ascB} from './stats.js';
 function rollR(b,cap=RN.length-1){const w=RW.map((x,i)=>i?x*b:x).slice(0,cap+1),t=w.reduce((a,c)=>a+c);let r=Math.random()*t;let result=0;for(let i=0;i<w.length;i++){r-=w[i];if(r<=0){result=i;break}}// 2% lucky-find chance to bump up one rarity (capped at 4), stacking luck upgrades help a little
 let p=Math.min(.95,.02+L('luck')*.003+(1-Math.pow(.95,L('mLoot')))*.9);while(Math.random()<p&&result<RN.length-1&&result<cap){result++;p*=.5}return result}
-export function rollStep(b,cap){let tot=0;const w=[];for(let i=0;i<=cap;i++){const x=60*Math.pow(.42,i)*(i?b:1);w.push(x);tot+=x}let r=Math.random()*tot,res=0;for(let i=0;i<w.length;i++){r-=w[i];if(r<=0){res=i;break}}
+export function rollStep(b,cap){let tot=0;const w=[];for(let i=0;i<=cap;i++){const x=LOOT.top?60*Math.pow(LOOT.top,cap-i)*(i?b:1):60*Math.pow(.42,i)*(i?b:1);w.push(x);tot+=x}let r=Math.random()*tot,res=0;for(let i=0;i<w.length;i++){r-=w[i];if(r<=0){res=i;break}}
 let p=Math.min(.95,.02+L('luck')*.003+(1-Math.pow(.95,L('mLoot')))*.9);while(Math.random()<p&&res<cap){res++;p*=.5}return res}
 export function gen(il,ri,fty,fbn,flv){const lv=flv||rollLv(),ty=fty||pick(Object.keys(BASE)),b=(2+il*1.6)*RM[ri]*LVM[lv-1],st={};
  const put=(k,m)=>{const v=b*W[k]*m*(.8+Math.random()*.4);st[k]=k=='spd'?Math.round(v*1000)/1000:['crit','ls','dodge','gf','mpr'].includes(k)?Math.round(v*10)/10:Math.max(1,Math.round(v))};

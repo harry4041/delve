@@ -12,7 +12,7 @@ import {L,RL,activeSynergies,fOK,fmtN,forgeAll,forgeCost,forgeDo,forgeIntro,forg
 import {auraTab,idleTab} from './tabs-aura-idle.js';
 import {GRAPHS,NODE,bagCap,bagUpgradeCost,can,cost,qmT,vaultCap,vaultUnlockCost,vaultUpgradeCost} from './skilltree.js';
 import {lbTab,vaultTab} from './vault-leaderboard.js';
-import {RT,RTREE,ascTab,ascend,hasMagic,hasSp,maxSpd,petLc,rcost,startStage} from './ascension.js';
+import {RT,RTREE,ascTab,ascend,hasMagic,hasSp,maxSpd,petLc,rcost,startStage,tierStage} from './ascension.js';
 import {autoEquip,equip,sell,target} from './gear.js';
 import {tree} from './treeview.js';
 import {cast,die,startRun} from './battle.js';
@@ -52,7 +52,7 @@ export function camp(){const st=stats();$('#sdw').innerHTML=(RL('rStart')?'<span
   const cap=bagCap(),isFull=S.bag.length>=cap,isUnlimited=cap===Infinity;
   const bagUpCost=bagUpgradeCost();
   h+='<h2>Bag ('+S.bag.length+(isUnlimited?' / ∞':' / '+cap)+')</h2>';
-  h+='<div class="mute">Uncommon drops from stage 10, rare from 25, epic from 45, legendary from 70. Bosses drop one tier higher. Lucky finds may rarely appear earlier.</div>';
+  h+='<div class="mute">Uncommon drops from stage '+tierStage(1)+', rare from '+tierStage(2)+', epic from '+tierStage(3)+', legendary from '+tierStage(4)+'. Most drops are close to your highest unlocked tier; bosses drop one tier higher. Lucky finds may rarely appear earlier.</div>';
   h+='<div class="row" style="margin:4px 0">'+(isUnlimited?'<span style="color:var(--c1)">∞ Unlimited capacity</span>':'<span'+(isFull?' style="color:#d94a4a"':'')+'>'+S.bag.length+'/'+cap+' slots used</span> <button class="s" data-a="bagUp" '+(S.gold<bagUpCost?'disabled':'')+'>Expand ('+(isUnlimited?'∞':bagUpCost+'g')+')</button>')+'</div>';
   h+='<div class="row">'+(L('tidy')?'<button class="s" data-a="best">Equip upgrades</button>':'')+''+bulkBtns()+'</div><div class="box">';
   // Forge panel

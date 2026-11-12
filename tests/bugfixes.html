@@ -81,9 +81,10 @@ try{
 
  // 7 enemy scaling per stage stays close to the hero's growth after ascending
  reset();S().asc=10;
- ck('enemy-growth-softened',Math.abs(asc.hpG()-1.25)<1e-9&&Math.abs(asc.atG()-1.24)<1e-9,asc.hpG()+' / '+asc.atG());
- ck('stage-50-boss-no-longer-explodes',Math.pow(asc.hpG()/1.22,50)<5,'x'+Math.pow(asc.hpG()/1.22,50).toFixed(1)+' vs old x157');
- S().asc=0;ck('ascension-0-unchanged',Math.abs(asc.hpG()-1.22)<1e-9&&Math.abs(asc.atG()-1.22)<1e-9);
+ const DG=(await import('/src/lootcfg.js')).LOOT.dg; // the loot tuning adds a small extra growth (see lootcfg.js); the caps and shape are what matter here
+ ck('enemy-growth-softened',Math.abs(asc.hpG()-(1.25+DG))<1e-9&&Math.abs(asc.atG()-(1.24+DG))<1e-9,asc.hpG()+' / '+asc.atG());
+ ck('stage-50-boss-no-longer-explodes',Math.pow(asc.hpG()/(1.22+DG),50)<5,'x'+Math.pow(asc.hpG()/(1.22+DG),50).toFixed(1)+' vs old x157');
+ S().asc=0;ck('ascension-0-is-the-base-curve-plus-the-compensation',Math.abs(asc.hpG()-(1.22+DG))<1e-9&&Math.abs(asc.atG()-(1.22+DG))<1e-9);
 }catch(e){out.push('EXC '+e.message+' | '+(e.stack||'').split(String.fromCharCode(10))[1])}
 document.title=out.join(' ');
 </script>

@@ -10,7 +10,7 @@ import { firebaseConfig } from './firebase-config.js';
 import { S, mode, load, setSaveHook } from './state.js';
 import { val } from './items.js';
 
-const KEY = 'hollow-delve-2', BACKUP = 'hollow-delve-2-backup', BASE = 'hd-cloud-base', FLAG = 'hd-cloud';
+const KEY = 'hollow-delve-2', BACKUP = 'hollow-delve-2-backup', BASE = 'hd-cloud-base', FLAG = 'hd-cloud', OWNER = 'hd-owner', OTHER = 'hollow-delve-2-other-account';
 const PUSH_DELAY = 5 * 60 * 1000;  // push at most every 5 minutes while playing
 const MIN_GAP = 90 * 1000;         // never push more often than this (server rule enforces 60 s)
 let MAX_DATA = 900000;           // chars of encoded save we allow (Firestore hard limit is 1 MiB per document)
@@ -107,9 +107,22 @@ async function fit(json) {
 }
 
 // ---- auth state ----
+// The local save belongs to ONE account (OWNER = its uid). When a different account signs in on this device, the old save is set aside
+// (kept under OTHER) and the new account starts clean, so one player's progress can never be uploaded to another player's account.
+// A save with no owner (made before accounts were required) is adopted by the first account that signs in.
+function claimDevice(uid) {
+  let owner = null;
+  try { owner = localStorage.getItem(OWNER); } catch (e) { /* ignore */ }
+  if (owner && owner !== uid) {
+    try { const cur = localStorage.getItem(KEY); if (cur) localStorage.setItem(OTHER, cur); localStorage.removeItem(KEY); localStorage.removeItem(BASE); } catch (e) { /* ignore */ }
+    load();
+  }
+  try { localStorage.setItem(OWNER, uid); } catch (e) { /* ignore */ }
+}
 async function onUser(u) {
   st.user = u ? { uid: u.uid, email: u.email, verified: !!u.emailVerified } : null;
   if (!u) { emit('user'); return; }
+  claimDevice(u.uid);
   try { localStorage.setItem(FLAG, '1'); } catch (e) { /* ignore */ }
   emit('user');
   if (u.emailVerified) await syncNow();
@@ -230,7 +243,7 @@ export function cloudBoot() {
   const leaving = () => { if (st.dirty && Date.now() - lastPushAt >= MIN_GAP) flush(); };
   window.addEventListener('pagehide', leaving);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') leaving(); });
-  try { if (localStorage.getItem(FLAG) === '1') init().catch(() => { /* offline: stay local */ }); } catch (e) { /* ignore */ }
+  try { if (!window.__HD_NO_BOOT_INIT && localStorage.getItem(FLAG) === '1') init().catch(() => { /* offline: stay local */ }); } catch (e) { /* ignore */ } // __HD_NO_BOOT_INIT: test seam so a fake Firebase is not raced by the real SDK
 }
 
 // Test seam: lets tests inject a fake Firebase and drive the sync logic directly.

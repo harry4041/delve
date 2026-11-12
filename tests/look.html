@@ -34,18 +34,20 @@ try{
  // 1 defaults are exactly the old look
  fresh();const d=lk.lookStyle();
  ck('default-skin-hair-outfit-scarf-eyes-are-the-original',d.skin==='#ffd5ac'&&d.hair==='#ff9a2e'&&d.tun==='#3d8bff'&&d.scarf==='#d94a4a'&&d.eye==='#2b2150'&&d.hs===0,JSON.stringify(d));
- ck('default-cape-is-crimson-then-gear-coloured',lk.capeColor(-1,'#fff')==='#b02838'&&lk.capeColor(2,'#4aa0ff')==='#b02838'&&lk.capeColor(3,'#c06bff')==='#c06bff');
+ ck('capes-are-locked-until-the-relic-is-bought',lk.capesUnlocked()===false&&lk.capeColor(-1,'#fff')===null&&lk.capeColor(5,'#c06bff')===null);
+ S().rl={rCape:1};
+ ck('unlocked-default-cape-is-crimson-then-gear-coloured',lk.capesUnlocked()&&lk.capeColor(-1,'#fff')==='#b02838'&&lk.capeColor(2,'#4aa0ff')==='#b02838'&&lk.capeColor(3,'#c06bff')==='#c06bff');
  ck('new-save-has-look',typeof S().look==='object'&&!Array.isArray(S().look));
  // 2 every option of every group applies
  let all=true,why='';
  for(const g of G)g.opts.forEach((o,i)=>{fresh();lk.applyLook(g.k+':'+i);if(lk.lookIdx(g.k)!==i){all=false;why=g.k+i}});
  ck('every-option-selectable',all,why);
- ck('option-counts',G.map(g=>g.opts.length).join(',')==='8,5,10,10,8,9,7,5,5,6,4',G.map(g=>g.opts.length).join(','));
+ ck('option-counts',G.map(g=>g.opts.length).join(',')==='8,5,10,10,8,9,7,5,5,6,5',G.map(g=>g.opts.length).join(','));
  fresh();lk.applyLook('skin:3');lk.applyLook('hair:5');lk.applyLook('tun:6');lk.applyLook('scarf:3');lk.applyLook('eye:5');lk.applyLook('hs:2');
  const s2=lk.lookStyle();ck('chosen-values-reach-the-style',s2.skin==='#c68642'&&s2.hair==='#e8e8f0'&&s2.tun==='#34303f'&&s2.scarf==='#e8c050'&&s2.eye==='#d02a2a'&&s2.hs===2,JSON.stringify(s2));
  lk.applyLook('hs:4');ck('bald-removes-hair-but-keeps-brow-colour',lk.lookStyle().hair===null&&lk.lookStyle().hairCol==='#e8e8f0');
  lk.applyLook('scarf:1');ck('no-scarf',lk.lookStyle().scarf===null);
- lk.applyLook('cape:1');ck('no-cape',lk.capeColor(5,'#fff')===null);
+ S().rl={rCape:1};lk.applyLook('cape:1');ck('no-cape',lk.capeColor(5,'#fff')===null);
  lk.applyLook('cape:6');ck('chosen-cape-ignores-gear-colour',lk.capeColor(5,'#fff')==='#c8982a');
  // 3 hostile or garbage input is ignored
  fresh();const before=JSON.stringify(S().look);
@@ -59,6 +61,8 @@ try{
  localStorage.setItem(KEY,JSON.stringify({...st.def(),look:{hair:50}}));st.load();ck('index-above-range-is-harmless',lk.lookIdx('hair')===0&&lk.lookStyle().hair==='#ff9a2e');
  // 4 the tab
  fresh();go();
+ ck('locked-cape-group-shows-a-message-and-no-swatches',body().includes('locked')&&body().includes('Heroic mantle')&&!document.querySelector('[data-v^="cape:"]'));
+ S().rl={rCape:1};go();
  const total=G.reduce((a,g)=>a+g.opts.length,0);
  ck('tab-has-a-button-for-every-option',document.querySelectorAll('#cbody [data-a=look]').length===total+2,document.querySelectorAll('#cbody [data-a=look]').length+' vs '+(total+2));
  ck('tab-has-a-preview-canvas',!!document.querySelector('#pv'));

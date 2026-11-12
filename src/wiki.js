@@ -7,6 +7,18 @@ import { RTREE, STB, reqStage, ascFee } from './ascension.js';
 
 // ---------------------------------------------------------------- changelog (add new entries at the TOP; `id` must be unique)
 export const CHANGELOG = [
+  { id: '2026-11-12l', date: '2026-11-12', title: 'Sign in to play', items: [
+    'You now sign in (or create an account) when the game opens. Your progress is tied to your account, so you can carry on from any device.',
+    'If you played before accounts were required, the first account you sign in with keeps your existing progress.',
+    'Two accounts on one device no longer share a save: signing in as someone else starts clean (or loads that account’s own cloud save).',
+  ] },
+  { id: '2026-11-12k', date: '2026-11-12', title: 'Loot matters again, new Look options', items: [
+    'Rarer gear now drops during a normal run: Uncommon from about stage 16, Rare from about stage 35 and Epic from about stage 58. Most drops are close to your highest unlocked tier instead of mostly the lowest.',
+    'New relic Heirlooms: keep your best equipped items (one per level) when you ascend, so a great find carries into your next climb.',
+    'New relic Heroic mantle: capes are now unlocked with this relic instead of being free; once unlocked you can pick the colour in the Look tab.',
+    'Enemies grow a little tougher per stage to match the stronger gear, so the pace of progress is about the same.',
+    'Your hero now has adult proportions with a calmer face, a stubble option, and redrawn shields that look like real shields.',
+  ] },
   { id: '2026-11-12j', date: '2026-11-12', title: 'New gear looks and face customisation', items: [
     'All worn gear has been redrawn from scratch to fit the new character models: helmets, hoods, crowns, plate, mail, robes, tunics, greaves, boots, sandals, gauntlets, shields, pendants and every weapon. The bag and menus keep the existing icons.',
     'Rarity shows in the trim and gems of your gear (and a little in its colour), while steel still looks like steel and cloth like cloth.',
@@ -125,16 +137,18 @@ function items() {
   const SHOW = 12; // the game has hundreds of tiers; the table lists the first dozen
   const rows = RN.slice(0, SHOW).map((n, r) => {
     const st = [0, 1, 2].map((l) => STB(3 * r + l));
-    return ['<b style="color:' + RC[r] + '">' + n + '</b>', 'x' + fx(RM[r], 1), pc(RW[r] / RW[0] * 100), st.join(' / ')];
+    return ['<b style="color:' + RC[r] + '">' + n + '</b>', 'x' + fx(RM[r], 1), st.join(' / ')];
   });
   const ex = (2 + 40 * 1.6) * RM[2] * LVM[1];
   return h('Rarity tiers')
     + p('Every item has a rarity (tier) and a level within it: ' + LVN.join(', ') + '. Each tier has three steps, and higher steps are worth far more and can only drop once you are deep enough. The nine classic tiers run from ' + RN[0] + ' to ' + RN[8] + ', and the ladder keeps going beyond them: ' + RN.slice(9, 12).join(', ') + ' and on through ' + RN.slice(9, 9 + 17).length + ' named tiers to the endless "Beyond" tiers (' + RN.length + ' tiers in total).')
-    + tbl(['Tier', 'Stat power', 'Chance vs Common', 'Drops from stage (I / II / III)'], rows, [1, 2])
+    + tbl(['Tier', 'Stat power', 'Drops from stage (I / II / III)'], rows, [1])
     + p('Every tier above ' + RN[8] + ' has ' + fx(RM[9] / RM[8], 2) + 'x the stat power of the one below it and is about ' + fx(RW[8] / RW[9], 1) + 'x rarer.')
-    + p('Within a tier, level ' + LVN[1] + ' has ' + fx(LVM[1], 2) + 'x and level ' + LVN[2] + ' has ' + fx(LVM[2], 2) + 'x the stats of level ' + LVN[0] + '. The "chance" column is the relative weight of that tier among drops you can reach. Bosses drop better items than normal enemies. The Mythic sense relic lowers the stages needed.')
+    + p('Within a tier, level ' + LVN[1] + ' has ' + fx(LVM[1], 2) + 'x and level ' + LVN[2] + ' has ' + fx(LVM[2], 2) + 'x the stats of level ' + LVN[0] + '. Most drops are close to the highest tier you have unlocked, and bosses drop one tier higher. The Mythic sense relic lowers the stages needed.')
     + h('How item strength works')
     + p('An item\'s level equals the stage it dropped on. Its base power is (2 + 1.6 x level) x tier power x sub-level power. For example, a level-40 ' + RN[2] + ' ' + LVN[1] + ' has a base power of ' + fx(ex, 0) + ', which is split into the stats listed for its slot.')
+    + h('Keeping your best gear')
+    + p('Ascending resets your gear, but the <b>Heirlooms</b> relic keeps your best-scoring equipped items (one per relic level) so a great find is not lost. The <b>Vault</b> keeps anything you store in it.')
     + h('Selling, forging and the vault')
     + li([
       '<b>Sell</b> items for gold. Value grows with item level and tier (Greed upgrades and Gold find raise it). The Quartermaster upgrade adds an Auto-sell setting that sells low tiers as they drop.',
@@ -225,7 +239,7 @@ function idle() {
 
 function online() {
   return h('Accounts and cloud saves')
-    + p('Open the Account tab to sign in with your email. Verify your email to turn on cloud saves, then your progress follows you between devices. Your game always saves on the device first; the cloud copy is updated every few minutes and when you leave the page. If two devices disagree you are asked which one to keep.')
+    + p('You need an account to play: sign in with your email and password (or create an account) when the game opens, and you stay signed in on that device. Verify your email (Account tab) to turn on cloud saves, then your progress follows you between devices. Your game always saves on the device first; the cloud copy is updated every few minutes and when you leave the page. If two devices disagree you are asked which one to keep.')
     + h('Leaderboards')
     + p('The Leaderboards tab lists the top players for deepest stage, power level, ascensions and pet stars. To appear on it you must be signed in with a verified email and have chosen a <b>username</b> on the Account tab (3 to 18 letters, numbers, dots, dashes or underscores; every username is unique). Joining is then one tap. Only your username and four scores are shown, never your email. Scores come from each player\'s own game, so impossible entries may be removed. You can leave the boards at any time.')
     + h('Gifts')

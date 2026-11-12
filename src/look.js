@@ -2,6 +2,7 @@
 // hostile save can only ever select one of these options). Index 0 of every group is the original look, so old saves look
 // exactly as before.
 import { S } from './state.js';
+import { RL } from './stats.js';
 
 const sw = (n, c) => ({ n, c });
 export const LOOK_GROUPS = [
@@ -16,7 +17,7 @@ export const LOOK_GROUPS = [
   { k: 'es', n: 'Eye shape', opts: [sw('Round', null), sw('Narrow', null), sw('Wide', null), sw('Sleepy', null), sw('Happy', null)] },
   { k: 'br', n: 'Brows', opts: [sw('Neutral', null), sw('Angry', null), sw('Worried', null), sw('Raised', null), sw('None', null)] },
   { k: 'mo', n: 'Mouth', opts: [sw('Smile', null), sw('Grin', null), sw('Neutral', null), sw('Smirk', null), sw('Frown', null), sw('Surprised', null)] },
-  { k: 'ch', n: 'Cheeks', opts: [sw('Blush', null), sw('None', null), sw('Freckles', null), sw('Both', null)] },
+  { k: 'ch', n: 'Cheeks', opts: [sw('None', null), sw('Blush', null), sw('Freckles', null), sw('Both', null), sw('Stubble', null)] },
 ];
 const G = Object.fromEntries(LOOK_GROUPS.map((g) => [g.k, g]));
 
@@ -34,7 +35,9 @@ export function lookStyle() {
 }
 
 // Cape colour for the battle scene and portrait: null = no cape, 'auto' = crimson, or the colour of the best gear from Epic up.
+export const capesUnlocked = () => RL('rCape') > 0; // the Heroic mantle relic (Ascend tab) unlocks capes
 export function capeColor(gearRi, gearCol) {
+  if (!capesUnlocked()) return null;
   const c = opt('cape').c;
   if (c === null) return null;
   if (c === 'auto') return gearRi >= 3 ? gearCol : '#b02838';
@@ -55,6 +58,7 @@ export function applyLook(v) {
 export function lookTab() {
   const group = (g) => {
     const cur = lookIdx(g.k);
+    if (g.k === 'cape' && !capesUnlocked()) return '<div style="margin-bottom:8px"><div class="mute" style="margin-bottom:3px">Cape: <b style="color:var(--ink)">locked</b></div><div class="mute">Capes are unlocked with the <b>Heroic mantle</b> relic (Ascend tab). Your first ascension earns the relics for it.</div></div>';
     return '<div style="margin-bottom:8px"><div class="mute" style="margin-bottom:3px">' + g.n + ': <b style="color:var(--ink)">' + g.opts[cur].n + '</b></div><div class="row" style="flex-wrap:wrap;gap:4px">'
       + g.opts.map((o, i) => (o.c && o.c !== 'auto'
         ? '<button class="sw' + (i === cur ? ' on' : '') + '" data-a="look" data-v="' + g.k + ':' + i + '" title="' + o.n + '" aria-label="' + g.n + ' ' + o.n + '" style="background:' + o.c + '"></button>'

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>running</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+</head><body><div id="gate" hidden></div><div id="app">
+<header><h1>Delve</h1><div id="top"></div></header>
+<section id="battle" hidden>
+ <div class="cv"><canvas id="c" width="192" height="108"></canvas><div id="fxl"></div>
+  <div id="over" hidden><div class="px" style="font-size:12px">Defeated</div><div id="ovt"></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button data-a="delveAgain" style="background:#d94a4a;color:#fff;border-color:#fff">⚔ Delve Again</button><button data-a="camp">Go to camp</button></div></div></div>
+ <div class="bar"><i id="hpb"></i><span id="hpt"></span></div>
+ <div class="bar m" id="mpw"><i id="mpb"></i><span id="mpt"></span></div>
+ <div class="bar e"><i id="ehb"></i><span id="ent"></span></div>
+ <div class="row sp" style="margin:6px 0"><div class="row" id="spells"></div><div class="row"><button class="s alt" data-a="spd" id="spdb"></button><button class="s alt" data-a="end">End run</button></div></div>
+ <div class="mute">Last drop</div><div id="last"></div><div class="mute" style="margin-top:6px">Loot this run</div><div id="feed"></div>
+</section>
+<section id="camp" hidden>
+ <div class="row sp"><div class="tabs"><button data-a="tab" data-v="g" id="tg">Gear</button><button data-a="tab" data-v="u" id="tu">Upgrades</button><button data-a="tab" data-v="v" id="tv">Vault</button><button data-a="tab" data-v="m" id="tm">Magic</button><button data-a="tab" data-v="p" id="tp">Pets</button><button data-a="tab" data-v="r" id="tr2">Auras</button><button data-a="tab" data-v="i" id="ti">Idle</button><button data-a="tab" data-v="a" id="ta">Ascend</button><button data-a="tab" data-v="l" id="tl">Scores</button><button data-a="tab" data-v="x" id="tx">Account</button></div></div>
+ <div style="margin:8px 0"><button data-a="delve" style="width:100%;font-size:22px;padding:10px;background:var(--btn);border-width:4px;box-shadow:5px 5px 0 var(--ink)">⚔ DELVE</button></div>
+ <div id="sdw" class="row" style="margin:6px 0"></div><div id="cbody"></div><div style="margin:16px 0"><button class="s alt" data-a="reset">Reset save</button></div>
+</section>
+</div>
+<script type="module">
+// Login gate. Variants by query string:  (none) fresh visitor   ?flag=1 returning player whose session is restored
+//  ?flag=2 returning but Auth says nobody is signed in   ?flag=3 returning and Auth never answers (timeout)
+const out=[],ck=(n,c,x)=>out.push(n+':'+(c?'ok':'FAIL'+(x!==undefined?'('+x+')':'')));
+window.onerror=(m,u,l)=>out.push('ERR '+m+' @'+String(u).split('/').pop()+':'+l);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const q=new URLSearchParams(location.search),FLAG=q.get('flag');
+try{
+ window.__HD_NO_BOOT_INIT=true; // the real Firebase SDK must not answer "nobody is signed in" over the fake sign-in
+ localStorage.removeItem('hd-cloud');localStorage.removeItem('hd-owner');localStorage.removeItem('hollow-delve-2-other-account');
+ if(FLAG)localStorage.setItem('hd-cloud','1');
+ await import('/src/main.js');
+ const st=await import('/src/state.js'),cloud=await import('/src/cloud.js'),cp=await import('/src/camp.js'),T=cloud._test;
+ const KEY='hollow-delve-2',S=()=>st.S,gate=()=>document.getElementById('gate'),app=()=>document.getElementById('app'),g$=s=>gate().querySelector(s);
+ const gated=()=>document.body.classList.contains('gated')&&!gate().hidden&&getComputedStyle(app()).display==='none';
+ const open=()=>!document.body.classList.contains('gated')&&gate().hidden&&getComputedStyle(app()).display!=='none';
+ // in-memory Firebase with a fake Auth
+ const docs=new Map(),calls={reset:0,verify:0},auth={currentUser:null};
+ const F={doc:(db,c,id)=>({path:c+'/'+id,c,id}),serverTimestamp:()=>({ts:1}),collection:(db,c)=>({coll:c}),orderBy:()=>({}),limit:()=>({}),where:()=>({}),query:(c)=>c,
+  async getDoc(ref){const d=docs.get(ref.path);return{exists:()=>!!d,data:()=>d}},async getDocs(){return{docs:[]}},async setDoc(ref,data){docs.set(ref.path,data)},async deleteDoc(ref){docs.delete(ref.path)},
+  async runTransaction(db,fn){const w=[],tx={async get(ref){const d=docs.get(ref.path);return{exists:()=>!!d,data:()=>d}},set(ref,data){w.push(['set',ref.path,data])},delete(ref){w.push(['del',ref.path])}};await fn(tx);for(const x of w){if(x[0]==='set')docs.set(x[1],{...x[2]});else docs.delete(x[1])}}};
+ const A={
+  async signInWithEmailAndPassword(a,e,p){if(p!=='goodpass1')throw{code:'auth/invalid-credential'};a.currentUser={uid:e.startsWith('b')?'u2':'u1',email:e,emailVerified:true};await T.onUser(a.currentUser)},
+  async createUserWithEmailAndPassword(a,e,p){a.currentUser={uid:'u3',email:e,emailVerified:false};await T.onUser(a.currentUser);return{user:a.currentUser}},
+  async sendEmailVerification(){calls.verify++},async sendPasswordResetEmail(){calls.reset++},
+  async signOut(a){a.currentUser=null;await T.onUser(null)}};
+ const type=(email,pass)=>{g$('#g-email').value=email;g$('#g-email').dispatchEvent(new Event('input',{bubbles:true}));g$('#g-pass').value=pass};
+ const submit=()=>g$('#g-form').dispatchEvent(new Event('submit',{cancelable:true,bubbles:true}));
+ const click=sel=>g$(sel).click();
+ T.inject({A,F,auth,db:{}});
+ if(!FLAG){
+  // 1 a fresh visitor sees only the sign-in screen
+  ck('fresh-visitor-sees-the-sign-in-screen',gated()&&!!g$('#g-form')&&gate().textContent.includes('Sign in to play'));
+  ck('the-game-is-not-visible-behind-it',getComputedStyle(app()).display==='none');
+  ck('there-is-no-guest-option',!/guest|skip|offline play/i.test(gate().textContent));
+  ck('form-has-sign-in-create-and-reset',!!g$('button[type=submit]')&&!!g$('[data-g=signup]')&&!!g$('[data-g=reset]'));
+  // 2 validation and errors
+  submit();await sleep(30);ck('empty-form-is-refused-with-a-message',gated()&&gate().textContent.includes('Enter your email and password'));
+  type('a@b.c','wrongpass');submit();await sleep(150);ck('wrong-password-shows-the-error-and-stays-gated',gated()&&gate().textContent.includes('Email or password is incorrect'));
+  type('a@b.c','short');click('[data-g=signup]');await sleep(30);ck('short-password-is-refused-for-sign-up',gated()&&gate().textContent.includes('at least 8'));
+  type('','');click('[data-g=reset]');await sleep(30);ck('reset-needs-an-email',gated()&&gate().textContent.includes('Enter your email address first'));
+  type('a@b.c','');click('[data-g=reset]');await sleep(100);ck('reset-sends-the-link-and-says-so',calls.reset===1&&gate().textContent.includes('reset link'));
+  // 3 the email field is escaped and kept across redraws
+  const evil='"><img src=x onerror=window.__pwned=1>';type(evil,'x');click('[data-g=signup]');await sleep(60);
+  ck('typed-email-cannot-inject-markup',!g$('img')&&!window.__pwned&&g$('#g-email').value===evil);
+  // 4 sign in
+  S().gold=777;st.save();
+  type('a@b.c','goodpass1');submit();await sleep(250);
+  ck('signing-in-opens-the-game',open()&&!document.getElementById('camp').hidden&&S().gold===777);
+  ck('the-gate-is-gone',gate().hidden&&!document.body.classList.contains('gated'));
+  ck('device-is-tagged-with-its-owner',localStorage.getItem('hd-owner')==='u1');
+  // 5 sign out comes back to the gate
+  st.setTab('x');cp.camp();document.querySelector('[data-c=signout]').click();await sleep(250);
+  ck('signing-out-returns-to-the-gate',gated()&&!!g$('#g-form'));
+  // 6 a DIFFERENT account on the same device does not inherit the first player's progress
+  st.save();const before=JSON.parse(localStorage.getItem(KEY)).gold;
+  type('bob@b.c','goodpass1');submit();await sleep(300);
+  ck('second-account-starts-clean',open()&&S().gold===0&&before===777,S().gold);
+  ck('first-players-save-is-kept-aside',(()=>{try{return JSON.parse(localStorage.getItem('hollow-delve-2-other-account')).gold===777}catch(e){return false}})());
+  ck('owner-tag-moves-to-the-new-account',localStorage.getItem('hd-owner')==='u2');
+  S().gold=55;st.save();st.setTab('x');cp.camp();document.querySelector('[data-c=signout]').click();await sleep(250);
+  // 7 the same account signing back in keeps its own progress
+  type('bob@b.c','goodpass1');submit();await sleep(300);ck('same-account-keeps-its-progress',open()&&S().gold===55,S().gold);
+  document.querySelector('[data-c=signout]')||(st.setTab('x'),cp.camp());document.querySelector('[data-c=signout]').click();await sleep(250);
+  // 8 creating an account signs the player in (unverified) and tells them about verification
+  type('new@b.c','goodpass1');click('[data-g=signup]');await sleep(300);
+  ck('creating-an-account-opens-the-game',open()&&calls.verify===1);
+  st.setTab('x');cp.camp();ck('account-tab-asks-for-verification',document.querySelector('#cbody').innerHTML.includes('verif'));
+  // 9 a save from before accounts were required is adopted by the first account that signs in (cloud.js claimDevice)
+  localStorage.removeItem('hd-owner');S().gold=9;st.save();await T.onUser({uid:'u9',email:'x@y.z',emailVerified:false});
+  ck('an-ownerless-legacy-save-is-adopted',S().gold===9&&localStorage.getItem('hd-owner')==='u9');
+  // 10 signing out while a battle is running ends up at the gate, with the game stopped
+  cp.camp();const bt=await import('/src/battle.js');bt.startRun();await sleep(100);await T.onUser(null);await sleep(100);
+  ck('signing-out-mid-battle-shows-the-gate-and-returns-to-camp',gated()&&st.mode==='camp');
+ }else if(FLAG==='1'){
+  ck('returning-player-first-sees-a-short-signing-in-splash',gated()&&gate().textContent.includes('Signing you in')&&!g$('#g-form'));
+  auth.currentUser={uid:'u1',email:'a@b.c',emailVerified:true};await T.onUser(auth.currentUser);await sleep(250);
+  ck('restored-session-opens-the-game-without-typing-anything',open());
+ }else if(FLAG==='2'){
+  ck('returning-player-first-sees-the-splash',gated()&&gate().textContent.includes('Signing you in'));
+  await T.onUser(null);await sleep(100);
+  ck('no-session-then-shows-the-form',gated()&&!!g$('#g-form')&&!gate().textContent.includes('Signing you in'));
+ }else{
+  ck('splash-while-waiting',gated()&&gate().textContent.includes('Signing you in'));
+  await sleep(12600);
+  ck('auth-never-answering-falls-back-to-the-form-with-a-note',gated()&&!!g$('#g-form')&&gate().textContent.includes('could not restore'));
+ }
+}catch(e){out.push('EXC '+e.message+' | '+(e.stack||'').split(String.fromCharCode(10))[1])}
+document.title=out.join(' ');
+</script></body></html>

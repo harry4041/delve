@@ -33,12 +33,6 @@ export function drawWorn(c, e, st) {
     for (let dy = -rad; dy <= rad; dy++) { const hw = Math.round(Math.sqrt(rad * rad - dy * dy)); r(px - hw, py + dy, 2 * hw + 1, 1, col); }
     r(px - Math.round(rad * .6), py - Math.round(rad * .6), Math.max(1, Math.round(rad * .5)), 1, lit(col));
   };
-  const heater = (px, py, P, fill) => { // heater shield: flat top, tapering to a point
-    const hw = (dy) => (dy < 3 ? 6 : Math.max(0, Math.round(6 - (dy - 3) * .5)));
-    for (let dy = -9; dy <= 9; dy++) { const w = hw(dy + 9); r(px - w - 1, py + dy, 2 * w + 3, 1, c.ink(fill)); }
-    for (let dy = -9; dy <= 9; dy++) { const w = hw(dy + 9); r(px - w, py + dy, 2 * w + 1, 1, fill); r(px - w, py + dy, 1, 1, lit(fill)); r(px + w, py + dy, 1, 1, shd(fill)); }
-    r(px - 6, py - 9, 13, 2, P.trim);
-  };
   const mailTex = (x, y, w, h, col) => { for (let j = 0; j < h; j += 2) for (let i = (j / 2) % 2; i < w; i += 2) { r(x + i, y + j, 1, 1, lit(col)); if (j + 1 < h) r(x + i + 1, y + j + 1, 1, 1, shd(col)); } };
 
   // ---- legs ----
@@ -98,29 +92,49 @@ export function drawWorn(c, e, st) {
     else if (b === 'Talisman') { r(x + 1, y, 2, 1, P.trim); B(x, y + 1, 4, 3, P.gem); r(x + 1, y + 4, 2, 1, P.trim); r(x + 1, y + 2, 2, 1, '#ffffff'); }
     else { B(x, y, 4, 5, P.trim); r(x + 1, y + 1, 2, 2, lit(P.trim)); r(x + 1, y + 3, 2, 1, shd(P.trim)); }
   });
-  // ---- shields (left arm by default) ----
-  for (const [it, px] of [[e.lhand, ax + 3], [e.rhand, bx + 3]]) {
+  // ---- shields: strapped to the forearm, standing slightly proud of the body ----
+  const heater = (px, py, w, h, rim, left, right) => { // flat top with a curved taper to a point; rim, then a field split down the middle
+    const half = (i) => (i < h * .42 ? w : Math.max(0, Math.round(w * Math.cos(((i - h * .42) / (h * .58)) * Math.PI / 2)))), top = py - Math.floor(h / 2);
+    for (let i = 0; i < h; i++) { const hw = half(i) + 1; r(px - hw, top + i, 2 * hw + 1, 1, c.ink(rim)); }
+    for (let i = 0; i < h; i++) { const hw = half(i); r(px - hw, top + i, 2 * hw + 1, 1, rim); }
+    for (let i = 1; i < h - 1; i++) { const hw = half(i) - 1; if (hw < 0) continue; r(px - hw, top + i, hw + 1, 1, left); r(px + 1, top + i, hw, 1, right); }
+    r(px - w, top, 1, Math.floor(h * .5), lit(rim));
+  };
+  for (const [it, px] of [[e.lhand, ax + 4], [e.rhand, bx + 2]]) {
     if (!it || it.ty !== 'shield') continue;
-    const b = baseOf(it), P = pal(it, b === 'Buckler' ? 'steel' : 'steel'), py = 29;
-    if (b === 'Buckler') { disc(px, py, 8, P.m); disc(px, py, 5, P.wood); disc(px, py, 2, lit(P.m)); }
-    else if (b === 'Shield') { heater(px, py, P, P.m); r(px - 1, py - 6, 3, 15, P.acc); r(px - 5, py - 2, 11, 3, P.acc); r(px - 1, py - 6, 1, 15, lit(P.acc)); }
-    else { heater(px, py, P, mix(P.m, '#e8c050', .45)); r(px - 6, py - 12, 3, 4, P.trim); r(px + 4, py - 12, 3, 4, P.trim); B(px - 2, py - 3, 5, 6, P.gem); r(px - 1, py - 2, 1, 2, '#ffffff'); }
+    const b = baseOf(it), P = pal(it, 'steel'), py = 29;
+    if (b === 'Buckler') {
+      disc(px, py, 6, P.m);                                                                                      // steel rim
+      for (let dy = -4; dy <= 4; dy++) { const hw = Math.round(Math.sqrt(16 - dy * dy)); r(px - hw, py + dy, 2 * hw + 1, 1, dy % 2 ? P.wood : lit(P.wood)); } // wooden planks
+      disc(px, py, 2, lit(P.m)); r(px - 5, py, 1, 1, lit(P.m)); r(px + 5, py, 1, 1, lit(P.m)); r(px, py - 5, 1, 1, lit(P.m)); r(px, py + 5, 1, 1, lit(P.m)); // boss and rivets
+    } else if (b === 'Shield') {
+      const left = mix(P.m, P.acc, .4), right = shd(left);
+      heater(px, py, 5, 16, e.rhand === it || e.lhand === it ? P.trim : P.m, left, right);
+      for (let k = 0; k < 4; k++) { r(px - 4 + k, py - 3 + k, 2, 1, P.trim); r(px + 3 - k, py - 3 + k, 2, 1, P.trim); }   // chevron
+      r(px - 1, py - 6, 3, 1, lit(P.trim));
+    } else { // Aegis: gilded, with a winged crest and a gem
+      const left = mix('#e8c050', P.acc, .25), right = shd(left);
+      heater(px, py, 5, 16, P.trim, left, right);
+      r(px - 7, py - 10, 2, 5, P.trim); r(px + 6, py - 10, 2, 5, P.trim); r(px - 6, py - 11, 1, 2, lit(P.trim)); r(px + 6, py - 11, 1, 2, lit(P.trim));
+      B(px - 1, py - 3, 3, 5, P.gem); r(px - 1, py - 3, 1, 2, '#ffffff');
+    }
   }
-  // ---- head ----
+  // ---- head (hl = left edge of the headgear, hw = its width: adults have a smaller head than the cartoon enemies) ----
   if (e.head) {
-    const b = baseOf(e.head);
-    if (b === 'Cap') { const P = pal(e.head, 'cloth'); S([[hx - 1, -3, 18, 6], [hx + 1, -5, 14, 3]], P.m); r(hx + 2, -4, 7, 1, lit(P.m)); B(hx - 4, 3, 24, 2, shd(P.m)); r(hx - 1, 2, 18, 1, P.trim); r(hx + 7, -7, 2, 2, e.head.ri >= 3 ? P.gem : lit(P.m)); }
+    const b = baseOf(e.head), hw = st.adult ? 14 : 18, hl = hx + 8 - hw / 2, mid = hl + hw / 2;
+    if (b === 'Cap') { const P = pal(e.head, 'cloth'); S([[hl, -3, hw, 6], [hl + 2, -5, hw - 4, 3]], P.m); r(hl + 3, -4, hw / 2 - 1, 1, lit(P.m)); B(hl - 3, 3, hw + 6, 2, shd(P.m)); r(hl, 2, hw, 1, P.trim); r(mid - 1, -7, 2, 2, e.head.ri >= 3 ? P.gem : lit(P.m)); }
     else if (b === 'Helm') {
       const P = pal(e.head, 'steel');
-      if (e.head.ri >= 3) { S([[hx + 6, -11, 4, 8]], P.acc); r(hx + 7, -10, 1, 6, lit(P.acc)); }
-      B(hx - 1, -6, 18, 4, P.m); B(hx - 3, -3, 22, 20, P.m); r(hx, -6, 16, 1, lit(P.m)); r(hx - 2, -3, 20, 1, lit(P.m)); r(hx + 1, 6, 14, 3, '#0c0a12'); r(hx + 7, 5, 2, 12, lit(P.m)); r(hx - 1, 4, 18, 1, P.trim); r(hx - 1, 14, 18, 1, P.trim);
-      r(hx - 3, 9, 3, 8, shd(P.m)); r(hx + 16, 9, 3, 8, shd(P.m)); r(hx, 1, 1, 1, lit(P.m)); r(hx + 14, 1, 1, 1, lit(P.m)); r(hx + 1, 11, 1, 1, P.dk); r(hx + 13, 11, 1, 1, P.dk);
+      if (e.head.ri >= 3) { S([[mid - 2, -12, 4, 9]], P.acc); r(mid - 1, -11, 1, 6, lit(P.acc)); }
+      B(hl + 1, -6, hw - 2, 4, P.m); B(hl - 1, -3, hw + 2, 20, P.m); r(hl + 1, -6, hw - 2, 1, lit(P.m)); r(hl, -3, hw, 1, lit(P.m));
+      r(hl + 2, 6, hw - 4, 3, '#0c0a12'); r(mid - 1, 5, 2, 12, lit(P.m)); r(hl, 4, hw, 1, P.trim); r(hl, 14, hw, 1, P.trim);
+      r(hl - 1, 9, 3, 8, shd(P.m)); r(hl + hw - 2, 9, 3, 8, shd(P.m)); r(hl + 1, 1, 1, 1, lit(P.m)); r(hl + hw - 2, 1, 1, 1, lit(P.m)); r(hl + 2, 11, 1, 1, P.dk); r(hl + hw - 3, 11, 1, 1, P.dk);
     } else if (b === 'Hood') {
-      const P = pal(e.head, 'cloth'); S([[hx - 3, -4, 22, 7], [hx - 4, 2, 5, 17], [hx + 15, 2, 5, 17]], P.m); r(hx, -3, 15, 1, lit(P.m)); r(hx + 1, 2, 14, 2, shd(P.m)); B(hx + 5, -8, 6, 4, P.m);
-      B(hx - 7, 15, 30, 6, P.m, { tex: 1 }); r(hx - 7, 19, 30, 1, P.trim);
+      const P = pal(e.head, 'cloth'); S([[hl - 1, -3, hw + 2, 8], [hl - 2, 3, 5, 16], [hl + hw - 3, 3, 5, 16]], P.m); r(hl + 1, -2, hw - 2, 1, lit(P.m)); r(hl + 1, 2, hw - 2, 2, shd(P.m)); B(mid - 3, -9, 6, 4, P.m);
+      B(hl - 6, 15, hw + 12, 6, P.m, { tex: 1 }); r(hl - 6, 19, hw + 12, 1, P.trim);
     } else {
-      const P = pal(e.head, 'gold'); S([[hx + 1, -7, 2, 5], [hx + 5, -9, 2, 7], [hx + 9, -9, 2, 7], [hx + 13, -7, 2, 5]], P.m); B(hx - 1, -3, 18, 5, P.m); r(hx, -3, 16, 1, lit(P.m));
-      r(hx + 7, -2, 2, 3, P.gem); r(hx + 7, -2, 1, 1, '#ffffff'); r(hx + 2, -1, 1, 2, P.gem); r(hx + 13, -1, 1, 2, P.gem); r(hx + 2, -9, 2, 1, P.gem); r(hx + 12, -9, 2, 1, P.gem);
+      const P = pal(e.head, 'gold'); S([[hl + 1, -8, 3, 6], [mid - 2, -11, 4, 9], [hl + hw - 4, -8, 3, 6]], P.m); r(mid - 1, -10, 1, 6, lit(P.m)); B(hl, -3, hw, 5, P.m); r(hl, -3, hw, 1, lit(P.m)); // three points, tallest in the middle
+      r(mid - 1, -2, 2, 3, P.gem); r(mid - 1, -2, 1, 1, '#ffffff'); r(hl + 2, -1, 1, 2, P.gem); r(hl + hw - 3, -1, 1, 2, P.gem); r(mid - 1, -12, 2, 1, P.gem); r(hl + 2, -9, 1, 1, P.gem); r(hl + hw - 3, -9, 1, 1, P.gem);
     }
   }
   // ---- weapons (right hand, then left), held upright in the fist ----

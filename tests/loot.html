@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>running</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+</head><body><div id="app">
+<header><h1>Delve</h1><div id="top"></div></header>
+<section id="battle" hidden>
+ <div class="cv"><canvas id="c" width="192" height="108"></canvas><div id="fxl"></div>
+  <div id="over" hidden><div class="px" style="font-size:12px">Defeated</div><div id="ovt"></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button data-a="delveAgain" style="background:#d94a4a;color:#fff;border-color:#fff">⚔ Delve Again</button><button data-a="camp">Go to camp</button></div></div></div>
+ <div class="bar"><i id="hpb"></i><span id="hpt"></span></div>
+ <div class="bar m" id="mpw"><i id="mpb"></i><span id="mpt"></span></div>
+ <div class="bar e"><i id="ehb"></i><span id="ent"></span></div>
+ <div class="row sp" style="margin:6px 0"><div class="row" id="spells"></div><div class="row"><button class="s alt" data-a="spd" id="spdb"></button><button class="s alt" data-a="end">End run</button></div></div>
+ <div class="mute">Last drop</div><div id="last"></div><div class="mute" style="margin-top:6px">Loot this run</div><div id="feed"></div>
+</section>
+<section id="camp" hidden>
+ <div class="row sp"><div class="tabs"><button data-a="tab" data-v="g" id="tg">Gear</button><button data-a="tab" data-v="u" id="tu">Upgrades</button><button data-a="tab" data-v="v" id="tv">Vault</button><button data-a="tab" data-v="m" id="tm">Magic</button><button data-a="tab" data-v="p" id="tp">Pets</button><button data-a="tab" data-v="r" id="tr2">Auras</button><button data-a="tab" data-v="i" id="ti">Idle</button><button data-a="tab" data-v="a" id="ta">Ascend</button><button data-a="tab" data-v="l" id="tl">Scores</button><button data-a="tab" data-v="x" id="tx">Account</button></div></div>
+ <div style="margin:8px 0"><button data-a="delve" style="width:100%;font-size:22px;padding:10px;background:var(--btn);border-width:4px;box-shadow:5px 5px 0 var(--ink)">⚔ DELVE</button></div>
+ <div id="sdw" class="row" style="margin:6px 0"></div><div id="cbody"></div><div style="margin:16px 0"><button class="s alt" data-a="reset">Reset save</button></div>
+</section>
+</div>
+<script type="module">
+// Loot tuning and gear persistence: tier ladder, drop distribution, Heirlooms, the Heroic mantle, dynamic tier text.
+const out=[],ck=(n,c,x)=>out.push(n+':'+(c?'ok':'FAIL'+(x!==undefined?'('+x+')':'')));
+window.onerror=(m,u,l)=>out.push('ERR '+m+' @'+String(u).split('/').pop()+':'+l);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+try{
+ await import('/src/main.js');
+ const st=await import('/src/state.js'),as=await import('/src/ascension.js'),it=await import('/src/items.js'),cp=await import('/src/camp.js'),lc=await import('/src/lootcfg.js'),lk=await import('/src/look.js'),sts=await import('/src/stats.js');
+ const KEY='hollow-delve-2',S=()=>st.S,body=()=>document.querySelector('#cbody').innerHTML,fresh=()=>{localStorage.removeItem(KEY);st.load()};
+ const click=(a,v)=>{const b=document.createElement('button');b.dataset.a=a;if(v!==undefined)b.dataset.v=v;document.body.appendChild(b);b.click();b.remove()};
+ const L0={...lc.LOOT,stb:[...lc.LOOT.stb]};
+ // 1 the chosen tuning and the tier ladder
+ ck('tuning-is-the-chosen-one',lc.LOOT.stb[0]===4.5&&lc.LOOT.stb[1]===.225&&lc.LOOT.top===.6&&lc.LOOT.dg===.022,JSON.stringify(lc.LOOT));
+ let mono=true;for(let n=1;n<80;n++)if(as.STB(n)<=as.STB(n-1))mono=false;ck('tier-ladder-is-strictly-increasing',mono&&as.STB(0)===1);
+ fresh();ck('uncommon-appears-inside-the-first-life',as.tierStage(1)>=10&&as.tierStage(1)<=22,as.tierStage(1));
+ ck('rare-and-epic-are-reachable-in-a-normal-life',as.tierStage(2)<=40&&as.tierStage(3)<=65&&as.tierStage(4)<=95,[2,3,4].map(r=>as.tierStage(r)).join('/'));
+ ck('tierStage-agrees-with-maxStep',[1,2,3,4,5,6].every(r=>as.maxStep(as.tierStage(r))>=3*r&&as.maxStep(as.tierStage(r)-1)<3*r));
+ const baseMyth=as.tierStage(5);S().rl={rMyth:2};ck('mythic-sense-still-lowers-the-stages',as.tierStage(5)<baseMyth,as.tierStage(5)+' vs '+baseMyth);S().rl={};
+ // 2 drop distribution: most drops are near the top unlocked step
+ const sample=(cap,top,N=6000)=>{const old=lc.LOOT.top;lc.LOOT.top=top;let s=0,near=0;for(let i=0;i<N;i++){const v=it.rollStep(1,cap);s+=v;if(v>=cap-1)near++}lc.LOOT.top=old;return{mean:s/N,near:near/N}};
+ const nw=sample(6,.6),ow=sample(6,0);
+ ck('new-drops-cluster-near-the-top-tier',nw.mean>3.4&&nw.near>.45,JSON.stringify(nw));
+ ck('the-old-weighting-clustered-at-the-bottom-(knob-works)',ow.mean<1.2&&ow.near<.1,JSON.stringify(ow));
+ ck('a-higher-cap-gives-higher-drops',sample(9,.6).mean>sample(3,.6).mean+2);
+ fresh();const cap30=as.maxStep(30);ck('at-stage-30-most-drops-are-already-above-common',(()=>{let n=0;for(let i=0;i<3000;i++)if(it.rollStep(1,cap30)>=3)n++;return n/3000>.45})(),cap30);
+ // 3 growth compensation
+ fresh();ck('enemy-growth-includes-the-compensation',Math.abs(as.hpG()-(1.22+lc.LOOT.dg))<1e-9&&Math.abs(as.atG()-(1.22+lc.LOOT.dg))<1e-9,as.hpG());
+ S().asc=40;ck('growth-caps-still-apply',as.hpG()<=1.25+lc.LOOT.dg+1e-9&&as.atG()<=1.24+lc.LOOT.dg+1e-9);S().asc=0;
+ // 4 Heirlooms
+ const mk=(ty,ri,il,atk)=>({id:st.nextUid(),ty,ri,lv:1,il,nm:'T '+ty,st:{atk}});
+ const setup=(heir)=>{fresh();const S0=S();S0.rl={rHeir:heir};S0.eq={rhand:mk('weapon',4,50,500),head:mk('head',3,40,200),chest:mk('chest',2,30,90),legs:mk('legs',1,20,20),boots:mk('boots',0,10,5)};S0.bag=[mk('head',2,22,50)];S0.life=15;S0.gold=1e9;S0.asc=0};
+ setup(0);let before=Object.keys(S().eq).length;as.ascend();
+ ck('no-heirloom-relic-means-the-old-reset',S().asc===1&&Object.keys(S().eq).join()==='rhand'&&S().eq.rhand.id===0&&S().bag.length===0,JSON.stringify(Object.keys(S().eq)));
+ setup(2);const best=S().eq.rhand,second=S().eq.head;as.ascend();
+ ck('two-heirlooms-keep-the-two-best-items',S().eq.rhand===best&&S().eq.head===second&&Object.keys(S().eq).length===2,Object.keys(S().eq).join());
+ setup(1);const b1=S().eq.rhand;as.ascend();ck('one-heirloom-keeps-only-the-best',S().eq.rhand===b1&&Object.keys(S().eq).length===1);
+ setup(10);as.ascend();ck('plenty-of-heirlooms-keeps-everything-equipped',Object.keys(S().eq).length===5&&S().eq.boots.nm==='T boots');
+ setup(3);S().eq.rhand=mk('weapon',0,1,2);S().eq.rhand.id=0;as.ascend();ck('the-starter-sword-is-never-counted-as-an-heirloom',S().eq.rhand.id===0&&Object.keys(S().eq).length===4&&['head','chest','legs'].every(k=>S().eq[k]),Object.keys(S().eq).join());
+ setup(2);as.ascend();ck('the-bag-is-still-cleared',S().bag.length===0&&S().gold===0&&S().best===0);
+ setup(2);S().life=1;as.ascend();ck('ascension-requirements-are-unchanged',S().asc===0&&Object.keys(S().eq).length===5);
+ // 5 the relics exist, cost sensibly and can be bought
+ const rh=as.RT.rHeir,rc=as.RT.rCape;
+ ck('relics-exist-with-sane-costs',!!rh&&!!rc&&rh.m===10&&rc.m===1&&rc.b<=8&&rh.b<=12,JSON.stringify([rh&&rh.b,rc&&rc.b]));
+ fresh();S().relics=50;S().rl={};st.setTab('a');cp.camp();ck('ascend-tab-lists-the-new-relics',body().includes('Heirlooms')&&body().includes('Heroic mantle'));
+ ck('capes-locked-before-buying',!lk.capesUnlocked());click('rb','rCape');ck('buying-the-mantle-unlocks-capes-and-charges-its-cost',sts.RL('rCape')===1&&lk.capesUnlocked()&&S().relics===50-rc.b,S().relics);
+ click('rb','rHeir');click('rb','rHeir');ck('heirloom-levels-cost-more-each-time',sts.RL('rHeir')===2&&S().relics===50-rc.b-rh.b-Math.round(rh.b*rh.g),S().relics);
+ click('rb','rCape');ck('the-mantle-cannot-be-bought-twice',sts.RL('rCape')===1);
+ // 6 text that used to be hard-coded
+ fresh();st.setTab('g');cp.camp();ck('gear-tab-states-the-real-tier-stages',body().includes('Uncommon drops from stage '+as.tierStage(1))&&body().includes('rare from '+as.tierStage(2))&&body().includes('legendary from '+as.tierStage(4))&&!body().includes('legendary from 70'));
+ // 7 generated items still sane across tiers
+ fresh();let sane=true;for(const ri of [0,2,4,8,12])for(const ty of Object.keys(st.BASE)){const g=it.gen(40,ri,ty);if(!g||!g.nm||!Object.values(g.st).every(Number.isFinite)||g.ri!==ri)sane=false}ck('generated-items-are-valid-at-every-tier',sane);
+ lc.LOOT.stb=L0.stb;
+}catch(e){out.push('EXC '+e.message+' | '+(e.stack||'').split(String.fromCharCode(10))[1])}
+document.title=out.join(' ');
+</script></body></html>
