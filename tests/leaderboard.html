@@ -36,9 +36,10 @@ try{
   async getDocs(q){calls.getDocs++;let rows=[...docs.entries()].filter(([p])=>p.startsWith(q.coll+'/')).map(([p,d])=>({id:p.split('/')[1],d}));
    const o=q.cs.find(c=>c.o),l=q.cs.find(c=>c.l);if(o)rows.sort((a,b)=>(b.d[o.o[0]]-a.d[o.o[0]])*(o.o[1]==='desc'?1:-1));if(l)rows=rows.slice(0,l.l);
    return{docs:rows.map(r=>({id:r.id,data:()=>r.d}))}},
-  async setDoc(ref,data){calls.setDoc++;docs.set(ref.path,data)},async deleteDoc(ref){calls.deleteDoc++;docs.delete(ref.path)},
+  async setDoc(ref,data){if(window.__failNext){window.__failNext=0;const e=new Error('denied');e.code='permission-denied';throw e}calls.setDoc++;docs.set(ref.path,data)},async deleteDoc(ref){calls.deleteDoc++;docs.delete(ref.path)},
   async runTransaction(){},};
  T.inject({A:{},F,auth:{},db:{}});
+ const settle=async()=>{for(let i=0;i<120;i++){await sleep(25);const c=cloud.cloudState();if(c.user&&c.user.verified&&!c.busy&&c.syncAt>0){await sleep(40);return}}}; // wait for sign-in to land instead of a fixed sleep (slow right after a code change)
  const user=v=>({uid:'u1',email:'a@b.c',emailVerified:v});
  const reset=()=>{localStorage.removeItem(KEY);localStorage.removeItem('hd-lb-pub');lb.resetPublishState();st.load();T.reset();docs.clear();lb.clearCache();S().lbName=null;S().best=40;S().bestOverall=40;S().asc=2;calls.getDocs=calls.setDoc=calls.deleteDoc=0};
  const q=s=>document.querySelector(s),body=()=>q('#cbody').innerHTML;
@@ -53,9 +54,9 @@ try{
  ck('snapshot-has-the-four-scores',s.v===1&&s.name==='Tester'&&s.stage===40&&s.asc===2&&Number.isInteger(s.power)&&Number.isInteger(s.stars)&&Object.keys(s).length===6,JSON.stringify(s));
  // 3 publishing rules of the road
  reset();await T.onUser(user(false));S().lbName='Tester';ck('unverified-players-do-not-publish',(await lb.publish(true))==='skipped'&&docs.size===0);
- reset();await T.onUser(user(true));await sleep(60);S().lbName=null;ck('no-name-no-entry',(await lb.publish(true))==='skipped'&&![...docs.keys()].some(k=>k.startsWith('lb/')));
- reset();await T.onUser(user(true));await sleep(60);S().lbName='Tester';let r1=await lb.publish(true);
- ck('verified-player-with-a-name-publishes',r1==='published'&&docs.get('lb/u1').name==='Tester'&&docs.get('lb/u1').stage===40&&docs.get('lb/u1').v===1&&!!docs.get('lb/u1').t);
+ reset();await T.onUser(user(true));await settle();S().lbName=null;ck('no-name-no-entry',(await lb.publish(true))==='skipped'&&![...docs.keys()].some(k=>k.startsWith('lb/')));
+ reset();await T.onUser(user(true));await settle();S().lbName='Tester';let r1=await lb.publish(true);
+ ck('verified-player-with-a-name-publishes',r1==='published'&&docs.get('lb/u1').name==='Tester'&&docs.get('lb/u1').stage===40&&docs.get('lb/u1').v===1&&!!docs.get('lb/u1').t,r1+' '+JSON.stringify(docs.get('lb/u1')));
  ck('entry-never-contains-the-email',!JSON.stringify(docs.get('lb/u1')).includes('a@b.c'));
  const before=calls.setDoc;ck('publish-is-throttled',(await lb.publish(false))==='skipped'&&calls.setDoc===before);
  S().bestOverall=41;ck('force-publishes-anyway',(await lb.publish(true))==='published'&&docs.get('lb/u1').stage===41);
@@ -67,7 +68,7 @@ try{
  await lb.loadBoard('stage',true);ck('manual-refresh-is-rate-limited',calls.getDocs===gd);
  // 5 the screen
  reset();for(let i=0;i<30;i++)docs.set('lb/p'+i,{v:1,name:i===28?'<img src=x onerror=alert(1)>':'Player'+i,stage:10+i,power:500+i,asc:i%4,stars:i%6,t:1});
- await T.onUser(user(true));await sleep(60);await render();
+ await T.onUser(user(true));await settle();await render();
  ck('five-sub-tabs',['stage','power','asc','stars','runs'].every(k=>!!q('[data-lbt='+k+']')));
  ck('rows-are-listed-with-ranks',body().includes('Player29')&&body().includes('<b>1</b>'));
  ck('player-names-are-escaped',!body().includes('<img src=x')&&body().includes('&lt;img'));
@@ -89,6 +90,15 @@ try{
  // 8 the sync hooks publish for opted-in players without any button press
  reset();S().lbName='Hooked';await T.onUser(user(true));await sleep(300);
  ck('publishes-automatically-after-a-cloud-sync',docs.has('lb/u1')&&docs.get('lb/u1').name==='Hooked');
+ // 8b after a Reset save the old entry survives: publish the best of the board and the save, never a lower stage
+ reset();docs.set('lb/u1',{v:1,name:'Old',stage:29,power:1000,asc:1,stars:2,t:1});await T.onUser(user(true));await settle();S().lbName='Harry';S().bestOverall=0;S().best=0;S().asc=0;
+ ck('reset-save-publishes-the-best-ever-not-zero',(await lb.publish(true))==='published'&&docs.get('lb/u1').stage===29&&docs.get('lb/u1').asc===1&&docs.get('lb/u1').stars>=2&&docs.get('lb/u1').name==='Harry',JSON.stringify(docs.get('lb/u1')));
+ S().bestOverall=35;ck('then-a-higher-stage-goes-through',(await lb.publish(true))==='published'&&docs.get('lb/u1').stage===35);
+ const w0=calls.setDoc;S().bestOverall=10;lb.resetPublishState();ck('unchanged-scores-do-not-cost-a-write',(await lb.publish(false))==='skipped'&&calls.setDoc===w0);
+ // refusals explain themselves
+ reset();await T.onUser(user(true));await settle();await render();q('#lb-name').value='Brave Delver';window.__failNext=1;q('#lb-form').dispatchEvent(new Event('submit',{cancelable:true,bubbles:true}));await sleep(200);
+ ck('refusal-shows-a-reason-and-no-name-is-kept',!S().lbName&&body().includes('did not accept')||body().includes('every 5 minutes'),body().slice(0,0));
+ reset();await T.onUser(user(false));await render();ck('unverified-user-is-told-to-verify',body().includes('Verify your email'));
  // 9 the tab itself
  ck('scores-tab-is-now-the-leaderboards-tab',document.querySelector('#tl').textContent==='Leaderboards');
 }catch(e){out.push('EXC '+e.message+' | '+(e.stack||'').split(String.fromCharCode(10))[1])}

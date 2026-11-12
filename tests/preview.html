@@ -29,5 +29,7 @@ localStorage.removeItem('hollow-delve-2');st.load();
 window.__gear=(ri)=>{const S=st.S;S.eq={};if(ri<0)return;const mk=(ty)=>it.gen(30,ri,ty);S.eq={rhand:mk('weapon'),lhand:mk('shield'),head:mk('head'),chest:mk('chest'),gloves:mk('gloves'),legs:mk('legs'),boots:mk('boots'),amu1:mk('amulet')}};
 window.__go=(s,drops)=>{bt.startRun();const r=st.run;r.stage=s;r.boss=s%10==0;r.eType=r.boss?5:(s-1)%5;r.eDrops=drops?[it.gen(s,2,'weapon'),it.gen(s,2,'chest')]:[];r.eEq=null;r.hp=r.maxHp=1e15;r.eHp=r.eMax=1e18;r.eAtk=0;r.t=0;return JSON.stringify({stage:r.stage,type:r.eType,boss:r.boss})};
 window.__look=(o)=>{st.S.look=o};
+const sk=await import('/src/skilltree.js'),cp=await import('/src/camp.js');
+window.__tree=(tab,all)=>{const S=st.S;S.tr={};if(all)for(const k in sk.NODE)S.tr[k]=1;S.rl={rMagic:1};S.magic=true;S.tr.den=1;st.setMode('camp');cp.view();st.setTab(tab);cp.camp();const f=document.querySelector('[data-z=fit]');if(f)f.click();return document.querySelectorAll('#cbody .tn').length};
 document.title='ready';
 </script></body></html>

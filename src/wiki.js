@@ -7,6 +7,14 @@ import { RTREE, STB, reqStage, ascFee } from './ascension.js';
 
 // ---------------------------------------------------------------- changelog (add new entries at the TOP; `id` must be unique)
 export const CHANGELOG = [
+  { id: '2026-11-12f', date: '2026-11-12', title: 'Leaderboard fix after Reset save', items: [
+    'Joining the leaderboards after a Reset save no longer fails: your old entry stays at its best-ever scores until your new game overtakes them.',
+    'When the leaderboard refuses an update, the message now says why (verify your email, wait 5 minutes, or the score limits).',
+  ] },
+  { id: '2026-11-12e', date: '2026-11-12', title: 'Cleaner skill trees', items: [
+    'Upgrades, Magic and Pets webs: connector lines no longer overlap each other or run through other nodes or their names.',
+    'Node names on the up and down arms now sit beside the node, and siblings share one trunk line, so the trees read more like proper family trees.',
+  ] },
   { id: '2026-11-12d', date: '2026-11-12', title: 'Character customisation', items: [
     'New Look tab: choose your skin tone, hair style and colour, outfit colour, scarf, cape and eye colour, with a live preview. Or press Randomise.',
     'The cape is now your choice. Auto keeps the old behaviour (crimson, turning to the colour of your best gear from Epic up), or pick a colour, or no cape at all. It also shows in the Gear-tab portrait now, so what you see there matches the battle.',

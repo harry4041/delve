@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>running</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+</head><body><div id="app">
+<header><h1>Delve</h1><div id="top"></div></header>
+<section id="battle" hidden>
+ <div class="cv"><canvas id="c" width="192" height="108"></canvas><div id="fxl"></div>
+  <div id="over" hidden><div class="px" style="font-size:12px">Defeated</div><div id="ovt"></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button data-a="delveAgain" style="background:#d94a4a;color:#fff;border-color:#fff">⚔ Delve Again</button><button data-a="camp">Go to camp</button></div></div></div>
+ <div class="bar"><i id="hpb"></i><span id="hpt"></span></div>
+ <div class="bar m" id="mpw"><i id="mpb"></i><span id="mpt"></span></div>
+ <div class="bar e"><i id="ehb"></i><span id="ent"></span></div>
+ <div class="row sp" style="margin:6px 0"><div class="row" id="spells"></div><div class="row"><button class="s alt" data-a="spd" id="spdb"></button><button class="s alt" data-a="end">End run</button></div></div>
+ <div class="mute">Last drop</div><div id="last"></div><div class="mute" style="margin-top:6px">Loot this run</div><div id="feed"></div>
+</section>
+<section id="camp" hidden>
+ <div class="row sp"><div class="tabs"><button data-a="tab" data-v="g" id="tg">Gear</button><button data-a="tab" data-v="u" id="tu">Upgrades</button><button data-a="tab" data-v="v" id="tv">Vault</button><button data-a="tab" data-v="m" id="tm">Magic</button><button data-a="tab" data-v="p" id="tp">Pets</button><button data-a="tab" data-v="r" id="tr2">Auras</button><button data-a="tab" data-v="i" id="ti">Idle</button><button data-a="tab" data-v="a" id="ta">Ascend</button><button data-a="tab" data-v="l" id="tl">Scores</button><button data-a="tab" data-v="x" id="tx">Account</button></div></div>
+ <div style="margin:8px 0"><button data-a="delve" style="width:100%;font-size:22px;padding:10px;background:var(--btn);border-width:4px;box-shadow:5px 5px 0 var(--ink)">⚔ DELVE</button></div>
+ <div id="sdw" class="row" style="margin:6px 0"></div><div id="cbody"></div><div style="margin:16px 0"><button class="s alt" data-a="reset">Reset save</button></div>
+</section>
+</div>
+<script type="module">
+// Geometry check of the three skill webs (Upgrades u, Magic m, Pets p): with every node visible, no connector may overlap another
+// along a line, run through a node or its label, and no two nodes/labels may overlap. ?verbose=1 lists the offenders.
+const out=[];window.onerror=(m,u,l)=>out.push('ERR '+m+' @'+String(u).split('/').pop()+':'+l);
+const q=new URLSearchParams(location.search),V=q.get('verbose')==='1';
+try{
+ await import('/src/main.js');
+ const tv=await import('/src/treeview.js'),sk=await import('/src/skilltree.js');
+ const R=26,NODE_R=36,LH=19,CW=9.5; // node footprint radius, label line height, label px per character (generous)
+ const wrap=s=>{s=s.replace('Mastery: ','M. ');const o=[];let c='';for(const t of s.split(' ')){if(c&&(c+' '+t).length>11){o.push(c);c=t}else c=c?c+' '+t:t}o.push(c);return o};
+ const sum={};for(const G of Object.values(sk.GRAPHS)){delete G._lay;const t0=performance.now();tv.tvLayout(G);out.push('layout-ms '+G.id+'='+Math.round(performance.now()-t0))}
+ for(const G of Object.values(sk.GRAPHS)){
+  const lay=tv.tvLayout(G),pos=lay.pos,issues=[];
+  // footprints
+  const fp={};
+  for(const k in pos){const p=pos[k],j=k in lay.junc,hub=k===lay.hubK;
+   if(j){fp[k]={c:{x:p.x,y:p.y,r:10},l:null};continue}
+   if(hub){fp[k]={c:{x:p.x,y:p.y,r:NODE_R+4},l:null};continue}
+   const lines=wrap(sk.NODE[k].n),w=Math.max(...lines.map(s=>s.length))*CW,ad=G.arms[lay.arm[k]].d,side=ad==='N'||ad==='S';
+   fp[k]={c:{x:p.x,y:p.y,r:NODE_R},l:side?{x0:p.x+R+4,x1:p.x+R+14+w,y0:p.y-lines.length*LH/2-2,y1:p.y+lines.length*LH/2+4}:{x0:p.x-w/2,x1:p.x+w/2,y0:p.y+R+4,y1:p.y+R+17+LH*(lines.length-1)+6}}}
+  const segs=[];
+  lay.edges.forEach(([a,b,d],ei)=>{const pts=lay.routes[ei];for(let i=0;i<pts.length-1;i++)segs.push({a,b,x0:pts[i][0],y0:pts[i][1],x1:pts[i+1][0],y1:pts[i+1][1]})});
+  const horiz=s=>s.y0===s.y1,lo=(u,v)=>Math.min(u,v),hi=(u,v)=>Math.max(u,v);
+  // A: two segments of DIFFERENT parents lying on the same line and overlapping in length
+  const A=[];
+  for(let i=0;i<segs.length;i++)for(let j=i+1;j<segs.length;j++){const s=segs[i],t=segs[j];if(s.a===t.a||s.b===t.b)continue;
+   if(horiz(s)&&horiz(t)&&s.y0===t.y0&&Math.min(hi(s.x0,s.x1),hi(t.x0,t.x1))-Math.max(lo(s.x0,s.x1),lo(t.x0,t.x1))>1)A.push(s.a+'>'+s.b+' & '+t.a+'>'+t.b+' @y'+s.y0);
+   if(!horiz(s)&&!horiz(t)&&s.x0===t.x0&&Math.min(hi(s.y0,s.y1),hi(t.y0,t.y1))-Math.max(lo(s.y0,s.y1),lo(t.y0,t.y1))>1)A.push(s.a+'>'+s.b+' & '+t.a+'>'+t.b+' @x'+s.x0)}
+  // B: a segment through a node circle or label that is not one of the edge's own endpoints (own endpoints: only the label of the CHILD or PARENT is checked separately in C)
+  const hitCircle=(s,c)=>{const x0=lo(s.x0,s.x1),x1=hi(s.x0,s.x1),y0=lo(s.y0,s.y1),y1=hi(s.y0,s.y1);const cx=Math.max(x0,Math.min(c.x,x1)),cy=Math.max(y0,Math.min(c.y,y1));return Math.hypot(cx-c.x,cy-c.y)<c.r};
+  const hitRect=(s,r)=>{if(!r)return false;const x0=lo(s.x0,s.x1),x1=hi(s.x0,s.x1),y0=lo(s.y0,s.y1),y1=hi(s.y0,s.y1);return x1>r.x0&&x0<r.x1&&y1>r.y0&&y0<r.y1};
+  const B=[],C=[];
+  for(const s of segs)for(const k in fp){
+   if(k!==s.a&&k!==s.b){if(hitCircle(s,fp[k].c))B.push(s.a+'>'+s.b+' through node '+k);else if(hitRect(s,fp[k].l))B.push(s.a+'>'+s.b+' through label of '+k)}
+   else if(hitRect(s,fp[k].l))C.push(s.a+'>'+s.b+' through its own end label '+k)}
+  // D: node/label overlaps
+  const D=[],ks=Object.keys(fp);
+  for(let i=0;i<ks.length;i++)for(let j=i+1;j<ks.length;j++){const a=fp[ks[i]],b=fp[ks[j]];
+   if(Math.hypot(a.c.x-b.c.x,a.c.y-b.c.y)<a.c.r+b.c.r)D.push('nodes '+ks[i]+'/'+ks[j]);
+   const rr=(r1,r2)=>r1&&r2&&r1.x1>r2.x0&&r1.x0<r2.x1&&r1.y1>r2.y0&&r1.y0<r2.y1;
+   const P=k=>(k in pos?'('+Math.round(pos[k].x)+','+Math.round(pos[k].y)+(lay.arm[k]!==undefined?' '+G.arms[lay.arm[k]].d:'')+')':'');
+   if(rr(a.l,b.l))D.push('labels '+ks[i]+P(ks[i])+'/'+ks[j]+P(ks[j]));
+   const cr=(c,r)=>{if(!r)return false;const cx=Math.max(r.x0,Math.min(c.x,r.x1)),cy=Math.max(r.y0,Math.min(c.y,r.y1));return Math.hypot(cx-c.x,cy-c.y)<c.r};
+   if(cr(a.c,b.l))D.push('node '+ks[i]+P(ks[i])+' on label '+ks[j]+P(ks[j]));if(cr(b.c,a.l))D.push('node '+ks[j]+P(ks[j])+' on label '+ks[i]+P(ks[i]))}
+  if(q.get('dbg')==='ALL'&&G.id==='u'){for(const k in pos)out.push('all '+k+' '+Math.round(pos[k].x)+','+Math.round(pos[k].y)+' '+(lay.arm[k]!==undefined?G.arms[lay.arm[k]].d:'-'))}
+  if(q.get('dbg')&&q.get('dbg')!=='ALL'&&G.id==='u'){for(const k of q.get('dbg').split(','))out.push('dbg '+k+' '+JSON.stringify(pos[k])+' arm '+(lay.arm[k]!==undefined?G.arms[lay.arm[k]].d:'-'));lay.edges.forEach(([a,b],i)=>{if(q.get('dbg').split(',').includes(a)&&q.get('dbg').split(',').includes(b))out.push('dbg route '+a+'>'+b+' '+JSON.stringify(lay.routes[i]))})}
+  if(q.get('cand')&&G.id==='u'){const [ca,cb]=q.get('cand').split('>'),pa=pos[ca],pb=pos[cb];
+   for(let bx=pa.x+56;bx<pb.x-8;bx+=14){const pts=tv.tvRoute(pa,pb,'E',bx),hits=[];
+    for(let i=0;i<pts.length-1;i++)for(const k in fp){const f=fp[k];const x0=lo(pts[i][0],pts[i+1][0]),x1=hi(pts[i][0],pts[i+1][0]),y0=lo(pts[i][1],pts[i+1][1]),y1=hi(pts[i][1],pts[i+1][1]);
+     if(k!==ca&&k!==cb){const cx=Math.max(x0,Math.min(f.c.x,x1)),cy=Math.max(y0,Math.min(f.c.y,y1));if(Math.hypot(cx-f.c.x,cy-f.c.y)<f.c.r)hits.push('circle:'+k)}
+     if(f.l&&x1>f.l.x0&&x0<f.l.x1&&y1>f.l.y0&&y0<f.l.y1)hits.push('label:'+k)}
+    out.push('cand x='+bx+' hits='+hits.join(','))}}
+  sum[G.id]={A,B,C,D,nodes:ks.length,edges:lay.edges.length};
+  out.push(G.id+': nodes='+ks.length+' collinearOverlap='+A.length+' throughOtherNode='+B.length+' throughOwnLabel='+C.length+' nodeOverlap='+D.length);
+  if(V){for(const [n,a] of [['A',A],['B',B],['C',C],['D',D]])if(a.length)out.push(G.id+'.'+n+': '+a.slice(0,12).join(' | '))}
+ }
+ const tot=Object.values(sum).reduce((a,s)=>a+s.A.length+s.B.length+s.D.length,0);
+ out.push((tot===0?'ok':'FAIL')+' no-overlaps-anywhere('+tot+')');
+}catch(e){out.push('EXC '+e.message+' | '+(e.stack||'').split(String.fromCharCode(10))[1])}
+document.title=out.join(' ;; ');
+</script></body></html>

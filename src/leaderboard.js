@@ -36,16 +36,22 @@ export function snapshot() {
   return { v: 1, name: S.lbName, stage: Math.max(0, Math.floor(S.bestOverall || S.best || 0)), power: Math.max(0, Math.floor(powerLevel())), asc: Math.max(0, Math.floor(S.asc || 0)), stars: Math.max(0, Math.floor(petStars())) };
 }
 
-let lastSig = '', lastAt = 0;
+let lastSig = '', lastAt = 0, known = null; // known: this account's entry as last read or written; stage/asc/stars in it can never fall (firestore.rules)
 try { lastAt = +localStorage.getItem(AT) || 0; } catch (e) { /* ignore */ }
-export function resetPublishState() { lastSig = ''; lastAt = 0; } // for tests and for switching accounts
+export function resetPublishState() { lastSig = ''; lastAt = 0; known = null; } // for tests and for switching accounts
 export async function publish(force) {
   const c = cloudState();
   if (!c.user || !c.user.verified || !S.lbName) return 'skipped';
   const e = snapshot(), sig = JSON.stringify(e);
   if (!force && (Date.now() - lastAt < PUBLISH_EVERY || sig === lastSig)) return 'skipped';
-  const { F, db } = await withFirebase();
-  await F.setDoc(F.doc(db, 'lb', c.user.uid), { ...e, t: F.serverTimestamp() });
+  const { F, db } = await withFirebase(), ref = F.doc(db, 'lb', c.user.uid);
+  // The rules never let stage, ascensions or pet stars fall, so after a "Reset save" (or on a second device) publish the best of what is
+  // already on the board and what this save has: a reset game keeps its old leaderboard entry until it overtakes it.
+  if (!known || known.uid !== c.user.uid) { const d = await F.getDoc(ref); known = { uid: c.user.uid, ...(d.exists() ? d.data() : {}) }; }
+  const m = { ...e, stage: Math.max(e.stage, known.stage || 0), asc: Math.max(e.asc, known.asc || 0), stars: Math.max(e.stars, known.stars || 0) };
+  if (!force && ['name', 'stage', 'power', 'asc', 'stars'].every((k) => m[k] === known[k])) { lastSig = sig; return 'skipped'; } // nothing new to say: save a write
+  await F.setDoc(ref, { ...m, t: F.serverTimestamp() });
+  known = { uid: c.user.uid, ...m };
   lastSig = sig; lastAt = Date.now();
   try { localStorage.setItem(AT, String(lastAt)); } catch (err) { /* ignore */ }
   return 'published';
@@ -68,8 +74,14 @@ function ensureLoaded() {
   loadBoard(ui.sub).catch((e) => { ui.err = cloudErr(e); }).finally(() => { ui.loading = false; emit(); });
 }
 
-// Publishing is refused by firestore.rules when a first entry is above the start ceilings or scores rise faster than is plausible.
-function pubErr(e) { return e && e.code === 'permission-denied' ? 'The leaderboard refused your scores. A new entry can start at up to stage 300, power 500,000, 60 ascensions and 60 pet stars, and scores can only rise at a realistic pace. Verify your email, then try again in a few minutes.' : cloudErr(e); }
+// Publishing is refused by firestore.rules (permission-denied) for several different reasons; say the one that most likely applies.
+function pubErr(e) {
+  if (!(e && e.code === 'permission-denied')) return cloudErr(e);
+  const c = cloudState(), wait = 5 * 60e3 - (Date.now() - lastAt);
+  if (c.user && !c.user.verified) return 'Verify your email on the Account tab to join the leaderboards.';
+  if (wait > 0) return 'Entries can only be updated every 5 minutes. Please try again in about ' + Math.ceil(wait / 60e3) + ' min.';
+  return 'The leaderboard did not accept these scores. A new entry can start at up to stage 300, power 500,000, 60 ascensions and 60 pet stars, and scores can only rise at a realistic pace. Try again in a few minutes.';
+}
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const medal = (i) => (i === 0 ? '#ffd34d' : i === 1 ? '#cfd6e6' : i === 2 ? '#d9955a' : 'var(--mute)');
 
@@ -125,7 +137,7 @@ document.addEventListener('click', async (e) => {
     try {
       const c = cloudState(), { F, db } = await withFirebase();
       await F.deleteDoc(F.doc(db, 'lb', c.user.uid));
-      S.lbName = null; lastSig = ''; clearCache(); ui.msg = 'You have left the leaderboards.';
+      S.lbName = null; lastSig = ''; known = null; clearCache(); ui.msg = 'You have left the leaderboards.';
     } catch (err) { ui.err = cloudErr(err); }
     emit();
   }
