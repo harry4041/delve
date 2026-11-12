@@ -39,7 +39,7 @@ export function nextUid(){return (uid++)}
 export function setForgeMode(v){return (forgeMode=v)}
 export function setForgeSelected(v){return (forgeSelected=v)}
 
-export function def(){return{gold:0,gems:0,best:0,bestOverall:0,tr:{},eq:{rhand:{id:0,ty:'weapon',ri:0,il:1,nm:'Rusty Sword',st:{atk:2}}},bag:[],magic:false,petsOn:false,pets:PET.map(()=>({own:0,lvl:0})),giftsClaimed:[],autoDelve:false,seenUp:'',farm:{t:Date.now(),gold:0,gems:0},ap:-1,speed:1,uid:1,rl:{},relics:0,asc:0,life:0,sd:0,vault:[],vaultLvl:0,vaultUnlocked:false,ascBuff:null,ascDebuff:null,bagLvl:0,auras:{}}}
+export function def(){return{gold:0,gems:0,best:0,bestOverall:0,tr:{},eq:{rhand:{id:0,ty:'weapon',ri:0,il:1,nm:'Rusty Sword',st:{atk:2}}},bag:[],magic:false,petsOn:false,pets:PET.map(()=>({own:0,lvl:0})),giftsClaimed:[],autoDelve:false,seenUp:'',look:{},farm:{t:Date.now(),gold:0,gems:0},ap:-1,speed:1,uid:1,rl:{},relics:0,asc:0,life:0,sd:0,vault:[],vaultLvl:0,vaultUnlocked:false,ascBuff:null,ascDebuff:null,bagLvl:0,auras:{}}}
 // Repairs a save whose fields have the wrong type (hand-edited, damaged or from a bad cloud doc) so the game never crashes on load.
 // Healthy saves pass through untouched. Items must have a known type and a stats object.
 function sanitize(){
@@ -47,7 +47,8 @@ function sanitize(){
   const obj=(o,k)=>{if(!o[k]||typeof o[k]!=='object'||Array.isArray(o[k]))o[k]={}};
   const arr=(o,k)=>{if(!Array.isArray(o[k]))o[k]=[]};
   for(const k of ['gold','gems','relics','asc','life','best','bestOverall','sd','bagLvl','vaultLvl'])num(S,k);
-  for(const k of ['tr','rl','auras','eq'])obj(S,k);
+  for(const k of ['tr','rl','auras','eq','look'])obj(S,k);
+  for(const k of Object.keys(S.look))if(!Number.isInteger(S.look[k])||S.look[k]<0||S.look[k]>99)delete S.look[k]; // palette indices only; look.js bounds them per group
   for(const k of ['bag','vault','giftsClaimed'])arr(S,k);
   for(const m of [S.tr,S.rl,S.auras])for(const k of Object.keys(m))if(typeof m[k]!=='number'||!Number.isFinite(m[k])||m[k]<0)delete m[k];
   const okItem=(it)=>it&&typeof it==='object'&&typeof it.ty==='string'&&Object.prototype.hasOwnProperty.call(SLOTOF,it.ty)&&it.st&&typeof it.st==='object'&&!Array.isArray(it.st)&&Number.isFinite(it.ri)&&it.ri>=0&&it.ri<RN.length&&Number.isFinite(it.il)&&typeof it.nm==='string';

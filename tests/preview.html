@@ -28,5 +28,6 @@ const st=await import('/src/state.js'),bt=await import('/src/battle.js'),it=awai
 localStorage.removeItem('hollow-delve-2');st.load();
 window.__gear=(ri)=>{const S=st.S;S.eq={};if(ri<0)return;const mk=(ty)=>it.gen(30,ri,ty);S.eq={rhand:mk('weapon'),lhand:mk('shield'),head:mk('head'),chest:mk('chest'),gloves:mk('gloves'),legs:mk('legs'),boots:mk('boots'),amu1:mk('amulet')}};
 window.__go=(s,drops)=>{bt.startRun();const r=st.run;r.stage=s;r.boss=s%10==0;r.eType=r.boss?5:(s-1)%5;r.eDrops=drops?[it.gen(s,2,'weapon'),it.gen(s,2,'chest')]:[];r.eEq=null;r.hp=r.maxHp=1e15;r.eHp=r.eMax=1e18;r.eAtk=0;r.t=0;return JSON.stringify({stage:r.stage,type:r.eType,boss:r.boss})};
+window.__look=(o)=>{st.S.look=o};
 document.title='ready';
 </script></body></html>

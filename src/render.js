@@ -1,5 +1,6 @@
 import {petInfo} from './pets.js';
 import {farmHtml} from './farm.js';
+import {lookStyle,capeColor} from './look.js';
 import {drawBackdrop,drawShadows,drawForeground,drawEffects,drawCape,drawHeroAura,drawMobFx} from './scene.js';
 import {$,PET,RC,S,SP,mode,run,save} from './state.js';
 import {activeAuras} from './auras.js';
@@ -58,13 +59,13 @@ let ART_T=0; // animation clock, set by draw(); drives blinking and cloth moveme
 const lit=c=>rr(c,1.22),shd=c=>rr(c,.72);
 const blink=()=>ART_T%3.6<.13;
 const HERO_ST={skin:'#ffd5ac',hair:'#ff9a2e',tun:'#3d8bff',leg:'#6a4f8a',boot:'#8a5a2a',belt:'#6a4a2a',
- face:C=>{const bl=blink(),ey=C('#2b2150');
+ face:(C,st)=>{const bl=blink(),ey=C(st.eye||'#2b2150');
   if(bl){R(8,5,2,1,ey);R(11,5,2,1,ey)}else{R(8,4,2,2,ey);R(11,4,2,2,ey);R(8,4,1,1,C('#fff'));R(11,4,1,1,C('#fff'))}
-  R(8,3,2,1,C('#b8661c'));R(11,3,2,1,C('#b8661c'));R(7,6,1,1,C('#ff9fb0'));R(13,6,1,1,C('#ff9fb0'));R(9,7,2,1,C('#c0705a'))},
- pre:(C)=>{ // tunic emblem and shoulder straps
-  R(9,12,2,2,C('#ffd34d'));R(9,12,1,1,C('#fff3b0'));R(5,10,1,4,C(shd('#3d8bff')));R(14,10,1,4,C(shd('#3d8bff')))},
- post:(C,e)=>{ // red scarf that flutters
-  const w=Math.round(Math.sin(ART_T*5)),sc=C('#d94a4a'),sd=C('#8a2a2a');
+  {const br=C(rr(st.hairCol||'#ff9a2e',.7));R(8,3,2,1,br);R(11,3,2,1,br)}R(7,6,1,1,C('#ff9fb0'));R(13,6,1,1,C('#ff9fb0'));R(9,7,2,1,C('#c0705a'))},
+ pre:(C,e,st)=>{ // tunic emblem and shoulder straps
+  R(9,12,2,2,C('#ffd34d'));R(9,12,1,1,C('#fff3b0'));R(5,10,1,4,C(shd(st.tun)));R(14,10,1,4,C(shd(st.tun)))},
+ post:(C,e,st)=>{ // scarf that flutters (none if the player chose no scarf)
+  if(!st.scarf)return;const w=Math.round(Math.sin(ART_T*5)),sc=C(st.scarf),sd=C(shd(st.scarf));
   R(6,8,8,2,sc);R(6,9,8,1,sd);R(13,9,2,1,sc);R(14,10+(w>0?1:0),2,3,sc);R(15,12+(w>0?1:0),1,1,sd)}};
 function drawFigure(x,y,e,st,fl,flip,sc){g.save();g.translate(x,y);if(sc&&sc!=1)g.scale(sc,sc);if(flip){g.translate(20,0);g.scale(-1,1)}
  const C=c=>fl?'#fff':c,sk=C(st.skin),hr=C(st.hair||'#000'),tun=C(st.tun),lg=C(st.leg),bt=C(st.boot),hb=e.head?baseOf(e.head):'';
@@ -76,14 +77,19 @@ function drawFigure(x,y,e,st,fl,flip,sc){g.save();g.translate(x,y);if(sc&&sc!=1)
   R(4,17,12,2,C(st.belt));R(4,17,12,1,C(lit(st.belt)));R(9,17,2,2,C('#e8c050'));R(9,17,1,1,C('#fff3b0'));
   ob(1,10,3,9,tun);R(1,10,1,9,C(lit(st.tun)));R(3,10,1,9,C(shd(st.tun)));ob(16,10,3,9,tun);R(16,10,1,9,C(lit(st.tun)));R(18,10,1,9,C(shd(st.tun)));
   if(st.ribs&&!fl){for(const yy of[11,13,15])R(5,yy,10,1,'#8a8266');R(9,10,2,8,'#a39b80')}
-  if(st.pre)st.pre(C,e)}
- else{if(!e.gloves){ob(1,15,3,6,sk);ob(16,15,3,6,sk)}if(st.pre)st.pre(C,e)}
+  if(st.pre)st.pre(C,e,st)}
+ else{if(!e.gloves){ob(1,15,3,6,sk);ob(16,15,3,6,sk)}if(st.pre)st.pre(C,e,st)}
  if(!e.gloves){ob(1,18,3,3,sk);ob(16,18,3,3,sk);R(1,20,3,1,C(shd(st.skin)));R(16,20,3,1,C(shd(st.skin)))}
  R(8,8,4,2,C(shd(st.skin)));
  // head: ears, shading, hair with a highlight
  if(hb!='Helm'&&hb!='Hood'){ob(6,0,8,9,sk);R(5,4,1,2,sk);R(14,4,1,2,sk);R(13,1,1,8,C(shd(st.skin)));R(6,8,8,1,C(shd(st.skin)));R(7,3,2,1,C(lit(st.skin)))
-  if(st.hair){R(6,0,8,3,hr);R(5,1,1,5,hr);R(14,1,1,5,hr);R(8,-1,3,1,hr);R(11,-1,2,1,hr);R(7,1,3,1,C(lit(st.hair)));R(7,3,1,1,hr);R(10,3,2,1,hr)}
-  st.face(C)}
+  if(st.hair){const hs=st.hs||0;
+   if(hs===0){R(6,0,8,3,hr);R(5,1,1,5,hr);R(14,1,1,5,hr);R(8,-1,3,1,hr);R(11,-1,2,1,hr);R(7,1,3,1,C(lit(st.hair)));R(7,3,1,1,hr);R(10,3,2,1,hr)} // spiky
+   else if(hs===1){R(6,0,8,2,hr);R(5,1,1,3,hr);R(14,1,1,3,hr);R(7,0,3,1,C(lit(st.hair)));R(7,2,2,1,hr);R(11,2,2,1,hr)} // short crop
+   else if(hs===2){R(6,0,8,3,hr);R(5,1,2,9,hr);R(13,1,2,9,hr);R(7,1,3,1,C(lit(st.hair)));R(7,3,1,1,hr);R(10,3,2,1,hr);R(5,9,2,1,C(shd(st.hair)));R(13,9,2,1,C(shd(st.hair)))} // long
+   else if(hs===3){R(9,-3,2,4,hr);R(8,0,4,2,hr);R(9,-3,1,3,C(lit(st.hair)))} // mohawk
+  }
+  st.face(C,st)}
  g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';
  if(e.legs)put(e.legs,10,22.2,11);
  if(e.boots)put(e.boots,10,27.6,11,0,35,64,29);
@@ -94,9 +100,10 @@ function drawFigure(x,y,e,st,fl,flip,sc){g.save();g.translate(x,y);if(sc&&sc!=1)
  const lh=e.lhand,rh=e.rhand;
  if(lh){if(lh.ty=='shield')put(lh,.5,17,14);else{g.save();g.translate(20,0);g.scale(-1,1);put(lh,20.5,14.5,17);g.restore()}}
  if(rh){if(rh.ty=='shield')put(rh,19.5,17,14);else put(rh,20.5,14.5,17)}
-  if(st.post)st.post(C,e);
+  if(st.post)st.post(C,e,st);
  g.imageSmoothingEnabled=false;g.restore()}
-function drawHero(x,y,fl){drawFigure(x,y,S.eq,HERO_ST,fl,false,1)}
+function heroStyle(){return{...HERO_ST,...lookStyle()}}
+function drawHero(x,y,fl){drawFigure(x,y,S.eq,heroStyle(),fl,false,1)}
 function enStyle0(ty,tint){const d=rr(tint,.55);
  if(ty==0)return{skin:'#7fae6a',hair:'#3a2a1a',tun:'#5a4a3a',leg:'#3a3a50',boot:'#2a2a2a',belt:'#2a1a10',face:C=>{R(7,3,2,3,C('#e04040'));R(11,4,2,2,C('#e8e0a0'));R(8,7,4,1,C('#2a1a10'));R(9,7,1,1,C('#e8e0c4'))}};
  if(ty==1)return{skin:'#e8e0c4',hair:null,tun:'#d6ceb2',leg:'#d6ceb2',boot:'#b9b196',belt:'#b9b196',ribs:1,face:C=>{R(7,3,2,3,'#1a0f24');R(11,3,2,3,'#1a0f24');R(8,4,1,1,'#ff4630');R(12,4,1,1,'#ff4630');R(9,7,2,2,'#1a0f24');R(8,7,1,1,C('#e8e0c4'));R(11,7,1,1,C('#e8e0c4'))}};
@@ -145,7 +152,7 @@ export function drawPortrait(n){n=n||0;const c=document.getElementById('pv');if(
  try{g.setTransform(4,0,0,4,0,0);g.imageSmoothingEnabled=false;R(0,0,48,40,'#0c0912');
   for(let a=0;a<7;a++)for(let q=-1;q<5;q++)R(q*12+(a%2?6:0),a*6,11,5,(q+a)%3?'#17121f':'#1f1829');
   for(let y=0;y<36;y++)for(let x=14;x<34;x++)if(Math.hypot(x-24,y-14)<11&&(x+y)%2==0)R(x,y,1,1,'#33283d');
-  R(0,38,48,2,'#1a1420');R(0,38,48,1,'#2c2234');drawHero(9,8,false)}finally{g=g0}
+  R(0,38,48,2,'#1a1420');R(0,38,48,1,'#2c2234');{const eqs=Object.values(S.eq).filter(Boolean),gri=eqs.reduce((m,it)=>Math.max(m,it.ri),-1),cc=capeColor(gri,gri>=0?RC[gri]:'#fff');if(cc)drawCape(g,9,8,ART_T,cc,false)}drawHero(9,8,false)}finally{g=g0}
  if(n<12&&Object.values(S.eq).some(it=>it&&!itImg(it)))setTimeout(()=>drawPortrait(n+1),120)}
 function drawEnemy(ty,x,y,col,t,fl){const o='#1a0f24',d=rr(col,.65),W=p=>{if(fl)for(const k in p)p[k]='#fff';return p},f=Math.sin(t*14)>0?0:1;
  if(ty==0)spr(SLM,W({o,g:col,G:d,w:'#fff',e:'#2b2150'}),x,y-9);
@@ -168,7 +175,7 @@ function draw(){const r=run,t=r.t;ART_T=t;const tier=Math.floor((r.stage-1)/5)%6
  // aura glow rings around hero
  const aa=activeAuras();if(aa.length){aa.forEach((aur,ai)=>{const alpha=(.1+.08*Math.sin(t*5+ai*1.2));g.globalAlpha=alpha;R(hx-1-ai,hy-5-ai,22+ai*2,34+ai*2,aur.c)});g.globalAlpha=1}
  const eqs=Object.values(S.eq).filter(Boolean),gearRi=eqs.reduce((m,it)=>Math.max(m,it.ri),-1),rcol=gearRi>=0?RC[gearRi]:'#ffffff',wi=S.eq.rhand||S.eq.lhand,wcol=wi?RC[wi.ri]:'#ffe45c';
- drawHeroAura(g,hx,hy,t,gearRi,rcol);drawCape(g,hx,hy,t,gearRi>=3?rcol:'#b02838',r.lunge>0);drawHero(hx,hy,r.hf>0);
+ drawHeroAura(g,hx,hy,t,gearRi,rcol);{const cc=capeColor(gearRi,rcol);if(cc)drawCape(g,hx,hy,t,cc,r.lunge>0)}drawHero(hx,hy,r.hf>0);
  if(r.rn>0){for(let q=0;q<r.rn;q++){R(hx+2+q*4,hy-7,3,1,'#ff8a2a');R(hx+3+q*4,hy-8,1,1,'#ffd34d')}}
  if(r.swT>0){frame(hx-3,hy-4,26,38,'#ffd34d',Math.min(.9,r.swT));for(let q=0;q<5;q++){const sp=(Math.floor(t*12)+q*5)%9;R(hx-2+((q*7+sp*3)%24),hy-3+((q*13+sp*5)%36),1,1,'#fff3b0')}}
  const ey=44-30*sc-(Math.sin(t*4+r.stage)>.3?1:0);if(!r.eEq)r.eEq=eqFromDrops(r.eDrops||[]);

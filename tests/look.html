@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>running</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+</head><body><div id="app">
+<header><h1>Delve</h1><div id="top"></div></header>
+<section id="battle" hidden>
+ <div class="cv"><canvas id="c" width="192" height="108"></canvas><div id="fxl"></div>
+  <div id="over" hidden><div class="px" style="font-size:12px">Defeated</div><div id="ovt"></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button data-a="delveAgain" style="background:#d94a4a;color:#fff;border-color:#fff">⚔ Delve Again</button><button data-a="camp">Go to camp</button></div></div></div>
+ <div class="bar"><i id="hpb"></i><span id="hpt"></span></div>
+ <div class="bar m" id="mpw"><i id="mpb"></i><span id="mpt"></span></div>
+ <div class="bar e"><i id="ehb"></i><span id="ent"></span></div>
+ <div class="row sp" style="margin:6px 0"><div class="row" id="spells"></div><div class="row"><button class="s alt" data-a="spd" id="spdb"></button><button class="s alt" data-a="end">End run</button></div></div>
+ <div class="mute">Last drop</div><div id="last"></div><div class="mute" style="margin-top:6px">Loot this run</div><div id="feed"></div>
+</section>
+<section id="camp" hidden>
+ <div class="row sp"><div class="tabs"><button data-a="tab" data-v="g" id="tg">Gear</button><button data-a="tab" data-v="u" id="tu">Upgrades</button><button data-a="tab" data-v="v" id="tv">Vault</button><button data-a="tab" data-v="m" id="tm">Magic</button><button data-a="tab" data-v="p" id="tp">Pets</button><button data-a="tab" data-v="r" id="tr2">Auras</button><button data-a="tab" data-v="i" id="ti">Idle</button><button data-a="tab" data-v="a" id="ta">Ascend</button><button data-a="tab" data-v="l" id="tl">Scores</button><button data-a="tab" data-v="k" id="tk">Look</button><button data-a="tab" data-v="x" id="tx">Account</button></div></div>
+ <div style="margin:8px 0"><button data-a="delve" style="width:100%;font-size:22px;padding:10px;background:var(--btn);border-width:4px;box-shadow:5px 5px 0 var(--ink)">⚔ DELVE</button></div>
+ <div id="sdw" class="row" style="margin:6px 0"></div><div id="cbody"></div><div style="margin:16px 0"><button class="s alt" data-a="reset">Reset save</button></div>
+</section>
+</div>
+<script type="module">
+const out=[],ck=(n,c,x)=>out.push(n+':'+(c?'ok':'FAIL'+(x!==undefined?'('+x+')':'')));
+window.onerror=(m,u,l)=>out.push('ERR '+m+' @'+String(u).split('/').pop()+':'+l);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+try{
+ await import('/src/main.js');
+ const st=await import('/src/state.js'),cp=await import('/src/camp.js'),lk=await import('/src/look.js'),bt=await import('/src/battle.js');
+ const KEY='hollow-delve-2',S=()=>st.S,G=lk.LOOK_GROUPS,body=()=>document.querySelector('#cbody').innerHTML;
+ const fresh=()=>{localStorage.removeItem(KEY);st.load()};
+ const go=()=>{st.setTab('k');cp.camp()};
+ const px=()=>{const c=document.querySelector('#pv');if(!c)return '';const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data;let h=7;for(let i=0;i<d.length;i++)h=(h*31+d[i]+i)%1000003;return String(h)};
+ // 1 defaults are exactly the old look
+ fresh();const d=lk.lookStyle();
+ ck('default-skin-hair-outfit-scarf-eyes-are-the-original',d.skin==='#ffd5ac'&&d.hair==='#ff9a2e'&&d.tun==='#3d8bff'&&d.scarf==='#d94a4a'&&d.eye==='#2b2150'&&d.hs===0,JSON.stringify(d));
+ ck('default-cape-is-crimson-then-gear-coloured',lk.capeColor(-1,'#fff')==='#b02838'&&lk.capeColor(2,'#4aa0ff')==='#b02838'&&lk.capeColor(3,'#c06bff')==='#c06bff');
+ ck('new-save-has-look',typeof S().look==='object'&&!Array.isArray(S().look));
+ // 2 every option of every group applies
+ let all=true,why='';
+ for(const g of G)g.opts.forEach((o,i)=>{fresh();lk.applyLook(g.k+':'+i);if(lk.lookIdx(g.k)!==i){all=false;why=g.k+i}});
+ ck('every-option-selectable',all,why);
+ ck('option-counts',G.map(g=>g.opts.length).join(',')==='8,5,10,10,8,9,7',G.map(g=>g.opts.length).join(','));
+ fresh();lk.applyLook('skin:3');lk.applyLook('hair:5');lk.applyLook('tun:6');lk.applyLook('scarf:3');lk.applyLook('eye:5');lk.applyLook('hs:2');
+ const s2=lk.lookStyle();ck('chosen-values-reach-the-style',s2.skin==='#c68642'&&s2.hair==='#e8e8f0'&&s2.tun==='#34303f'&&s2.scarf==='#e8c050'&&s2.eye==='#d02a2a'&&s2.hs===2,JSON.stringify(s2));
+ lk.applyLook('hs:4');ck('bald-removes-hair-but-keeps-brow-colour',lk.lookStyle().hair===null&&lk.lookStyle().hairCol==='#e8e8f0');
+ lk.applyLook('scarf:1');ck('no-scarf',lk.lookStyle().scarf===null);
+ lk.applyLook('cape:1');ck('no-cape',lk.capeColor(5,'#fff')===null);
+ lk.applyLook('cape:6');ck('chosen-cape-ignores-gear-colour',lk.capeColor(5,'#fff')==='#c8982a');
+ // 3 hostile or garbage input is ignored
+ fresh();const before=JSON.stringify(S().look);
+ for(const bad of ['skin:99','skin:-1','skin:1.5','skin:abc','bogus:1','__proto__:1','constructor:0',':','','skin','skin:1:2',undefined,null,'rand2'])lk.applyLook(bad);
+ ck('garbage-actions-change-nothing',JSON.stringify(S().look)===before&&!({}).polluted&&Object.keys(S().look).length===0,JSON.stringify(S().look));
+ localStorage.setItem(KEY,JSON.stringify({...st.def(),look:{skin:'<b>',hair:999,tun:-4,scarf:1.5,cape:{a:1},eye:null,hs:7,extra:3}}));st.load();
+ ck('load-drops-junk-look-values',Object.values(S().look).every(v=>Number.isInteger(v)&&v>=0&&v<=99),JSON.stringify(S().look));
+ ck('and-out-of-range-indices-fall-back-to-default',lk.lookIdx('hs')===0&&lk.lookIdx('tun')===0&&lk.lookIdx('hair')===0);
+ localStorage.setItem(KEY,JSON.stringify({...st.def(),look:'rainbow'}));st.load();ck('non-object-look-repaired',typeof S().look==='object'&&!Array.isArray(S().look));
+ localStorage.setItem(KEY,JSON.stringify({...st.def(),look:undefined}));st.load();ck('old-save-without-look-works',typeof S().look==='object');
+ localStorage.setItem(KEY,JSON.stringify({...st.def(),look:{hair:50}}));st.load();ck('index-above-range-is-harmless',lk.lookIdx('hair')===0&&lk.lookStyle().hair==='#ff9a2e');
+ // 4 the tab
+ fresh();go();
+ const total=G.reduce((a,g)=>a+g.opts.length,0);
+ ck('tab-has-a-button-for-every-option',document.querySelectorAll('#cbody [data-a=look]').length===total+2,document.querySelectorAll('#cbody [data-a=look]').length+' vs '+(total+2));
+ ck('tab-has-a-preview-canvas',!!document.querySelector('#pv'));
+ ck('tab-button-highlighted',document.querySelector('#tk').className==='on');
+ ck('no-undefined-or-nan-in-markup',!body().includes('undefined')&&!body().includes('NaN'));
+ await sleep(200);const base=px();
+ document.querySelector('[data-v="skin:2"]').click();await sleep(200);
+ ck('clicking-a-swatch-changes-the-save',S().look.skin===2);
+ ck('and-redraws-the-preview',px()!==base);
+ const afterSkin=px();document.querySelector('[data-v="cape:1"]').click();await sleep(200);ck('removing-the-cape-changes-the-preview',px()!==afterSkin);
+ const noCape=px();document.querySelector('[data-v="cape:0"]').click();await sleep(200);ck('auto-cape-is-drawn-in-the-preview-too',px()!==noCape&&S().look.cape===0);
+ const hairPix=new Set();for(let i=0;i<5;i++){document.querySelector('[data-v="hs:'+i+'"]').click();await sleep(150);hairPix.add(px())}
+ ck('five-hair-styles-all-look-different',hairPix.size===5,hairPix.size);
+ document.querySelector('[data-v=rand]').click();await sleep(150);ck('randomise-stays-in-range',G.every(g=>lk.lookIdx(g.k)===S().look[g.k]&&S().look[g.k]<g.opts.length));
+ document.querySelector('[data-v=reset]').click();await sleep(250);ck('reset-restores-the-original',Object.keys(S().look).length===0&&px()===base);
+ // 5 persistence
+ document.querySelector('[data-v="hair:6"]').click();await sleep(100);st.save();const raw=JSON.parse(localStorage.getItem(KEY));ck('saved',raw.look.hair===6);
+ st.load();ck('survives-load',lk.lookIdx('hair')===6);
+ // 6 every combination draws in battle without exceptions
+ let errs=0;const old=window.onerror;window.onerror=()=>{errs++};
+ fresh();S().eq={};bt.startRun();st.run.hp=st.run.maxHp=1e15;
+ for(let hs=0;hs<5;hs++)for(const cape of [0,1,3])for(const scarf of [0,1,2]){S().look={hs,cape,scarf,hair:hs,skin:hs,tun:hs,eye:hs};await sleep(35)}
+ ck('all-combinations-render-in-battle',errs===0,errs);
+ window.onerror=old;
+}catch(e){out.push('EXC '+e.message+' | '+(e.stack||'').split(String.fromCharCode(10))[1])}
+document.title=out.join(' ');
+</script></body></html>

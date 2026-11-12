@@ -14,7 +14,7 @@ header{display:flex;justify-content:space-between;align-items:center;gap:8px}
 canvas{display:block;width:100%;image-rendering:pixelated;aspect-ratio:16/9}
 button{font:inherit;color:var(--btnt);background:var(--btn);border:3px solid var(--ink);box-shadow:3px 3px 0 var(--ink);padding:4px 10px;cursor:pointer;min-height:36px}
 button:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
-button:disabled{opacity:.45;cursor:default}button.s{min-height:28px;padding:1px 8px;font-size:19px}
+button:disabled{opacity:.45;cursor:default}button.sw{width:30px;height:30px;min-height:0;padding:0;box-shadow:2px 2px 0 var(--ink)}button.sw.on{outline:3px solid var(--gold);outline-offset:1px}button.s{min-height:28px;padding:1px 8px;font-size:19px}
 button.alt{background:var(--panel);color:var(--ink)}
 .bar{position:relative;height:18px;border:2px solid var(--ink);background:#0006;margin:4px 0}
 .bar i{position:absolute;inset:0 auto 0 0;width:100%;background:var(--hp)}.bar.m i{background:var(--mp)}.bar.e i{background:#c9892b}

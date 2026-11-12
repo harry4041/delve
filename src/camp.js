@@ -1,6 +1,7 @@
 import {leaderboardTab} from './leaderboard.js';
 import {farmSettle,farmCollect} from './farm.js';
 import {wikiTab,updatesTab,hasNewUpdate} from './wiki.js';
+import {lookTab,applyLook} from './look.js';
 import {toast} from './toast.js';
 import {bpView,bpControls} from './backpack.js';
 import {accountTab,accountStatus} from './account.js';
@@ -22,10 +23,11 @@ export function view(){$('#battle').hidden=mode!='battle';$('#camp').hidden=mode
  if(mode=='camp')camp();else hud()}
 // Starts the next run after a defeat: banks the loot (trimming the bag to its cap by selling the cheapest items), then delves. Used by the button and by auto-delve.
 export function delveAgain(){if(run&&run.over){S.bag.push(...run.loot);run.loot=[];const bc=bagCap();while(S.bag.length>bc&&bc!==Infinity){let m=0;S.bag.forEach((x,i)=>{if(val(x)<val(S.bag[m]))m=i});sell(S.bag[m].id)}}startRun()}
-export function camp(){const st=stats();$('#sdw').innerHTML=(RL('rStart')?'<span>Start stage</span><button class="s alt" data-a="sd" data-v="-1">-</button><b>'+startStage()+'</b><button class="s alt" data-a="sd" data-v="1">+</button>':'')+(L('sorter')?'<span style="margin-left:8px">Auto-sell</span><button class="s alt" data-a="qm" data-v="-1">-</button><b>'+(qmT()?RN[qmT()-1]+' and below':'Off')+'</b><button class="s alt" data-a="qm" data-v="1">+</button>':'');$('#tg').className=tab=='g'?'on':'';$('#ta').className=tab=='a'?'on':'';$('#tv').className=tab=='v'?'on':'';$('#tl').className=tab=='l'?'on':'';$('#tp').className=tab=='p'?'on':'';$('#tm').className=tab=='m'?'on':'';$('#ti').className=tab=='i'?'on':'';$('#tu').className=tab=='u'?'on':'';if($('#tr2'))$('#tr2').className=tab=='r'?'on':'';if($('#tx'))$('#tx').className=tab=='x'?'on':'';if($('#tw'))$('#tw').className=tab=='w'?'on':'';if($('#tn')){$('#tn').className=tab=='n'?'on':'';$('#tn').textContent=hasNewUpdate()&&tab!='n'?'Updates •':'Updates'}
+export function camp(){const st=stats();$('#sdw').innerHTML=(RL('rStart')?'<span>Start stage</span><button class="s alt" data-a="sd" data-v="-1">-</button><b>'+startStage()+'</b><button class="s alt" data-a="sd" data-v="1">+</button>':'')+(L('sorter')?'<span style="margin-left:8px">Auto-sell</span><button class="s alt" data-a="qm" data-v="-1">-</button><b>'+(qmT()?RN[qmT()-1]+' and below':'Off')+'</b><button class="s alt" data-a="qm" data-v="1">+</button>':'');$('#tg').className=tab=='g'?'on':'';$('#ta').className=tab=='a'?'on':'';$('#tv').className=tab=='v'?'on':'';$('#tl').className=tab=='l'?'on':'';$('#tp').className=tab=='p'?'on':'';$('#tm').className=tab=='m'?'on':'';$('#ti').className=tab=='i'?'on':'';$('#tu').className=tab=='u'?'on':'';if($('#tr2'))$('#tr2').className=tab=='r'?'on':'';if($('#tx'))$('#tx').className=tab=='x'?'on':'';if($('#tw'))$('#tw').className=tab=='w'?'on':'';if($('#tk'))$('#tk').className=tab=='k'?'on':'';if($('#tn')){$('#tn').className=tab=='n'?'on':'';$('#tn').textContent=hasNewUpdate()&&tab!='n'?'Updates •':'Updates'}
  const pl=powerLevel(),plC=plColor(pl),plLbl=plLabel(pl);
  const gemHtml=(S.gems||0)>0?'<span style="color:var(--gem)"> · 💎'+S.gems+'</span>':'';
  const plHtml='<span style="color:'+plC+'"> · ⚡'+pl+' ('+plLbl+')</span>';
+ if(tab=='k'){$('#top').innerHTML=fmtN(S.gold)+' gold'+plHtml+gemHtml+'<br><span class="mute">appearance</span>';$('#cbody').innerHTML=lookTab();drawPortrait();return}
  if(tab=='w'||tab=='n'){$('#top').innerHTML=fmtN(S.gold)+' gold'+plHtml+gemHtml+'<br><span class="mute">'+(tab=='w'?'guide':'new in this version')+'</span>';$('#cbody').innerHTML=tab=='w'?wikiTab():updatesTab();if(tab=='n'){save();if($('#tn'))$('#tn').textContent='Updates'}return}
  if(tab=='x'){$('#top').innerHTML=fmtN(S.gold)+' gold'+plHtml+gemHtml+'<br><span class="mute">'+accountStatus()+'</span>';$('#cbody').innerHTML=accountTab();return}
  if(tab=='m'){$('#top').innerHTML=fmtN(S.gold)+' gold'+plHtml+gemHtml+'<br><span class="mute">'+(hasMagic()?'magic unlocked':'magic locked')+'</span>';$('#cbody').innerHTML=magicTab();return}
@@ -86,6 +88,7 @@ function sellBelow(m){S.bag=S.bag.filter(it=>{if(it.ri<=m){S.gold+=val(it);retur
 document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b||b.disabled)return;const a=b.dataset.a,v=b.dataset.v;
  if(a=='delve'||a=='delveAgain'){if(a=='delveAgain')delveAgain();else startRun();return}
  if(a=='auto'){S.autoDelve=!S.autoDelve;save();return}
+ if(a=='look'){applyLook(v);save();camp();return}
  else if(a=='camp'){S.bag.push(...run.loot);run.loot=[];const bc=bagCap();while(S.bag.length>bc&&bc!==Infinity){let m=0;S.bag.forEach((x,i)=>{if(val(x)<val(S.bag[m]))m=i});sell(S.bag[m].id)}setMode('camp');setRun(null);view()}
  else if(a=='spd'){S.speed=S.speed>=maxSpd()?1:S.speed*2}else if(a=='end'){if(run&&!run.over){run.hp=0;die()}}else if(a=='reset'){if(b.dataset.c){setS(def());setUid(1);setTab('g');save();camp()}else{b.dataset.c=1;b.textContent='Tap again to erase all progress';setTimeout(()=>{delete b.dataset.c;b.textContent='Reset save'},4000)}}
  else if(a=='cast')cast(+v);

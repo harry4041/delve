@@ -7,6 +7,11 @@ import { RTREE, STB, reqStage, ascFee } from './ascension.js';
 
 // ---------------------------------------------------------------- changelog (add new entries at the TOP; `id` must be unique)
 export const CHANGELOG = [
+  { id: '2026-11-12d', date: '2026-11-12', title: 'Character customisation', items: [
+    'New Look tab: choose your skin tone, hair style and colour, outfit colour, scarf, cape and eye colour, with a live preview. Or press Randomise.',
+    'The cape is now your choice. Auto keeps the old behaviour (crimson, turning to the colour of your best gear from Epic up), or pick a colour, or no cape at all. It also shows in the Gear-tab portrait now, so what you see there matches the battle.',
+    'Looks are cosmetic only and are saved with your game (and synced to the cloud).',
+  ] },
   { id: '2026-11-12c', date: '2026-11-12', title: 'New hero and enemy art', items: [
     'The hero is shaded and detailed: hair highlights, blinking eyes, a tunic emblem, a belt buckle and a red scarf that flutters.',
     'Every enemy type now looks different: rotting zombies, ribbed skeletons, masked bandits, tusked orcs with spiked pauldrons, hooded cultists and the crowned death-knight boss.',
@@ -82,6 +87,7 @@ function start() {
       'Equip anything that is clearly better than what you wear. Sell the rest for gold.',
       'Your first ascension unlocks at stage 15. Ascending early and often is usually faster than pushing one long run.',
       'Turn on <b>Auto-delve</b> (on the battle screen) so the next run starts by itself after a defeat.',
+      'Make the hero yours in the <b>Look</b> tab: skin, hair, outfit, scarf, cape and eyes. It is purely cosmetic.',
     ])
     + h('Enemies')
     + p('Enemy types cycle as you descend (Zombie, Skeleton, Bandit, Orc, Cultist) and change theme every 5 stages across six zones. A boss with six times the health and over twice the attack waits on every 10th stage and drops extra loot, and sometimes a gem.');

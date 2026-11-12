@@ -43,7 +43,7 @@ try{
  };
  for(const [name,raw] of Object.entries(hostile)){
   const before=errs.length;localStorage.setItem(KEY,raw);let ok=true,msg='';
-  try{st.load();for(const t of ['g','u','v','m','p','r','i','a','l','x','w','n']){st.setTab(t);cp.camp()}bt.startRun();for(let i=0;i<40;i++)bt.tick(.1);}catch(e){ok=false;msg=e.message.slice(0,60)}
+  try{st.load();for(const t of ['g','u','v','m','p','r','i','a','l','x','w','n','k']){st.setTab(t);cp.camp()}bt.startRun();for(let i=0;i<40;i++)bt.tick(.1);}catch(e){ok=false;msg=e.message.slice(0,60)}
   ck('hostile-save:'+name,ok&&errs.length===before&&!({}).polluted&&!({}).polluted2,msg||errs.slice(before).join('|'));
  }
  document.title='running p2 '+Math.round(performance.now())+'ms';await new Promise(r=>setTimeout(r)); // ---- 2 huge-number save: nothing may turn into NaN/Infinity once ticking (late-game "exponential range" claim in CLAUDE.md)
@@ -53,7 +53,7 @@ try{
  document.title='running p3 '+Math.round(performance.now())+'ms';await new Promise(r=>setTimeout(r)); // ---- 3 random-click fuzz
  localStorage.removeItem(KEY);st.load();const S=()=>st.S;S().gold=5e6;S().gems=50;S().relics=50;S().best=25;
  const SKIP=new Set(['reset','lbClear']);let clicks=0,byAction={};
- const tabs=['g','u','v','m','p','r','i','a','l','x','w','n'];
+ const tabs=['g','u','v','m','p','r','i','a','l','x','w','n','k'];
  for(let i=0;i<N;i++){
   try{
    if(st.mode==='camp'){ if(rnd()<.2){st.setTab(tabs[Math.floor(rnd()*tabs.length)])} cp.camp();
@@ -78,7 +78,7 @@ try{
   localStorage.removeItem(KEY);st.load();S().gold=1e12;S().gems=500;S().relics=5000;S().best=60;S().life=60;S().tr.den=1;
   const acts=[];for(const k of Object.keys(sk.NODE))acts.push(['tr',k]);for(let i=0;i<6;i++)for(const a of['bp','ap','pl','pa'])acts.push([a,i]);
   for(let i=0;i<4;i++)acts.push(['cast',i]);for(const t of as.RTREE)acts.push(['rb',t.k]);for(let i=0;i<10;i++)acts.push(['sellr',i]);
-  acts.push(['farmCollect'],['spd'],['asc'],['bagUp'],['forgeAuto'],['forgeAll'],['best'],['vAll'],['respec'],['offOk']);
+  acts.push(['look','rand'],['look','reset'],['look','hs:3'],['look','cape:1'],['farmCollect'],['spd'],['asc'],['bagUp'],['forgeAuto'],['forgeAll'],['best'],['vAll'],['respec'],['offOk']);
   let n=0;const e0=errs.length;
   const SYN=+(q.get('syn')||4000),ts=performance.now();for(let i=0;i<SYN;i++){try{const [a,v]=acts[Math.floor(rnd()*acts.length)];if(i%10===0){document.title='running syn '+i+' '+Math.round(performance.now()-ts)+'ms last='+a+':'+v+' mode='+st.mode;await new Promise(r=>setTimeout(r))}const t1=performance.now();
     if(st.mode==='camp'){if(rnd()<.3)send('delve');send(a,v)}else{for(let k=0;k<30&&!st.run.over;k++)bt.tick(.1);if(a==='cast')send(a,v);if(st.run.over||rnd()<.2)send('camp')}
