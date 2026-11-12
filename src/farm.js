@@ -6,7 +6,7 @@ import { idleKg, fmtN } from './stats.js';
 import { PET_SPR } from './render.js';
 
 export const FARM_CAP_H = 8;
-const GOLD_PER_HOUR = 120; // x idleKg() (which already follows your deepest stage, Greed and ascension gold)
+const GOLD_PER_HOUR = 3600; // x idleKg() (which already follows your deepest stage, Greed and ascension gold)
 
 // Resting pets with their hourly output. farm.g scales gold, farm.gem is gems per hour.
 export function farmRates() {

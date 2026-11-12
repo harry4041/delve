@@ -39,7 +39,25 @@ export function nextUid(){return (uid++)}
 export function setForgeMode(v){return (forgeMode=v)}
 export function setForgeSelected(v){return (forgeSelected=v)}
 
-export function def(){return{gold:0,gems:0,best:0,bestOverall:0,tr:{},eq:{rhand:{id:0,ty:'weapon',ri:0,il:1,nm:'Rusty Sword',st:{atk:2}}},bag:[],magic:false,petsOn:false,pets:PET.map(()=>({own:0,lvl:0})),giftsClaimed:[],farm:{t:Date.now(),gold:0,gems:0},ap:-1,speed:1,uid:1,rl:{},relics:0,asc:0,life:0,sd:0,vault:[],vaultLvl:0,vaultUnlocked:false,ascBuff:null,ascDebuff:null,bagLvl:0,auras:{}}}
-export function load(){try{S=JSON.parse(localStorage.getItem('hollow-delve-2'))}catch(e){}if(!S||!S.eq)S=def();S.tr=S.tr||{};S.pets=Array.isArray(S.pets)?S.pets:[];while(S.pets.length<PET.length)S.pets.push({own:0,lvl:0});S.eq=S.eq||{};S.bag=S.bag||[];S.rl=S.rl||{};S.relics=S.relics||0;if(S.rl.rKeep){let t=0;for(let i=0;i<S.rl.rKeep;i++)t+=Math.max(1,Math.round(6*Math.pow(1.5,i)));S.relics+=t;delete S.rl.rKeep}if(S.tr&&S.tr.offl){let g0=0;for(let i=0;i<S.tr.offl;i++)g0+=Math.round(8000*Math.pow(1.5,i));S.gold=(S.gold||0)+g0;delete S.tr.offl}S.asc=S.asc||0;S.life=S.life||S.best||0;S.sd=S.sd||0;uid=S.uid||1;S.vault=S.vault||[];S.vaultLvl=S.vaultLvl||0;S.vaultUnlocked=S.vaultUnlocked||false;S.bestOverall=S.bestOverall||S.best||0;S.ascBuff=S.ascBuff||null;S.ascDebuff=S.ascDebuff||null;S.bagLvl=S.bagLvl||0;S.gems=S.gems||0;S.auras=S.auras||{};S.giftsClaimed=S.giftsClaimed||[];S.farm=S.farm||{t:Date.now(),gold:0,gems:0};offlineCalc()}
+export function def(){return{gold:0,gems:0,best:0,bestOverall:0,tr:{},eq:{rhand:{id:0,ty:'weapon',ri:0,il:1,nm:'Rusty Sword',st:{atk:2}}},bag:[],magic:false,petsOn:false,pets:PET.map(()=>({own:0,lvl:0})),giftsClaimed:[],autoDelve:false,farm:{t:Date.now(),gold:0,gems:0},ap:-1,speed:1,uid:1,rl:{},relics:0,asc:0,life:0,sd:0,vault:[],vaultLvl:0,vaultUnlocked:false,ascBuff:null,ascDebuff:null,bagLvl:0,auras:{}}}
+// Repairs a save whose fields have the wrong type (hand-edited, damaged or from a bad cloud doc) so the game never crashes on load.
+// Healthy saves pass through untouched. Items must have a known type and a stats object.
+function sanitize(){
+  const num=(o,k)=>{if(typeof o[k]!=='number'||!Number.isFinite(o[k])||o[k]<0)o[k]=0};
+  const obj=(o,k)=>{if(!o[k]||typeof o[k]!=='object'||Array.isArray(o[k]))o[k]={}};
+  const arr=(o,k)=>{if(!Array.isArray(o[k]))o[k]=[]};
+  for(const k of ['gold','gems','relics','asc','life','best','bestOverall','sd','bagLvl','vaultLvl'])num(S,k);
+  for(const k of ['tr','rl','auras','eq'])obj(S,k);
+  for(const k of ['bag','vault','giftsClaimed'])arr(S,k);
+  for(const m of [S.tr,S.rl,S.auras])for(const k of Object.keys(m))if(typeof m[k]!=='number'||!Number.isFinite(m[k])||m[k]<0)delete m[k];
+  const okItem=(it)=>it&&typeof it==='object'&&typeof it.ty==='string'&&Object.prototype.hasOwnProperty.call(SLOTOF,it.ty)&&it.st&&typeof it.st==='object'&&!Array.isArray(it.st)&&Number.isFinite(it.ri)&&it.ri>=0&&it.ri<RN.length&&Number.isFinite(it.il)&&typeof it.nm==='string';
+  S.bag=S.bag.filter(okItem);S.vault=S.vault.filter(okItem);
+  for(const k of Object.keys(S.eq))if(!okItem(S.eq[k]))delete S.eq[k];
+  S.pets=S.pets.map((p)=>(p&&typeof p==='object'?p:{own:0,lvl:0}));
+  S.pets.forEach((p)=>{num(p,'own');num(p,'lvl');if(p.star!==undefined)num(p,'star')});
+  if(!S.farm||typeof S.farm!=='object'||Array.isArray(S.farm))S.farm={t:Date.now(),gold:0,gems:0};
+  num(S.farm,'t');num(S.farm,'gold');num(S.farm,'gems');
+}
+export function load(){try{S=JSON.parse(localStorage.getItem('hollow-delve-2'))}catch(e){}if(!S||!S.eq)S=def();S.tr=S.tr||{};S.pets=Array.isArray(S.pets)?S.pets:[];while(S.pets.length<PET.length)S.pets.push({own:0,lvl:0});S.eq=S.eq||{};S.bag=S.bag||[];S.rl=S.rl||{};S.relics=S.relics||0;if(S.rl.rKeep){let t=0;for(let i=0;i<S.rl.rKeep;i++)t+=Math.max(1,Math.round(6*Math.pow(1.5,i)));S.relics+=t;delete S.rl.rKeep}if(S.tr&&S.tr.offl){let g0=0;for(let i=0;i<S.tr.offl;i++)g0+=Math.round(8000*Math.pow(1.5,i));S.gold=(S.gold||0)+g0;delete S.tr.offl}S.asc=S.asc||0;S.life=S.life||S.best||0;S.sd=S.sd||0;uid=S.uid||1;S.vault=S.vault||[];S.vaultLvl=S.vaultLvl||0;S.vaultUnlocked=S.vaultUnlocked||false;S.bestOverall=S.bestOverall||S.best||0;S.ascBuff=S.ascBuff||null;S.ascDebuff=S.ascDebuff||null;S.bagLvl=S.bagLvl||0;S.gems=S.gems||0;S.auras=S.auras||{};S.giftsClaimed=S.giftsClaimed||[];S.autoDelve=!!S.autoDelve;S.farm=S.farm||{t:Date.now(),gold:0,gems:0};sanitize();offlineCalc()}
 let saveHook=null;export function setSaveHook(f){saveHook=f}
 export function save(){S.uid=uid;S.lastT=Date.now();try{localStorage.setItem('hollow-delve-2',JSON.stringify(S))}catch(e){}if(saveHook)try{saveHook()}catch(e){}}

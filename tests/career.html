@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>running</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+</head><body><div id="app">
+<header><h1>Delve</h1><div id="top"></div></header>
+<section id="battle" hidden>
+ <div class="cv"><canvas id="c" width="192" height="108"></canvas><div id="fxl"></div>
+  <div id="over" hidden><div class="px" style="font-size:12px">Defeated</div><div id="ovt"></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button data-a="delveAgain" style="background:#d94a4a;color:#fff;border-color:#fff">⚔ Delve Again</button><button data-a="camp">Go to camp</button></div></div></div>
+ <div class="bar"><i id="hpb"></i><span id="hpt"></span></div>
+ <div class="bar m" id="mpw"><i id="mpb"></i><span id="mpt"></span></div>
+ <div class="bar e"><i id="ehb"></i><span id="ent"></span></div>
+ <div class="row sp" style="margin:6px 0"><div class="row" id="spells"></div><div class="row"><button class="s alt" data-a="spd" id="spdb"></button><button class="s alt" data-a="end">End run</button></div></div>
+ <div class="mute">Last drop</div><div id="last"></div><div class="mute" style="margin-top:6px">Loot this run</div><div id="feed"></div>
+</section>
+<section id="camp" hidden>
+ <div class="row sp"><div class="tabs"><button data-a="tab" data-v="g" id="tg">Gear</button><button data-a="tab" data-v="u" id="tu">Upgrades</button><button data-a="tab" data-v="v" id="tv">Vault</button><button data-a="tab" data-v="m" id="tm">Magic</button><button data-a="tab" data-v="p" id="tp">Pets</button><button data-a="tab" data-v="r" id="tr2">Auras</button><button data-a="tab" data-v="i" id="ti">Idle</button><button data-a="tab" data-v="a" id="ta">Ascend</button><button data-a="tab" data-v="l" id="tl">Scores</button><button data-a="tab" data-v="x" id="tx">Account</button></div></div>
+ <div style="margin:8px 0"><button data-a="delve" style="width:100%;font-size:22px;padding:10px;background:var(--btn);border-width:4px;box-shadow:5px 5px 0 var(--ink)">⚔ DELVE</button></div>
+ <div id="sdw" class="row" style="margin:6px 0"></div><div id="cbody"></div><div style="margin:16px 0"><button class="s alt" data-a="reset">Reset save</button></div>
+</section>
+</div>
+<script type="module">
+// Career bot: plays like a sensible player for N hours of wall time and reports pacing (progress, walls, dead time, ascension loop).
+// ?hours=6&speed=1&camp=15&stall=4&budget=150 (budget = real seconds of CPU before stopping)
+const out=[];window.onerror=(m,u,l)=>out.push('ERR '+m+' @'+String(u).split('/').pop()+':'+l);
+const q=new URLSearchParams(location.search),POL=q.get('pol')||'cheap',PRIO=['might','vigor','haste','grit','regen','fury','greed'],HOURS=+(q.get('hours')||6),CAMP=+(q.get('camp')||15),STALL=+(q.get('stall')||4),BUDGET=+(q.get('budget')||150)*1000,RUNCAP=+(q.get('runcap')||900);
+try{
+ await import('/src/main.js');
+ const st=await import('/src/state.js'),bt=await import('/src/battle.js'),asc=await import('/src/ascension.js'),sk=await import('/src/skilltree.js'),gear=await import('/src/gear.js'),farm=await import('/src/farm.js'),sts=await import('/src/stats.js');
+ localStorage.removeItem('hollow-delve-2');localStorage.removeItem('hd-lb');st.load();
+ const S=()=>st.S,L=sts.L,RL=sts.RL||asc.RL;
+ let wall=0,runs=0,buys=[],ascs=[],lastBuy=0,stall=0,bestSeen=0,gaps=[],durs=[],newBests=0,capped=0,deaths=[];
+ const cycle={start:0,runs:0,buys:0,peak:0};
+ const mean=a=>a.reduce((x,y)=>x+y,0)/(a.length||1),pct=(a,p)=>{const s=[...a].sort((x,y)=>x-y);return s[Math.min(s.length-1,Math.floor(s.length*p))]||0};
+ const magicNeed=['arcana','mender','frost'];
+ function buyAll(){let n=0;for(;;){let best=null,bc=Infinity;const cands=[];for(const t of sk.TREE){if(L(t.k)>=t.m||!sk.can(t))continue;if(magicNeed.includes(t.k)&&!asc.hasMagic())continue;const c=sk.cost(t);if(c<=S().gold)cands.push([t,c])}
+  if(cands.length){let pick;if(POL==='random')pick=cands[Math.floor(Math.random()*cands.length)];else if(POL==='might'){pick=cands.filter(x=>PRIO.includes(x[0].k)).sort((a,b)=>PRIO.indexOf(a[0].k)-PRIO.indexOf(b[0].k))[0]||cands.sort((a,b)=>a[1]-b[1])[0]}else pick=cands.sort((a,b)=>a[1]-b[1])[0];best=pick[0];bc=pick[1]}if(!best)break;S().gold-=bc;S().tr[best.k]=L(best.k)+1;n++;if(n>400)break}
+  if(n){buys.push(wall);if(lastBuy!=null)gaps.push(wall-lastBuy);lastBuy=wall;cycle.buys+=n}return n}
+ function buyRelics(){let n=0;for(;;){let best=null,bc=Infinity;for(const t of asc.RTREE){if(RL(t.k)>=t.m)continue;const c=asc.rcost(t);if(c<=S().relics&&c<bc){bc=c;best=t}}if(!best)break;S().relics-=bc;S().rl[best.k]=RL(best.k)+1;n++}return n}
+ function pets(){const P=st.PET;for(let i=0;i<P.length;i++){const p=S().pets[i];if(!p.own&&L('den')+1&&S().gold>=P[i].cost*3){S().gold-=P[i].cost;p.own=1;if(S().ap<0)S().ap=i}}}
+ const auto=(r,s)=>{if(!asc.hasSp(0))return;bt.cast(0);if(r.hp<r.maxHp*.5)bt.cast(1);if(r.stun<=0)bt.cast(2);bt.cast(3)};
+ const T0=performance.now();let cycleIdx=0;let goldRun=0,maxRunCpu=0,slowest='',gearCh=0,runsWithGear=0,lootTot=0;const early=[],reach={};const snaps=[];let nextSnap=600;
+ while(wall<HOURS*3600&&performance.now()-T0<BUDGET){
+  if(runs%10===0){document.title='running wall='+Math.round(wall/60)+'m runs='+runs+' asc='+S().asc+' stage='+S().best+' cpu='+Math.round((performance.now()-T0)/1000)+'s';await new Promise(r=>setTimeout(r))}
+  const tr0=performance.now();bt.startRun();const r=st.run;let g=0;
+  while(!r.over&&g<RUNCAP){if(asc.hasMagic())auto(r);bt.tick(.1);g+=.1}
+  if(!r.over)capped++;const rc=performance.now()-tr0;if(rc>maxRunCpu){maxRunCpu=rc;slowest='run'+runs+' asc'+S().asc+' stage'+r.stage+' g='+g.toFixed(0)+'s cpu='+Math.round(rc)+'ms'}
+  const spd=asc.maxSpd(),dur=g/spd;goldRun+=r.gold;wall+=dur+CAMP;runs++;while(wall>=nextSnap){snaps.push([S().bestOverall||0,S().asc,sts.petStars(),Math.round(sts.powerLevel()),Math.round(goldRun),Math.round(farm.farmRates().gold),S().pets.filter(p=>p.own).length]);nextSnap+=600}durs.push(dur);deaths.push(r.stage);
+  const eqb=JSON.stringify(Object.entries(S().eq).map(([k,v])=>k+v.id));const lootN=r.loot.length;S().bag.push(...r.loot);r.loot=[];gear.autoEquip();const eqa=Object.entries(S().eq).map(([k,v])=>k+v.id);const gch=eqa.filter(x=>!eqb.includes(x)).length;gearCh+=gch;if(gch)runsWithGear++;lootTot+=lootN;
+  for(const it of S().bag.slice())gear.sell(it.id);   // sell the rest
+  for(let X=10;X<=200;X+=10)if(reach[X]===undefined&&(S().bestOverall||0)>=X)reach[X]=Math.round(wall/60);const nb=S().best;if(nb>bestSeen){bestSeen=nb;newBests++;stall=0}else stall++;cycle.peak=Math.max(cycle.peak,r.stage);
+  const g0=S().gold;const nb0=buyAll();pets();const nb1=buyAll();if(early.length<14&&S().asc===0)early.push(`r${runs}:st${r.stage}/${dur.toFixed(0)}s/g${Math.round(g0)}/buy${nb0+nb1}/gear${gch}`);
+  if(stall>=STALL){const a0=S().asc;asc.ascend();if(S().asc>a0){ascs.push({t:Math.round(wall/60),stage:cycle.peak,runs:cycle.runs+1,buys:cycle.buys,relicsAfter:S().relics,asc:S().asc});buyRelics();bestSeen=0;stall=0;cycle.runs=-1;cycle.buys=0;cycle.peak=0;cycleIdx++;buyAll()}}
+  cycle.runs++;
+ }
+ const hrs=wall/3600;
+ out.push('simHours='+hrs.toFixed(2)+' runs='+runs+' asc='+S().asc+' cappedRuns='+capped+' cpu='+Math.round((performance.now()-T0)/1000)+'s');
+ out.push('runLen(s) p50='+pct(durs,.5).toFixed(0)+' p90='+pct(durs,.9).toFixed(0)+' max='+Math.max(...durs).toFixed(0));
+ out.push('buyGap(s) p50='+pct(gaps,.5).toFixed(0)+' p90='+pct(gaps,.9).toFixed(0)+' max='+Math.max(0,...gaps).toFixed(0)+' buyEvents='+buys.length);
+ out.push('ASCENTS: '+ascs.map(a=>`#${a.asc}@${a.t}m stage${a.stage} runs${a.runs} buys${a.buys}`).join(' | '));
+ const dl=c=>Math.max(0,...snaps.map((x,i)=>x[c]-(i?snaps[i-1][c]:0)));out.push('HONEST max rise per 10min: stage='+dl(0)+' asc='+dl(1)+' stars='+dl(2)+' power='+dl(3)+' | at 1h/4h/end: '+[6,24,snaps.length-1].map(i=>snaps[i]?snaps[i].join('/'):'-').join(' , '));out.push('slowest run: '+slowest);
+ {const hr=i=>{const a=snaps[i],b=snaps[i-6];return a&&b?'heroGold/h='+Math.round((a[4]-b[4]))+' farmGold/h='+a[5]+' pets='+a[6]:'-'};out.push('ECON(last hour before) 1h['+hr(6)+'] 3h['+hr(18)+'] end['+hr(snaps.length-1)+']')}
+ out.push('REACH(min) '+Object.entries(reach).map(e=>'st'+e[0]+'@'+e[1]).join(' '));out.push('EARLY '+early.join(' '));
+ out.push('GEAR: equipChanges='+gearCh+' runsWithAnUpgrade='+runsWithGear+'/'+runs+' ('+Math.round(100*runsWithGear/runs)+'%) lootPerRun='+(lootTot/runs).toFixed(1));
+ const rem=asc.RTREE.filter(t=>RL(t.k)<t.m);out.push('RELICS: maxedNodes='+(asc.RTREE.length-rem.length)+'/'+asc.RTREE.length+' remaining='+rem.map(t=>t.k+'@'+asc.rcost(t)).slice(0,8).join(',')+' unspent='+S().relics);
+ const tr=sk.TREE;out.push('TREE: maxed='+tr.filter(t=>L(t.k)>=t.m).length+'/'+tr.length+' owned='+tr.filter(t=>L(t.k)>0).length);out.push('final power='+Math.round(sts.powerLevel())+' bestOverall='+S().bestOverall+' relicsLeft='+S().relics);
+}catch(e){out.push('EXC '+e.message+' | '+(e.stack||'').split(String.fromCharCode(10))[1])}
+document.title=out.join(' ;; ');
+</script></body></html>

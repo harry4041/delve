@@ -1,5 +1,5 @@
 // usage: node tests/run-page.mjs <url> [maxSeconds]  -> waits until document.title no longer starts with "running", prints it
-const [url,maxS='60']=process.argv.slice(2),port=9333;
+const [url,maxS='60']=process.argv.slice(2),port=+(process.env.PORT||9333);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 let tgt;for(let i=0;i<30;i++){try{const r=await fetch(`http://127.0.0.1:${port}/json/new?${encodeURIComponent(url)}`,{method:'PUT'});tgt=await r.json();break}catch{await sleep(500)}}
 if(!tgt){console.log('could not reach Edge debug port');process.exit(1)}

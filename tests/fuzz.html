@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>running</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+</head><body><div id="app">
+<header><h1>Delve</h1><div id="top"></div></header>
+<section id="battle" hidden>
+ <div class="cv"><canvas id="c" width="192" height="108"></canvas><div id="fxl"></div>
+  <div id="over" hidden><div class="px" style="font-size:12px">Defeated</div><div id="ovt"></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button data-a="delveAgain" style="background:#d94a4a;color:#fff;border-color:#fff">⚔ Delve Again</button><button data-a="camp">Go to camp</button></div></div></div>
+ <div class="bar"><i id="hpb"></i><span id="hpt"></span></div>
+ <div class="bar m" id="mpw"><i id="mpb"></i><span id="mpt"></span></div>
+ <div class="bar e"><i id="ehb"></i><span id="ent"></span></div>
+ <div class="row sp" style="margin:6px 0"><div class="row" id="spells"></div><div class="row"><button class="s alt" data-a="spd" id="spdb"></button><button class="s alt" data-a="end">End run</button></div></div>
+ <div class="mute">Last drop</div><div id="last"></div><div class="mute" style="margin-top:6px">Loot this run</div><div id="feed"></div>
+</section>
+<section id="camp" hidden>
+ <div class="row sp"><div class="tabs"><button data-a="tab" data-v="g" id="tg">Gear</button><button data-a="tab" data-v="u" id="tu">Upgrades</button><button data-a="tab" data-v="v" id="tv">Vault</button><button data-a="tab" data-v="m" id="tm">Magic</button><button data-a="tab" data-v="p" id="tp">Pets</button><button data-a="tab" data-v="r" id="tr2">Auras</button><button data-a="tab" data-v="i" id="ti">Idle</button><button data-a="tab" data-v="a" id="ta">Ascend</button><button data-a="tab" data-v="l" id="tl">Scores</button><button data-a="tab" data-v="x" id="tx">Account</button></div></div>
+ <div style="margin:8px 0"><button data-a="delve" style="width:100%;font-size:22px;padding:10px;background:var(--btn);border-width:4px;box-shadow:5px 5px 0 var(--ink)">⚔ DELVE</button></div>
+ <div id="sdw" class="row" style="margin:6px 0"></div><div id="cbody"></div><div style="margin:16px 0"><button class="s alt" data-a="reset">Reset save</button></div>
+</section>
+</div>
+<script type="module">
+// Robustness: (1) random-click fuzz over every visible control in every tab while battles run, (2) corrupted/hostile saves, (3) numeric health.
+const out=[],errs=[];window.onerror=(m,u,l)=>errs.push(String(m).slice(0,80)+' @'+String(u).split('/').pop()+':'+l);
+window.addEventListener('unhandledrejection',e=>errs.push('REJ '+String(e.reason&&e.reason.message||e.reason).slice(0,80)));
+const ck=(n,c,x)=>out.push(n+':'+(c?'ok':'FAIL'+(x!==undefined?'('+x+')':'')));
+const q=new URLSearchParams(location.search),N=+(q.get('n')||1500);
+let seed=+(q.get('seed')||12345);const rnd=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296};
+try{
+ await import('/src/main.js');
+ const st=await import('/src/state.js'),bt=await import('/src/battle.js'),cp=await import('/src/camp.js'),sts=await import('/src/stats.js'),it=await import('/src/items.js');
+ const KEY='hollow-delve-2';
+ const bad=(o,path='S',seen=new Set(),acc=[])=>{if(acc.length>5||o==null)return acc;if(typeof o==='number'){if(!Number.isFinite(o))acc.push(path+'='+o);return acc}if(typeof o!=='object'||seen.has(o))return acc;seen.add(o);for(const k in o)bad(o[k],path+'.'+k,seen,acc);return acc};
+ // ---- 1 corrupted saves must not crash boot/load/render
+ const hostile={
+  'empty-string':'', 'not-json':'{{{', 'null':'null', 'array':'[]', 'number':'42', 'empty-object':'{}',
+  'wrong-types':JSON.stringify({gold:'lots',gems:null,tr:[],eq:'x',bag:{},pets:5,rl:'a',asc:'2',best:{},farm:3,giftsClaimed:'x'}),
+  'nan-gold':'{"gold":null,"asc":-5,"best":1e999,"relics":-1}',
+  'bag-junk':JSON.stringify({bag:[null,{},{ty:'weapon'},{ty:'nope',st:{atk:1}},{ty:'weapon',ri:99,il:-3,st:null}],eq:{rhand:null,head:{}}}),
+  'huge':JSON.stringify({gold:1e300,gems:1e300,relics:1e300,asc:500,best:5000,life:5000,bestOverall:5000,tr:{might:1e6,vigor:1e6}}),
+  'proto':'{"__proto__":{"polluted":1},"constructor":{"prototype":{"polluted2":1}},"tr":{"__proto__":{"x":1}}}',
+ };
+ for(const [name,raw] of Object.entries(hostile)){
+  const before=errs.length;localStorage.setItem(KEY,raw);let ok=true,msg='';
+  try{st.load();for(const t of ['g','u','v','m','p','r','i','a','l','x']){st.setTab(t);cp.camp()}bt.startRun();for(let i=0;i<40;i++)bt.tick(.1);}catch(e){ok=false;msg=e.message.slice(0,60)}
+  ck('hostile-save:'+name,ok&&errs.length===before&&!({}).polluted&&!({}).polluted2,msg||errs.slice(before).join('|'));
+ }
+ document.title='running p2 '+Math.round(performance.now())+'ms';await new Promise(r=>setTimeout(r)); // ---- 2 huge-number save: nothing may turn into NaN/Infinity once ticking (late-game "exponential range" claim in CLAUDE.md)
+ localStorage.setItem(KEY,hostile.huge);st.load();bt.startRun();for(let i=0;i<300;i++)bt.tick(.1);
+ const hb=bad(st.S);ck('huge-save-stays-finite-after-300-ticks',hb.length===0,hb.join(','));
+ ck('huge-save-stats-finite',Object.values(sts.stats()).every(v=>typeof v!=='number'||Number.isFinite(v)),Object.entries(sts.stats()).filter(([k,v])=>typeof v==='number'&&!Number.isFinite(v)).map(e=>e[0]).join(','));
+ document.title='running p3 '+Math.round(performance.now())+'ms';await new Promise(r=>setTimeout(r)); // ---- 3 random-click fuzz
+ localStorage.removeItem(KEY);st.load();const S=()=>st.S;S().gold=5e6;S().gems=50;S().relics=50;S().best=25;
+ const SKIP=new Set(['reset','lbClear']);let clicks=0,byAction={};
+ const tabs=['g','u','v','m','p','r','i','a','l','x'];
+ for(let i=0;i<N;i++){
+  try{
+   if(st.mode==='camp'){ if(rnd()<.2){st.setTab(tabs[Math.floor(rnd()*tabs.length)])} cp.camp();
+     const els=[...document.querySelectorAll('#camp [data-a]')].filter(e=>!SKIP.has(e.dataset.a)&&!e.disabled);
+     if(els.length){const e=els[Math.floor(rnd()*els.length)];byAction[e.dataset.a]=(byAction[e.dataset.a]||0)+1;e.click();clicks++}
+     if(rnd()<.35){const d=document.querySelector('[data-a=delve]');if(d)d.click()}
+   } else { for(let k=0;k<40&&st.mode==='battle';k++){bt.tick(.1);if(st.run&&st.run.over)break}
+     if(st.run&&st.run.over||rnd()<.1){const e=document.querySelector(rnd()<.5?'[data-a=camp]':'[data-a=delveAgain]');if(e)e.click();else bt.die&&0} }
+   if(i%100===0){S().gold+=1e6;S().gems+=5} 
+   if(i%250===0){const b=bad(S());if(b.length){ck('finite-during-fuzz@'+i,false,b.join(','));break}}
+  }catch(e){errs.push('CATCH '+e.message.slice(0,90)+' | '+(e.stack||'').split('\n')[1])}
+ }
+ ck('fuzz-no-exceptions('+clicks+' clicks, '+Object.keys(byAction).length+' distinct actions)',errs.length===0,[...new Set(errs)].slice(0,6).join(' || '));
+ const b2=bad(S());ck('save-finite-after-fuzz',b2.length===0,b2.join(','));
+ ck('save-still-round-trips',(()=>{try{st.save();const j=JSON.parse(localStorage.getItem(KEY));return j&&typeof j.gold==='number'}catch(e){return false}})());
+ ck('gold-never-negative',S().gold>=0&&S().gems>=0&&S().relics>=0,[S().gold,S().gems,S().relics].join(','));
+ ck('item-slots-hold-valid-items',Object.values(S().eq).every(x=>x&&x.st&&typeof x.ty==='string'));
+
+ document.title='running p4 '+Math.round(performance.now())+'ms';await new Promise(r=>setTimeout(r)); // ---- 4 synthetic clicks: every action with every valid value, mixed with battles, random order
+ {const sk=await import('/src/skilltree.js'),as=await import('/src/ascension.js');
+  const send=(a,v)=>{const b=document.createElement('button');b.dataset.a=a;if(v!==undefined)b.dataset.v=v;document.body.appendChild(b);b.click();b.remove()};
+  localStorage.removeItem(KEY);st.load();S().gold=1e12;S().gems=500;S().relics=5000;S().best=60;S().life=60;S().tr.den=1;
+  const acts=[];for(const k of Object.keys(sk.NODE))acts.push(['tr',k]);for(let i=0;i<6;i++)for(const a of['bp','ap','pl','pa'])acts.push([a,i]);
+  for(let i=0;i<4;i++)acts.push(['cast',i]);for(const t of as.RTREE)acts.push(['rb',t.k]);for(let i=0;i<10;i++)acts.push(['sellr',i]);
+  acts.push(['farmCollect'],['spd'],['asc'],['bagUp'],['forgeAuto'],['forgeAll'],['best'],['vAll'],['respec'],['offOk']);
+  let n=0;const e0=errs.length;
+  const SYN=+(q.get('syn')||4000),ts=performance.now();for(let i=0;i<SYN;i++){try{const [a,v]=acts[Math.floor(rnd()*acts.length)];if(i%10===0){document.title='running syn '+i+' '+Math.round(performance.now()-ts)+'ms last='+a+':'+v+' mode='+st.mode;await new Promise(r=>setTimeout(r))}const t1=performance.now();
+    if(st.mode==='camp'){if(rnd()<.3)send('delve');send(a,v)}else{for(let k=0;k<30&&!st.run.over;k++)bt.tick(.1);if(a==='cast')send(a,v);if(st.run.over||rnd()<.2)send('camp')}
+    if(performance.now()-t1>1500)errs.push('SLOW '+(performance.now()-t1|0)+'ms on '+a+':'+v+' mode='+st.mode);if(i%200===0){S().gold+=1e12;if(rnd()<.5)S().relics+=500}n++}catch(e){errs.push('CATCH2 '+e.message.slice(0,90)+' | '+(e.stack||'').split(String.fromCharCode(10))[1])}}
+  ck('synthetic-all-actions-no-exceptions('+n+' in '+Math.round(performance.now()-ts)+'ms)',errs.length===e0,[...new Set(errs.slice(e0))].slice(0,5).join(' || '));
+  const b3=bad(S());ck('save-finite-after-synthetic',b3.length===0,b3.join(','));
+  ck('levels-never-exceed-max',Object.entries(S().tr).every(([k,v])=>!sk.NODE[k]||v<=sk.NODE[k].m),Object.entries(S().tr).filter(([k,v])=>sk.NODE[k]&&v>sk.NODE[k].m).slice(0,3).join(';'));
+  ck('relic-levels-never-exceed-max',Object.entries(S().rl).every(([k,v])=>!as.RT[k]||v<=as.RT[k].m));
+  ck('no-negative-currency',S().gold>=0&&S().gems>=0&&S().relics>=0,[S().gold,S().gems,S().relics].join(','));
+ }
+ out.push('actions-hit: '+Object.entries(byAction).sort((a,b)=>b[1]-a[1]).map(e=>e[0]+':'+e[1]).join(' '));
+}catch(e){out.push('EXC '+e.message+' | '+(e.stack||'').split(String.fromCharCode(10))[1])}
+document.title=out.join(' ;; ');
+</script></body></html>
