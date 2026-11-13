@@ -17,11 +17,12 @@ export function ascend(){if(S.life<reqStage()||S.gold<ascFee())return;const g=re
  if(RL('rLog'))for(const k of['sort','tidy','bulk1','bulk2','bulk3','bulk4','bulk5','bulk6','bulk7','bulk8','bulk9','bulkX','forgeT','autof','massf'])if(L(k))kept[k]=L(k);
  if(RL('rTime'))for(const k of['sim1','sim2'])if(L(k))kept[k]=L(k);
  const savedVault=S.vault||[];const savedVaultLvl=S.vaultLvl||0;const savedVaultUnlocked=S.vaultUnlocked||false;
+ const relicEq=Object.entries(S.eq).filter(([k,v])=>v&&v.un),relicBag=S.bag.filter(x=>x.un); // Mythic Relics survive ascending
  S.relics+=g;S.asc++;S.gold=0;S.tr=kept;S.bag=[];S.pets=S.pets.map(p=>({own:p.own,lvl:0,star:p.star||0}));S.life=0;
  S.vault=savedVault;S.vaultLvl=savedVaultLvl;S.vaultUnlocked=savedVaultUnlocked;S.best=0;if(S.asc>0){const m=rollAscModifiers();S.ascBuff=m.buff;S.ascDebuff=m.debuff}else{S.ascBuff=null;S.ascDebuff=null}
  // Heirlooms: the best-scoring equipped items (one per slot, as many as the relic has levels) survive the ascension
  const heirs=Object.entries(S.eq).filter(([k,v])=>v&&v.id!==0).sort((a,b)=>sc(b[1].st)*(1+b[1].ri*.3)-sc(a[1].st)*(1+a[1].ri*.3)).slice(0,RL('rHeir'));
- S.eq={rhand:{id:0,ty:'weapon',ri:0,il:1,nm:'Rusty Sword',st:{atk:2}}};for(const [k,v] of heirs)S.eq[k]=v;save()}
+ S.eq={rhand:{id:0,ty:'weapon',ri:0,il:1,nm:'Rusty Sword',st:{atk:2}}};for(const [k,v] of heirs)S.eq[k]=v;for(const [k,v] of relicEq)S.eq[k]=v;S.bag=relicBag;save()}
 export function ascTab(){const ok=S.life>=reqStage()&&S.gold>=ascFee();
  const curBuff=S.ascBuff?ASC_BUFFS.find(x=>x.k===S.ascBuff):null;
  const curDebuff=S.ascDebuff?ASC_DEBUFFS.find(x=>x.k===S.ascDebuff):null;

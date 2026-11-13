@@ -101,7 +101,17 @@ export function drawWorn(c, e, st) {
   // ---- chest (with its own sleeves, shoulders, belt) ----
   if (e.chest) {
     const b = baseOf(e.chest), P = pal(e.chest, b === 'Plate' || b === 'Mail' ? 'steel' : 'cloth');
-    if (b === 'Tunic') {
+    if (e.chest.un === 'phoenix') { // Phoenix Robe (relic): crimson feathered robe, gold-and-flame plumage, plumed shoulders, a hem that never stops burning
+      const pu = .5 + .5 * Math.sin(CLK * 3), fl = '#ff7a1a', gold = '#ffcc4d', red = '#8a1c14', dk = '#4a0e0c', FR = { ri: 5 };
+      B(tx - 1, 18, tw + 2, 22, red); B(tx - 2, 38, tw + 4, 16, red);
+      for (let y = 21; y < 38; y += 3) for (let x = tx + 1 + ((y / 3) % 2 ? 0 : 2); x < tx + tw - 2; x += 4) { r(x, y, 3, 1, gold); r(x + 1, y + 1, 1, 1, fl); }
+      for (let y = 40; y < 53; y += 3) for (let x = tx - 1 + ((y / 3) % 2 ? 0 : 2); x < tx + tw; x += 4) { r(x, y, 3, 1, fl); r(x + 1, y + 1, 1, 1, gold); }
+      r(tx, 33, tw, 3, dk); B(cx - 2, 33, 4, 3, gold); r(cx - 3, 18, 6, 3, gold);
+      for (const x of [ax - 1, bx]) { B(x, 20, 7, 16, red); r(x, 34, 7, 2, gold); r(x + 3, 24, 1, 8, fl); }
+      for (const [x0, hs] of [[ax - 3, [6, 5, 4, 3]], [bx - 2, [3, 4, 5, 6]]]) { B(x0, 17, 9, 5, dk); hs.forEach((h, k) => { r(x0 + k * 2, 17 - h, 2, h, k % 2 ? fl : gold); r(x0 + k * 2, 17 - h, 1, 1, '#ffffff'); }); }
+      r(cx - 1, 23, 2, 7, mix(fl, '#ffe45c', pu)); r(cx - 2, 26, 4, 2, gold); r(cx - 1, 22, 2, 1, '#ffffff'); // a flame crest on the chest
+      flame(FR, tx - 2, 55, tw + 4, 4, 41); embers(FR, tx, 40, tw, 6, 77);
+    } else if (b === 'Tunic') {
       B(tx, 18, tw, 21, P.m, { tex: 1 }); r(cx - 4, 18, 8, 3, shd(P.m)); r(cx - 1, 21, 2, 12, shd(P.m)); r(tx, 33, tw, 3, '#5a3a1c'); B(cx - 2, 33, 4, 3, P.trim); r(tx, 37, tw, 2, P.trim);
       for (const x of [ax, bx]) { B(x, 20, 6, 13, P.m, { tex: 1 }); r(x, 31, 6, 2, P.trim); }
     } else if (b === 'Mail') {
@@ -169,7 +179,16 @@ export function drawWorn(c, e, st) {
   for (const [it, px] of [[e.lhand, ax + 4], [e.rhand, bx + 2]]) {
     if (!it || it.ty !== 'shield') continue;
     const b = baseOf(it), P = pal(it, 'steel'), py = 30;
-    if (b === 'Buckler') {
+    if (it.un === 'wyrmscale') { // Wyrmscale Aegis (relic): a gold-rimmed shield of teal dragon scales with a glaring dragon head
+      const pu = .5 + .5 * Math.sin(CLK * 3), eye = mix('#ff3a1a', '#ffe45c', pu), FR = { ri: 5 };
+      heater(px, py, 8, 26, '#d8b040', '#1f6b55', '#154a3b');
+      for (let y = py - 9; y < py + 12; y += 3) for (let x = px - 6 + (((y - py) % 2 + 2) % 2 ? 0 : 2); x < px + 6; x += 4) { r(x, y, 3, 1, '#3aa080'); r(x + 1, y + 1, 1, 1, '#0e3329'); }
+      r(px - 7, py - 12, 2, 6, '#e8dcc0'); r(px + 6, py - 12, 2, 6, '#e8dcc0'); r(px - 7, py - 13, 1, 1, '#ffffff'); r(px + 7, py - 13, 1, 1, '#ffffff'); // horns
+      B(px - 4, py - 6, 9, 5, '#2a8a6c'); B(px - 2, py - 2, 5, 8, '#2a8a6c'); r(px, py - 6, 1, 12, '#1d6a52');
+      r(px - 3, py - 4, 2, 2, eye); r(px + 2, py - 4, 2, 2, eye); r(px - 3, py - 4, 1, 1, '#ffffff'); r(px + 2, py - 4, 1, 1, '#ffffff');                 // glaring eyes
+      r(px - 1, py + 2, 1, 1, '#0e3329'); r(px + 1, py + 2, 1, 1, '#0e3329'); r(px - 2, py + 5, 1, 3, '#ffffff'); r(px + 2, py + 5, 1, 3, '#ffffff');     // nostrils, fangs
+      embers(FR, px - 3, py + 1, 6, 4, 21);
+    } else if (b === 'Buckler') {
       disc(px, py, 10, c.ink(P.m)); disc(px, py, 9, P.m);                                                        // steel rim
       for (let dy = -7; dy <= 7; dy++) { const hw = Math.round(Math.sqrt(64 - dy * dy)); r(px - hw, py + dy, 2 * hw + 1, 1, dy % 2 ? P.wood : lit(P.wood)); r(px - hw, py + dy, 1, 1, shd(P.wood)); r(px + hw, py + dy, 1, 1, shd(P.wood)); } // wooden planks
       r(px, py - 7, 1, 15, shd(P.wood));                                                                         // centre plank seam
@@ -221,7 +240,16 @@ export function drawWorn(c, e, st) {
   for (const [it, gx] of [[e.rhand, bx + 1], [e.lhand, ax + 1]]) {
     if (!it || it.ty === 'shield') continue;
     const b = baseOf(it), P = pal(it, 'steel');
-    if (b === 'Sword') { S([[gx, 8, 4, 27], [gx + 1, 5, 2, 3]], P.m); r(gx + 1, 9, 1, 24, lit(P.m)); r(gx + 3, 9, 1, 24, shd(P.m)); B(gx - 3, 34, 10, 3, P.trim); B(gx + 1, 37, 2, 6, '#5a3a1c'); B(gx, 43, 4, 3, P.trim); }
+    if (it.un === 'emberfang') { // Emberfang (relic): a blackened blade with a molten core, a jagged edge, fang-shaped guard and a flame that never dies
+      const pu = .5 + .5 * Math.sin(CLK * 4), core = mix('#ff7a1a', '#ffe45c', pu), FR = { ri: 5 };
+      S([[gx - 1, 4, 6, 30], [gx, 1, 4, 4], [gx + 1, -1, 2, 3]], '#3a2228'); r(gx - 1, 4, 1, 28, '#7a2a24'); r(gx + 4, 4, 1, 28, '#1e1014');
+      r(gx + 2, 1, 1, 31, core); r(gx + 2, 1, 1, 4, '#ffffff');
+      for (let y = 8; y < 32; y += 4) { r(gx - 2, y, 1, 2, '#3a2228'); r(gx + 5, y + 2, 1, 2, '#3a2228'); }
+      B(gx - 4, 34, 12, 3, '#5a1a14'); r(gx - 4, 34, 12, 1, '#c04a2a'); r(gx - 5, 36, 2, 4, '#e8dcc0'); r(gx + 7, 36, 2, 4, '#e8dcc0');
+      B(gx + 1, 37, 3, 6, '#3a1a10'); for (let y = 38; y < 43; y += 2) r(gx + 1, y, 3, 1, '#7a3a20');
+      B(gx, 43, 5, 3, '#c04a2a'); r(gx + 2, 44, 1, 1, core);
+      flame(FR, gx - 1, 6, 6, 5, 3); embers(FR, gx - 3, 4, 10, 5, 9);
+    } else if (b === 'Sword') { S([[gx, 8, 4, 27], [gx + 1, 5, 2, 3]], P.m); r(gx + 1, 9, 1, 24, lit(P.m)); r(gx + 3, 9, 1, 24, shd(P.m)); B(gx - 3, 34, 10, 3, P.trim); B(gx + 1, 37, 2, 6, '#5a3a1c'); B(gx, 43, 4, 3, P.trim); }
     else if (b === 'Axe') { B(gx + 1, 8, 2, 38, P.wood); S([[gx + 3, 8, 7, 4], [gx + 3, 12, 9, 8], [gx + 3, 20, 7, 4]], P.m); r(gx + 11, 13, 1, 6, lit(P.m)); r(gx + 4, 9, 5, 1, lit(P.m)); B(gx - 2, 12, 3, 3, P.m); }
     else if (b === 'Dagger') { S([[gx + 1, 26, 3, 11], [gx + 2, 24, 1, 2]], P.m); r(gx + 2, 27, 1, 8, lit(P.m)); B(gx - 1, 36, 7, 2, P.trim); B(gx + 1, 38, 2, 5, '#5a3a1c'); B(gx + 1, 43, 2, 2, P.trim); }
     else if (b === 'Mace') { B(gx + 1, 14, 2, 32, P.wood); disc(gx + 2, 10, 5, P.m); r(gx + 2, 2, 1, 3, P.m); r(gx - 4, 10, 3, 1, P.m); r(gx + 6, 10, 3, 1, P.m); r(gx + 2, 15, 1, 3, P.m); if (it.ri >= 3) r(gx + 1, 9, 2, 2, P.gem); }

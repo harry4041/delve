@@ -7,6 +7,10 @@ import { RTREE, STB, reqStage, ascFee } from './ascension.js';
 
 // ---------------------------------------------------------------- changelog (add new entries at the TOP; `id` must be unique)
 export const CHANGELOG = [
+  { id: '2026-11-13f', date: '2026-11-13', title: 'Mythic Relics', items: [
+    'Three unique Mythic Relics with their own art and power: Emberfang Sword (every hit sets the enemy ablaze), Wyrmscale Aegis (every 5th attack is blocked and answered with dragonfire) and Phoenix Robe (once per delve, a killing blow revives you).',
+    'Bosses from stage 30 can drop them, and every boss without one makes the next drop more likely. You can only hold one of each, they survive Ascension, and they cannot be forged or bulk-sold. The Gear tab has a collection page.',
+  ] },
   { id: '2026-11-13e', date: '2026-11-13', title: 'Gear that looks like its rarity', items: [
     'Common gear is now old, dull and rusty, with cracks and rust speckles. Uncommon is plain, Rare and above is polished.',
     'Armour now keeps its steel, leather and cloth look instead of turning one flat rarity colour; rarity shows in trim, gems and glow.',

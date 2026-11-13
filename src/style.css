@@ -51,3 +51,7 @@ button.alt{background:var(--panel);color:var(--ink)}
 @keyframes tvpulse{0%,100%{stroke-opacity:.25}50%{stroke-opacity:1}}
 @media (prefers-reduced-motion:reduce){.aff{animation:none}}
 .bp select{font:inherit;color:var(--ink);background:var(--bg);border:3px solid var(--ink);padding:4px 6px;max-width:100%;min-height:34px}.bp .row{gap:6px}
+
+/* Mythic Relics: a pulsing gold frame around the icon */
+.ic.relic{border-color:#ffd34d;animation:relicGlow 1.8s ease-in-out infinite}
+@keyframes relicGlow{0%,100%{box-shadow:0 0 3px #ffd34d88}50%{box-shadow:0 0 10px 2px #ffd34dcc}}

@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>running</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+</head><body><div id="app">
+<header><h1>Delve</h1><div id="top"></div></header>
+<section id="battle" hidden>
+ <div class="cv"><canvas id="c" width="192" height="108"></canvas><div id="fxl"></div>
+  <div id="over" hidden><div class="px" style="font-size:12px">Defeated</div><div id="ovt"></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button data-a="delveAgain" style="background:#d94a4a;color:#fff;border-color:#fff">⚔ Delve Again</button><button data-a="camp">Go to camp</button></div></div></div>
+ <div class="bar"><i id="hpb"></i><span id="hpt"></span></div>
+ <div class="bar m" id="mpw"><i id="mpb"></i><span id="mpt"></span></div>
+ <div class="bar e"><i id="ehb"></i><span id="ent"></span></div>
+ <div class="row sp" style="margin:6px 0"><div class="row" id="spells"></div><div class="row"><button class="s alt" data-a="spd" id="spdb"></button><button class="s alt" data-a="end">End run</button></div></div>
+ <div class="mute">Last drop</div><div id="last"></div><div class="mute" style="margin-top:6px">Loot this run</div><div id="feed"></div>
+</section>
+<section id="camp" hidden>
+ <div class="row sp"><div class="tabs"><button data-a="tab" data-v="g" id="tg">Gear</button><button data-a="tab" data-v="u" id="tu">Upgrades</button><button data-a="tab" data-v="v" id="tv">Vault</button><button data-a="tab" data-v="m" id="tm">Magic</button><button data-a="tab" data-v="p" id="tp">Pets</button><button data-a="tab" data-v="r" id="tr2">Auras</button><button data-a="tab" data-v="i" id="ti">Idle</button><button data-a="tab" data-v="a" id="ta">Ascend</button><button data-a="tab" data-v="l" id="tl">Scores</button><button data-a="tab" data-v="x" id="tx">Account</button></div></div>
+ <div style="margin:8px 0"><button data-a="delve" style="width:100%;font-size:22px;padding:10px;background:var(--btn);border-width:4px;box-shadow:5px 5px 0 var(--ink)">⚔ DELVE</button></div>
+ <div id="sdw" class="row" style="margin:6px 0"></div><div id="cbody"></div><div style="margin:16px 0"><button class="s alt" data-a="reset">Reset save</button></div>
+</section>
+</div>
+<script type="module">
+const out=[],ck=(n,c,x)=>out.push(n+':'+(c?'ok':'FAIL'+(x!==undefined?'('+x+')':'')));
+window.onerror=(m,u,l)=>out.push('ERR '+m+' @'+String(u).split('/').pop()+':'+l);
+try{
+ await import('/src/main.js');
+ const st=await import('/src/state.js'),bt=await import('/src/battle.js'),rl=await import('/src/relics.js'),as=await import('/src/assets.js'),asc=await import('/src/ascension.js'),sx=await import('/src/stats.js'),cp=await import('/src/camp.js');
+ const KEY='hollow-delve-2',rnd=Math.random;
+ const reset=()=>{Math.random=rnd;localStorage.removeItem(KEY);st.load();st.S.gold=1e9;st.S.best=30};
+ const fresh=()=>{bt.startRun();const r=st.run;r.hT=-1e9;r.pT=-1e9;r.eHp=r.eMax=1e12;r.eAtk=0;r.hp=1e15;return r};
+ // 1 the three relics build proper items
+ reset();
+ for(const d of rl.RELICS){const it=rl.makeRelic(d.id,40,3);ck('make-'+d.id,it.un===d.id&&it.nm===d.nm&&as.baseOf(it)===d.base&&it.ri>=5&&it.ty===d.ty&&Object.values(it.st).every(Number.isFinite)&&rl.relicInfo(it).id===d.id,JSON.stringify([it.ri,it.nm,as.baseOf(it)]))}
+ ck('relic-is-two-tiers-above-top',rl.makeRelic('emberfang',40,9).ri===11&&rl.makeRelic('emberfang',40,0).ri===5);
+ // 2 drop rules and pity
+ reset();
+ ck('no-drop-before-stage-30',rl.rollRelic(20,3)===null&&rl.rollRelic(30-1,3)===null);
+ ck('no-drop-on-non-boss-stage',rl.rollRelic(35,3)===null);
+ st.S.relicPity=0;Math.random=()=>.99;const miss=rl.rollRelic(40,3);ck('miss-grows-pity',miss===null&&st.S.relicPity===1);
+ Math.random=()=>0;const hit=rl.rollRelic(40,3);Math.random=rnd;ck('hit-gives-relic-and-resets-pity',!!hit&&!!hit.un&&st.S.relicPity===0);
+ st.S.relicPity=1000;let n60=0;Math.random=()=>.59;ck('chance-capped-at-60-percent',!!rl.rollRelic(40,3));st.S.relicPity=1000;Math.random=()=>.61;ck('cap-means-61-misses',rl.rollRelic(40,3)===null);Math.random=rnd;
+ // 3 ownership: no duplicates, worn vs carried
+ reset();st.S.eq.rhand=rl.makeRelic('emberfang',40,3);st.S.bag.push(rl.makeRelic('wyrmscale',40,3));
+ ck('has-relic-only-when-worn',rl.hasRelic('emberfang')&&!rl.hasRelic('wyrmscale')&&rl.ownsRelic('wyrmscale'));
+ Math.random=()=>0;const only=rl.rollRelic(40,3);Math.random=rnd;ck('only-unowned-can-drop',!!only&&only.un==='phoenix');
+ st.S.vault=[rl.makeRelic('phoenix',40,3)];Math.random=()=>0;ck('nothing-drops-when-all-owned',rl.rollRelic(40,3)===null);Math.random=rnd;
+ ck('relics-cannot-be-forged',!sx.fOK(Object.assign(rl.makeRelic('emberfang',40,3),{ri:0})));
+ // 4 hostile saves
+ reset();const bad=rl.makeRelic('emberfang',40,3);bad.un='BAD ID!';const bad2=rl.makeRelic('phoenix',40,3);bad2.un={x:1};
+ localStorage.setItem(KEY,JSON.stringify({...st.def(),bag:[bad,bad2],relicFound:{emberfang:1,'__proto__':1,'BAD KEY':1,phoenix:'yes'},relicPity:'x'}));st.load();
+ ck('bad-relic-ids-dropped',st.S.bag.every(x=>x.un===undefined),JSON.stringify(st.S.bag.map(x=>x.un)));
+ ck('bad-found-keys-dropped',Object.keys(st.S.relicFound).join()==='emberfang'&&st.S.relicPity===0,JSON.stringify(st.S.relicFound)+st.S.relicPity);
+ reset();st.S.eq.rhand=rl.makeRelic('emberfang',40,3);localStorage.setItem(KEY,JSON.stringify(st.S));st.load();ck('good-relic-survives-save-load',st.S.eq.rhand.un==='emberfang');
+ const old=st.def();delete old.relicFound;delete old.relicPity;localStorage.setItem(KEY,JSON.stringify(old));st.load();ck('old-save-gets-relic-fields',typeof st.S.relicFound==='object'&&st.S.relicPity===0);
+ // 5 relics survive ascension (worn and carried)
+ reset();st.S.eq.rhand=rl.makeRelic('emberfang',40,3);st.S.eq.lhand=rl.makeRelic('wyrmscale',40,3);st.S.bag=[rl.makeRelic('phoenix',40,3),st.gen?null:null].filter(Boolean);
+ st.S.life=1e5;st.S.gold=1e30;asc.ascend();
+ ck('worn-relics-survive-ascension',st.S.eq.rhand&&st.S.eq.rhand.un==='emberfang'&&st.S.eq.lhand&&st.S.eq.lhand.un==='wyrmscale');
+ ck('carried-relic-survives-ascension',st.S.bag.length===1&&st.S.bag[0].un==='phoenix',st.S.bag.length);
+ // 6 powers
+ reset();let r=fresh();for(let i=0;i<30;i++)bt.tick(.1);ck('no-ember-without-relic',!r.ember);
+ reset();st.S.eq.rhand=rl.makeRelic('emberfang',40,3);r=fresh();r.hT=1e9;for(let i=0;i<30&&!r.ember;i++)bt.tick(.1);
+ ck('emberfang-sets-enemy-ablaze',!!r.ember&&r.ember.d>0&&r.ember.t>0,JSON.stringify(r.ember));
+ {const e0=r.eHp;for(let i=0;i<20;i++){r.hT=-1e9;bt.tick(.1)}ck('ember-burns-the-enemy',r.eHp<e0);}
+ reset();st.S.eq.lhand=rl.makeRelic('wyrmscale',40,3);r=fresh();r.eAtk=1e3;{let last=r.hp,hits=0;Math.random=()=>.999;for(let i=0;i<200;i++){bt.tick(.1);if(r.hp<last)hits++;last=r.hp}Math.random=rnd; // no dodging, so every unblocked attack lands
+  ck('wyrmscale-blocks-every-5th-attack',r.wy>=10&&hits===r.wy-Math.floor(r.wy/5),JSON.stringify({wy:r.wy,hits,hp:r.hp,over:r.over,stage:r.stage,eH:r.eHp}));ck('wyrmscale-breathes-fire',r.eHp<1e12);}
+ reset();r=fresh();r.eAtk=1e3;r.hp=1e15;{for(let i=0;i<60;i++)bt.tick(.1);ck('no-block-without-relic',!r.wy)}
+ reset();st.S.eq.chest=rl.makeRelic('phoenix',40,3);r=fresh();r.eAtk=1e12;r.hp=10;{let i=0;for(;i<40&&!r.phUsed;i++)bt.tick(.1);ck('phoenix-revives-once',!!r.phUsed&&!r.over&&r.hp>0&&r.eHp<1e12,JSON.stringify({u:r.phUsed,o:r.over,hp:r.hp}));
+  for(i=0;i<80&&!r.over;i++)bt.tick(.1);ck('phoenix-only-once-per-delve',r.over===true);}
+ reset();r=fresh();r.eAtk=1e12;r.hp=10;{let i=0;for(;i<40&&!r.over;i++)bt.tick(.1);ck('no-revive-without-relic',r.over===true&&!r.phUsed)}
+ // 7 a boss at stage 40 can drop a relic, and looting it records it
+ reset();st.S.relicPity=1000;let got=null;
+ for(let a=0;a<80&&!got;a++){r=fresh();r.stage=39;r.eHp=1;r.hT=10;bt.tick(.1);got=(r.eDrops||[]).find(x=>x.un)||null}
+ ck('boss-can-drop-a-relic',!!got&&r.stage===40&&r.boss===true,JSON.stringify([r.stage,r.boss,got&&got.un]));
+ if(got){r.hT=10;r.eHp=1;st.S.relicFound={};bt.tick(.1);ck('looting-records-the-relic',st.S.relicFound[got.un]===1&&r.loot.some(x=>x.un===got.un),JSON.stringify(st.S.relicFound))}
+ // 8 UI
+ reset();st.S.eq.rhand=rl.makeRelic('emberfang',40,3);st.S.relicFound={emberfang:1};st.setMode('camp');cp.view();st.setTab('g');cp.camp();
+ const html=document.querySelector('#cbody').innerHTML;
+ ck('gear-tab-shows-relic-power',html.includes('burns for 30%')&&html.includes('Relic'),html.length);
+ ck('collection-lists-found-and-hidden',html.includes('MYTHIC RELICS 1/3')&&html.includes('???'));
+ ck('relic-icon-glows',as.icon(st.S.eq.rhand).includes('ic relic'));
+ reset();st.setMode('camp');cp.view();st.setTab('g');cp.camp();ck('hint-before-any-relic',document.querySelector('#cbody').innerHTML.includes('Mythic Relics: rare unique'));
+}catch(e){out.push('EXC '+e.message+' | '+(e.stack||'').split('\n')[1])}
+Math.random=Math.random;document.title=out.join(' ');
+</script>
+
+</body></html>

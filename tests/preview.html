@@ -50,6 +50,7 @@ window.__outfit=(n)=>{const o=SETS[n],S=st.S;S.eq={};for(const k in TY)S.eq[k]=i
 window.__enemyOutfit=(n)=>{const o=SETS[n],r=st.run;r.eDrops=Object.keys(TY).map(k=>it.gen(30,o.ri,k==='lhand'&&o.lhand==='Dagger'?'weapon':TY[k],o[k]));r.eEq=null};
 window.__base=()=>JSON.stringify(st.BASE);
 window.__one=(ty,bn,ri)=>{const S=st.S,slot={weapon:'rhand',shield:'lhand',amulet:'amu1'}[ty]||ty;S.eq={};S.eq[slot]=it.gen(30,ri,ty,bn);return slot}; // the hero wearing just this item
+const rl=await import('/src/relics.js');window.__relic=(id,stage,topRi)=>{const S=st.S,r=rl.makeRelic(id,stage||40,topRi||3),slot={weapon:'rhand',shield:'lhand',chest:'chest'}[r.ty];S.eq[slot]=r;return r.nm+' ri'+r.ri};
 window.__tab=(tab,gold,tr)=>{const S=st.S;S.gold=gold;S.tr=tr||{};S.rl=tab==='m'?{rMagic:1}:{};S.magic=tab==='m';if(tab==='p')S.tr.den=1;st.setMode('camp');cp.view();st.setTab(tab);cp.camp();return document.querySelectorAll('#cbody .it').length};
 document.title='ready';
 </script></body></html>

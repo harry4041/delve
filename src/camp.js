@@ -18,6 +18,10 @@ import {tree} from './treeview.js';
 import {cast,die,startRun} from './battle.js';
 import {drawPortrait,hud,magicTab,petTab} from './render.js';
 import {chip} from './assets.js';
+import {RELICS,RELIC_MIN_STAGE,relicInfo,ownsRelic,hasRelic} from './relics.js';
+function relicLine(it){const r=relicInfo(it);return r?'<small style="color:#ffd34d;display:block">★ '+r.power+'</small>':''}
+// Collection page: every Mythic Relic, found or still hidden
+function relicBox(){const f=S.relicFound||{};if(!Object.keys(f).length&&!RELICS.some(r=>ownsRelic(r.id)))return '<div class="mute" style="margin:6px 0">★ Mythic Relics: rare unique items with their own power. Bosses from stage '+RELIC_MIN_STAGE+' can drop them.</div>';return '<div class="box" style="margin:8px 0"><div class="px" style="font-size:9px;margin-bottom:6px;color:#ffd34d">MYTHIC RELICS '+RELICS.filter(r=>f[r.id]).length+'/'+RELICS.length+'</div>'+RELICS.map(r=>f[r.id]||ownsRelic(r.id)?'<div class="it"><div><b style="color:#ffd34d">'+r.title+'</b> <span class="mute">'+(hasRelic(r.id)?'equipped':ownsRelic(r.id)?'in your bag':'found')+'</span><small>'+r.power+'<br><i>'+r.flavor+'</i></small></div></div>':'<div class="it"><div><b class="mute">???</b><small>Not found yet. A rare boss drop.</small></div></div>').join('')+'</div>'}
 export function view(){$('#battle').hidden=mode!='battle';$('#camp').hidden=mode!='camp';
  $('#spells').innerHTML=SP.map((s,i)=>hasSp(i)?'<button class="s" data-a="cast" data-v="'+i+'">'+s.n+'</button>':'').join('');
  if(mode=='camp')camp();else hud()}
@@ -48,7 +52,7 @@ export function camp(){const st=stats();$('#sdw').innerHTML=(RL('rStart')?'<span
   if(st.ls)srows.push(['Lifesteal',Math.round(st.ls)+'%']);if(st.dodge)srows.push(['Dodge',Math.round(st.dodge)+'%']);if(st.gf)srows.push(['Gold find',Math.round(st.gf)+'%']);if(st.thorn)srows.push(['Thorns',Math.round(st.thorn)]);if(st.mpr)srows.push(['Mana/s','+'+st.mpr.toFixed(1)]);
   const aurasActive=activeAuras();const auraDisplay=aurasActive.length?'<div style="margin-top:4px">'+aurasActive.map(a=>'<span style="color:'+a.c+';font-size:16px">◈ '+a.n+'</span>').join(' ')+'</div>':'';
   h+='<div class="box"><div style="display:flex;gap:10px;align-items:flex-start"><canvas id="pv" width="192" height="160" style="width:52%;aspect-ratio:6/5;flex:none;border:2px solid var(--ink)"></canvas><div style="flex:1;min-width:0"><div class="px" style="font-size:9px;margin-bottom:6px">Hero</div><div class="row sp" style="gap:4px"><span class="mute">Power</span><b style="color:'+plC+'">⚡'+pl+' <span style="font-size:16px">('+plLbl+')</span></b></div>'+srows.map(r=>'<div class="row sp" style="gap:4px"><span class="mute">'+r[0]+'</span><b>'+r[1]+'</b></div>').join('')+'</div></div>'+synHtml+auraDisplay+'</div>';
-  h+='<div class="slots">'+SL.map(sl=>{const it=S.eq[sl];return '<div class="sl'+(it?' f':'')+'" '+(it?'data-a="un" data-v="'+sl+'"':'')+'><small>'+SLN[sl]+'</small>'+(it?chip(it)+'<small>'+fmt(it.st)+'</small>':'<span class="mute">empty</span>')+'</div>'}).join('')+'</div>';
+  h+='<div class="slots">'+SL.map(sl=>{const it=S.eq[sl];return '<div class="sl'+(it?' f':'')+'" '+(it?'data-a="un" data-v="'+sl+'"':'')+'><small>'+SLN[sl]+'</small>'+(it?chip(it)+'<small>'+fmt(it.st)+'</small>'+relicLine(it):'<span class="mute">empty</span>')+'</div>'}).join('')+'</div>'+relicBox();
   const cap=bagCap(),isFull=S.bag.length>=cap,isUnlimited=cap===Infinity;
   const bagUpCost=bagUpgradeCost();
   h+='<h2>Bag ('+S.bag.length+(isUnlimited?' / ∞':' / '+cap)+')</h2>';
@@ -75,7 +79,7 @@ export function camp(){const st=stats();$('#sdw').innerHTML=(RL('rStart')?'<span
    h+='<div class="row" style="margin:4px 0"><button class="s alt" data-a="forgeOpen">⚒ Open Forge</button></div>';
   }
   const bag0=L('sort')?(L('sortType')?S.bag.slice().sort((a,b)=>a.ty.localeCompare(b.ty)||b.ri-a.ri||b.il-a.il):S.bag.slice().sort((a,b)=>b.ri-a.ri||b.il-a.il)):S.bag.slice().reverse(),bv=bpView(bag0),bag=bv.list;
-  h+=bpControls(bv)+(bag.length?bag.map(it=>{const o=S.eq[target(it)],d=Math.round(sc(it.st)-(o?sc(o.st):0));const fSel=forgeSelected.includes(it.id);const forgeBtn=forgeMode?'<button class="s'+(fSel?' ':' alt')+'" data-a="fSel" data-v="'+it.id+'">'+(fSel?'✓ '+(forgeSelected.indexOf(it.id)+1):'+ Forge')+'</button>':'';return '<div class="it" style="'+(fSel?'background:color-mix(in srgb,var(--panel) 80%,var(--c4));':'')+'"><div>'+chip(it)+' <small style="display:inline">lv'+it.il+' <span class="'+(d>0?'up':'dn')+'">'+(d>0?'▲':'▼')+Math.abs(d)+'</span></small><small>'+fmt(it.st)+'</small></div><div class="row">'+forgeBtn+'<button class="s'+(forgeMode?' alt':'')+'" data-a="eq" data-v="'+it.id+'">'+(forgeMode?'Eq':'Equip')+'</button><button class="s alt" data-a="sell" data-v="'+it.id+'">'+val(it)+'g</button></div></div>'}).join('')+(bv.more>0?'<button class="s alt" data-bpa="more">Show '+Math.min(60,bv.more)+' more ('+bv.more+' hidden)</button>':''):'<span class="mute">'+(S.bag.length?'No items match these filters.':'Nothing here. Delve to find loot.')+'</span>');
+  h+=bpControls(bv)+(bag.length?bag.map(it=>{const o=S.eq[target(it)],d=Math.round(sc(it.st)-(o?sc(o.st):0));const fSel=forgeSelected.includes(it.id);const forgeBtn=forgeMode?'<button class="s'+(fSel?' ':' alt')+'" data-a="fSel" data-v="'+it.id+'">'+(fSel?'✓ '+(forgeSelected.indexOf(it.id)+1):'+ Forge')+'</button>':'';return '<div class="it" style="'+(fSel?'background:color-mix(in srgb,var(--panel) 80%,var(--c4));':'')+'"><div>'+chip(it)+' <small style="display:inline">lv'+it.il+' <span class="'+(d>0?'up':'dn')+'">'+(d>0?'▲':'▼')+Math.abs(d)+'</span></small><small>'+fmt(it.st)+'</small>'+relicLine(it)+'</div><div class="row">'+forgeBtn+'<button class="s'+(forgeMode?' alt':'')+'" data-a="eq" data-v="'+it.id+'">'+(forgeMode?'Eq':'Equip')+'</button><button class="s alt" data-a="sell" data-v="'+it.id+'">'+val(it)+'g</button></div></div>'}).join('')+(bv.more>0?'<button class="s alt" data-bpa="more">Show '+Math.min(60,bv.more)+' more ('+bv.more+' hidden)</button>':''):'<span class="mute">'+(S.bag.length?'No items match these filters.':'Nothing here. Delve to find loot.')+'</span>');
   h+='</div>'}
  else{
   h+='<h2>Training</h2><div class="box">'+TR.filter(t=>!t.m||hasMagic()).map(t=>{const c=Math.round(t.b*Math.pow(1.35,S.tr[t.k]));return '<div class="it"><div><b>'+t.n+' '+S.tr[t.k]+'</b><small>'+t.d+'</small></div><button class="s" data-a="tr" data-v="'+t.k+'" '+(S.gold<c?'disabled':'')+'>'+c+'g</button></div>'}).join('')+'</div>';
@@ -91,7 +95,7 @@ function bulkBtns(){const ok=[];for(let i=0;i<9+L('bulkX');i++)if(i<9?L('bulk'+(
  if(!ok.includes(sellSel))sellSel=ok[0];
  return '<select id="sellsel" aria-label="Sell rarity" style="max-width:100%">'+ok.map(i=>'<option value="'+i+'"'+(i===sellSel?' selected':'')+'>Sell '+(i<9?RN[i].toLowerCase():RN[i])+(i?' and below':'')+'</option>').join('')+'</select><button class="s alt" data-a="sellr">Sell</button>'}
 document.addEventListener('change',e=>{if(e.target&&e.target.id==='sellsel')sellSel=+e.target.value});
-function sellBelow(m){S.bag=S.bag.filter(it=>{if(it.ri<=m){S.gold+=val(it);return false}return true})}
+function sellBelow(m){S.bag=S.bag.filter(it=>{if(it.ri<=m&&!it.un){S.gold+=val(it);return false}return true})}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b||b.disabled)return;const a=b.dataset.a,v=b.dataset.v;
  if(a=='delve'||a=='delveAgain'){if(a=='delveAgain')delveAgain();else startRun();return}
  if(a=='auto'){S.autoDelve=!S.autoDelve;save();return}
@@ -119,7 +123,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b
   if(a=='tr'){const n=NODE[v],c=cost(n);const needsMagic=['arcana','mender','frost'].includes(v);if(can(n)&&L(v)<n.m&&S.gold>=c&&(!needsMagic||hasMagic())){S.gold-=c;S.tr[v]=L(v)+1}}
   
   if(a=='magic'&&!hasMagic()&&S.gold>=300&&S.best>=6){S.gold-=300;S.magic=true}
-  if(a=='bp'){farmSettle();S.gold-=PET[v].cost;S.pets[v].own=1;S.ap=+v}if(a=='ap'){farmSettle();S.ap=+v}if(a=='farmCollect'){const fc=farmCollect();if(fc.gold||fc.gems)toast('Collected '+fmtN(fc.gold)+' gold'+(fc.gems?' and '+fc.gems+' gems':'')+' from the farm')}
+  if(a=='bp'&&PET[v]&&S.pets[v]&&!S.pets[v].own&&S.gold>=PET[v].cost){farmSettle();S.gold-=PET[v].cost;S.pets[v].own=1;S.ap=+v}if(a=='ap'){farmSettle();S.ap=+v}if(a=='farmCollect'){const fc=farmCollect();if(fc.gold||fc.gems)toast('Collected '+fmtN(fc.gold)+' gold'+(fc.gems?' and '+fc.gems+' gems':'')+' from the farm')}
   if(a=='pl'&&S.gold>=petLc(+v)){S.gold-=petLc(+v);S.pets[v].lvl++}
   if(a=='upAura'){const aur=AURAS.find(x=>x.k===v),lv=S.auras&&S.auras[v];if(aur&&lv){const c=auraUpCost(aur);if((S.gems||0)>=c){S.gems-=c;S.auras[v]=lv+1}}}
   if(a=='buyAura'){const aur=AURAS.find(x=>x.k===v);if(aur&&!auraOwned(v)&&(S.gems||0)>=aur.gems){S.gems-=aur.gems;S.auras=S.auras||{};S.auras[v]=1}}
