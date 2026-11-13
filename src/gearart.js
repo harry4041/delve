@@ -12,10 +12,19 @@ const hex = (s) => [parseInt(s.slice(1, 3), 16), parseInt(s.slice(3, 5), 16), pa
 export const mix = (a, b, t) => { const A = hex(a), B = hex(b); return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0')).join(''); };
 const MAT = { steel: '#9ca6ba', leather: '#8f5e2e', cloth: '#9a8a76', wood: '#7a5230', gold: '#e8c050' };
 const CLOTH = { Tunic: '#a08e74', Robe: '#7d6aa0', Hood: '#5f7a62', Cap: '#8a7a6a', Breeches: '#94805f', Trousers: '#6f7488', Wraps: '#c0ae8c' }; // natural colour of each cloth piece
+const hsh = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }; // stable pseudo-random 0..1
+let CLK = 0; // animation clock (seconds), set at the top of drawWorn
 function pal(it, mat) {
-  // rarity only TINTS the material (up to half-way for the rarest); the real rarity signal is the trim and gem colours
-  const rc = RC[it.ri] || '#ffffff', base = mat === 'cloth' && CLOTH[baseOf(it)] ? CLOTH[baseOf(it)] : MAT[mat], m = mix(base, rc, Math.min(.5, .04 + it.ri * .065));
-  return { m, ri: it.ri, acc: rc, gem: rc, trim: it.ri >= 1 ? mix(MAT.gold, rc, .15) : mix('#7d8494', rc, .3), dk: mix(m, '#000000', .5), wood: mix(MAT.wood, rc, .12 + it.ri * .03) };
+  // Rarity looks, by tier: 0 Common = old, dull and rusty; 1 plain; 2-3 polished; 4+ glowing gems; 5+ burning weapons; 7+ embers; (wings and aura: scene.js)
+  const rc = RC[it.ri] || '#ffffff', cloth = mat === 'cloth', base = cloth && CLOTH[baseOf(it)] ? CLOTH[baseOf(it)] : MAT[mat];
+  let m = mix(base, rc, Math.min(.16, .02 + it.ri * .018));                      // materials stay steel / leather / cloth; rarity lives in trim, gems and glow
+  if (it.ri === 0) m = mix(mix(m, '#5a4636', .4), '#000000', .08);                       // old: dulled toward rusty brown-grey
+  else if (it.ri === 1) m = mix(m, '#5a4636', .12);
+  else if (it.ri >= 2) m = mix(m, '#ffffff', Math.min(.22, .05 + it.ri * .012));         // polished: a little brighter
+  const pulse = .5 + .5 * Math.sin(CLK * 3 + (it.id || 0));
+  return { m, ri: it.ri, acc: rc, gem: it.ri >= 4 ? mix(rc, '#ffffff', .12 + .38 * pulse) : rc,
+    trim: it.ri === 0 ? '#5d5648' : it.ri >= 1 ? mix(MAT.gold, rc, .15) : mix('#7d8494', rc, .3), dk: mix(m, '#000000', .5), wood: mix(MAT.wood, rc, .12 + it.ri * .03),
+    rust: cloth ? ['#5a4a38', '#3e3226'] : mat === 'wood' ? ['#4a3220', '#33200f'] : ['#8a4a22', '#5a3318'] };
 }
 
 // Body geometry for this character (torso x/width come from the style: orcs and bosses are wider).
@@ -33,6 +42,35 @@ export function drawWorn(c, e, st) {
     for (let dy = -rad; dy <= rad; dy++) { const hw = Math.round(Math.sqrt(rad * rad - dy * dy)); r(px - hw, py + dy, 2 * hw + 1, 1, col); }
     r(px - Math.round(rad * .6), py - Math.round(rad * .6), Math.max(1, Math.round(rad * .5)), 1, lit(col));
   };
+  CLK = c.t || 0;
+  // Old gear (Common, a little on Uncommon) is speckled with rust or grime inside the given box.
+  const rust = (it, x, y, w, h) => {
+    if (!it || it.ri > 1) return; const P = pal(it, 'steel'), n = Math.round(w * h * (it.ri === 0 ? .13 : .035)), sd = (it.id || 1) * 3.7 + x * .91 + y * 1.3;
+    for (let i = 0; i < n; i++) r(x + Math.floor(hsh(sd + i * 1.7) * w), y + Math.floor(hsh(sd + i * 2.9 + 5) * h), 1, hsh(sd + i) > .75 ? 2 : 1, hsh(sd + i * 4.1) > .5 ? P.rust[0] : P.rust[1]);
+    if (it.ri === 0) { const cx0 = x + Math.floor(hsh(sd) * (w - 2)) + 1; r(cx0, y + 1, 1, Math.min(4, h - 2), P.dk); r(cx0 + 1, y + 3, 1, 1, P.dk); } // a crack
+  };
+  // Fire: tongues of flame rising from a baseline (y) over w columns, flickering. Rarity 9+ burns in the item's own colour instead of orange.
+  const fireCols = (it) => (it.ri >= 9 ? { o: RC[it.ri] || '#ffffff', m: mix(RC[it.ri] || '#ffffff', '#ffffff', .45), i: '#ffffff' } : { o: '#ff5a14', m: '#ffa21f', i: '#ffe45c' });
+  const flame = (it, x, y, w, h, seed) => {
+    const F = fireCols(it);
+    for (let i = 0; i < w; i++) {
+      const hh = Math.round(h * (.45 + .55 * Math.abs(Math.sin(CLK * 8 + i * 1.9 + seed)))) * (hsh(i * 3.3 + seed + Math.floor(CLK * 6)) > .25 ? 1 : 0);
+      if (hh < 1) continue; r(x + i, y - hh, 1, hh, F.o); const m = Math.ceil(hh * .62); r(x + i, y - m, 1, m, F.m); const k = Math.ceil(hh * .28); if (hh > 1) r(x + i, y - k, 1, k, F.i);
+    }
+  };
+  const embers = (it, x, y, w, n, seed) => { // sparks that drift upward and fade out by shrinking away
+    const F = fireCols(it);
+    for (let i = 0; i < n; i++) { const ph = (CLK * (.9 + hsh(i + seed) * .8) + hsh(i * 7 + seed)) % 1; r(x + hsh(i * 5 + seed) * w + Math.sin(CLK * 3 + i) * 2, y - ph * 16, 1, 1, ph > .6 ? F.o : F.m); }
+  };
+  // Weapon enchantments: 4+ a travelling glint, 5+ it burns, 7+ it throws embers.
+  const weaponFx = (it, bx0, by0, bw, bh) => {
+    if (it.ri >= 4) r(bx0 + Math.floor(bw / 2), by0 + Math.floor((CLK * 14) % bh), 1, 2, '#ffffff');
+    if (it.ri >= 5) {
+      flame(it, bx0, by0 + 1, bw, 3 + (it.ri >= 7 ? 3 : 0) + (it.ri >= 9 ? 2 : 0), 1);
+      if (bh > 12) for (let yy = by0 + 7; yy < by0 + bh - 2; yy += 6) { flame(it, bx0 - 2, yy, 2, 3 + (it.ri >= 7 ? 2 : 0), yy); flame(it, bx0 + bw, yy, 2, 3 + (it.ri >= 7 ? 2 : 0), yy + 9); }
+    }
+    if (it.ri >= 7) embers(it, bx0 - 2, by0, bw + 4, 3 + Math.min(5, it.ri - 7), it.id || 0);
+  };
   const mailTex = (x, y, w, h, col) => { for (let j = 0; j < h; j += 2) for (let i = (j / 2) % 2; i < w; i += 2) { r(x + i, y + j, 1, 1, lit(col)); if (j + 1 < h) r(x + i + 1, y + j + 1, 1, 1, shd(col)); } };
 
   // ---- legs ----
@@ -44,6 +82,7 @@ export function drawWorn(c, e, st) {
       else { B(x, 40, 8, 6, P.m); B(x - 1, 45, 10, 4, lit(P.m)); r(x + 4, 46, 1, 1, P.trim); r(x + 1, 46, 1, 1, P.trim); B(x, 49, 8, 4, P.m); r(x + 3, 49, 1, 4, lit(P.m)); r(x, 40, 8, 1, P.trim); }
     }
   }
+  if (e.legs) for (const x of [g.legL, g.legR]) rust(e.legs, x, 40, 8, 13);
   // ---- boots ----
   if (e.boots) {
     const b = baseOf(e.boots), P = pal(e.boots, b === 'Treads' ? 'steel' : 'leather');
@@ -52,6 +91,12 @@ export function drawWorn(c, e, st) {
       else if (b === 'Sandals') { B(x, 56, 10, 2, P.m); r(x + 1, 52, 2, 4, P.m); r(x + 5, 52, 2, 4, P.m); r(x + 1, 50, 8, 1, P.m); r(x + 1, 52, 1, 1, P.trim); }
       else { B(x - 1, 49, 12, 9, P.m); r(x, 50, 10, 2, lit(P.m)); r(x, 53, 10, 1, P.trim); for (let i = 0; i < 10; i += 2) r(x + i, 57, 1, 1, P.dk); r(x + 1, 51, 1, 1, P.trim); r(x + 8, 51, 1, 1, P.trim); }
     }
+  }
+  if (e.boots) for (const x of [g.bootL, g.bootR]) rust(e.boots, x, 50, 10, 8);
+  if (e.boots && e.boots.ri >= 3) for (const x of [g.bootL, g.bootR]) { // boots: a glowing rune on the toe, ground-fire at the heel from 5, bigger with embers from 7
+    const it = e.boots, P = pal(it, 'steel'); r(x + 3, 55, 4, 1, P.gem); r(x + 4, 54, 2, 1, mix(P.gem, '#ffffff', .5));
+    if (it.ri >= 5) flame(it, x, 58, 10, 2 + (it.ri >= 7 ? 2 : 0) + (it.ri >= 9 ? 2 : 0), x);
+    if (it.ri >= 7) embers(it, x, 56, 10, 2 + Math.min(3, it.ri - 7), x + 3);
   }
   // ---- chest (with its own sleeves, shoulders, belt) ----
   if (e.chest) {
@@ -73,6 +118,7 @@ export function drawWorn(c, e, st) {
       for (const x of [ax - 1, bx]) { B(x, 20, 7, 16, P.m, { tex: 1 }); r(x, 34, 7, 2, P.trim); }
     }
   }
+  if (e.chest) rust(e.chest, tx, 18, tw, 21);
   // ---- gloves (over the hands) ----
   if (e.gloves) {
     const b = baseOf(e.gloves), P = pal(e.gloves, b === 'Gauntlets' ? 'steel' : 'leather');
@@ -81,6 +127,19 @@ export function drawWorn(c, e, st) {
       else if (b === 'Gauntlets') { B(x - 1, 31, 8, 11, P.m); B(x - 2, 29, 10, 3, lit(P.m)); r(x, 40, 6, 2, shd(P.m)); r(x + 2, 33, 1, 6, lit(P.m)); r(x - 2, 29, 10, 1, P.trim); }
       else { for (let y = 33; y < 41; y += 2) r(x, y, 6, 1, P.m); r(x, 34, 6, 1, lit(P.m)); r(x, 31, 6, 2, P.trim); }
     }
+  }
+  if (e.gloves && e.gloves.ri >= 3) for (const x of [ax, bx]) { // gloves: a glowing rune on the back of the hand, flames above the knuckles from 5
+    const it = e.gloves, P = pal(it, 'steel'); r(x + 2, 37, 2, 2, P.gem); r(x + 2, 37, 1, 1, '#ffffff');
+    if (it.ri >= 5) flame(it, x, 35, 6, 3 + (it.ri >= 7 ? 2 : 0), x + 5);
+    if (it.ri >= 7) embers(it, x - 1, 34, 8, 2 + Math.min(3, it.ri - 7), x);
+  }
+  if (e.chest && e.chest.ri >= 3) { // chest: glowing seams, a pulsing rune, burning shoulders from 5, embers from 7, a burning hem from 9
+    const it = e.chest, P = pal(it, 'steel'), pu = .5 + .5 * Math.sin(CLK * 3), seam = mix(P.gem, '#ffffff', .1 + .3 * pu);
+    for (const sx of [tx + 6, tx + tw - 7]) r(sx, 21, 1, 14, seam);
+    r(cx - 1, 25, 2, 3, P.gem); r(cx - 2, 26, 4, 1, seam); r(cx - 1, 26, 1, 1, '#ffffff');
+    if (it.ri >= 5) for (const x of [ax - 1, bx]) flame(it, x, 21, 7, 3 + (it.ri >= 7 ? 2 : 0), x);
+    if (it.ri >= 7) embers(it, tx, 36, tw, 3 + Math.min(5, it.ri - 7), 21);
+    if (it.ri >= 9) flame(it, tx, 39, tw, 3 + Math.min(3, it.ri - 9), 33);
   }
   // ---- amulets: up to three pendants on the chest ----
   [[cx - 1, 23], [cx - 6, 22], [cx + 4, 22]].forEach(([x, y], i) => {
@@ -91,6 +150,12 @@ export function drawWorn(c, e, st) {
     else if (b === 'Amulet') { B(x, y, 4, 5, P.trim); r(x + 1, y + 1, 2, 3, P.gem); r(x + 1, y + 1, 1, 1, '#ffffff'); }
     else if (b === 'Talisman') { r(x + 1, y, 2, 1, P.trim); B(x, y + 1, 4, 3, P.gem); r(x + 1, y + 4, 2, 1, P.trim); r(x + 1, y + 2, 2, 1, '#ffffff'); }
     else { B(x, y, 4, 5, P.trim); r(x + 1, y + 1, 2, 2, lit(P.trim)); r(x + 1, y + 3, 2, 1, shd(P.trim)); }
+    if (it.ri >= 3) { // the gem radiates: a pulsing diamond halo, then light rays, then drifting sparks
+      const pu = .5 + .5 * Math.sin(CLK * 3 + i), gx0 = x + 2, gy0 = y + 2, hc = P.gem, d = 3 + (pu > .5 ? 1 : 0);
+      for (const [dx, dy] of [[0, -d], [0, d], [-d, 0], [d, 0]]) r(gx0 + dx, gy0 + dy, 1, 1, hc);
+      if (it.ri >= 6) for (const [dx, dy, w, h] of [[-d - 1, -d - 1, 1, 1], [d + 1, -d - 1, 1, 1], [-d - 1, d + 1, 1, 1], [d + 1, d + 1, 1, 1]]) r(gx0 + dx, gy0 + dy, w, h, mix(hc, '#ffffff', .6));
+      if (it.ri >= 9) embers(it, x - 2, y + 4, 8, 3, i * 11);
+    }
   });
   // ---- shields: strapped to the forearm, standing slightly proud of the body ----
   const heater = (px, py, w, h, rim, left, right) => { // flat top with a curved taper to a point; 2px rim, then a field split down the middle
@@ -125,6 +190,8 @@ export function drawWorn(c, e, st) {
       for (let k = 0; k < 5; k++) { r(px - 6 + k, py - 8 + k * 2, 1, 1, P.trim); r(px + 6 - k, py - 8 + k * 2, 1, 1, P.trim); } // engraved scallop
       B(px - 3, py - 6, 7, 10, P.gem); r(px - 2, py - 5, 2, 3, '#ffffff'); r(px - 1, py - 1, 3, 1, shd(P.gem));  // large gem
     }
+    rust(it, px - 7, py - 12, 15, 14);
+    if (it.ri >= 8) { flame(it, px - 6, py - 12, 13, 4 + (it.ri >= 10 ? 3 : 0), 5); embers(it, px - 6, py - 13, 12, 2 + Math.min(4, it.ri - 8), it.id || 0); }  // a burning crest on the top edge
   }
   // ---- head (hl = left edge of the headgear, hw = its width: adults have a smaller head than the cartoon enemies) ----
   if (e.head) {
@@ -144,6 +211,12 @@ export function drawWorn(c, e, st) {
       r(mid - 1, -2, 2, 3, P.gem); r(mid - 1, -2, 1, 1, '#ffffff'); r(hl + 2, -1, 1, 2, P.gem); r(hl + hw - 3, -1, 1, 2, P.gem); r(mid - 1, -12, 2, 1, P.gem); r(hl + 2, -9, 1, 1, P.gem); r(hl + hw - 3, -9, 1, 1, P.gem);
     }
   }
+  if (e.head) { // helmet wear and enchantments: rust on old helms, a flame crest from 6, a floating halo from 10
+    const hw2 = (st.adult || st.ah) ? 14 : 18, hl2 = hx + 8 - hw2 / 2, mid2 = hl2 + hw2 / 2, hb = baseOf(e.head);
+    if (hb === 'Helm') rust(e.head, hl2, -3, hw2, 14); else if (hb === 'Cap' || hb === 'Hood') rust(e.head, hl2, -3, hw2, 7);
+    if (e.head.ri >= 6) { const top = hb === 'Helm' ? (e.head.ri >= 3 ? -12 : -6) : hb === 'Crown' ? -12 : hb === 'Hood' ? -9 : -7; flame(e.head, mid2 - 4, top + 1, 8, 4 + Math.min(5, e.head.ri - 6), 9); }
+    if (e.head.ri >= 10) { const hc = RC[e.head.ri] || '#ffffff', b2 = .5 + .5 * Math.sin(CLK * 3); for (let i = -7; i <= 7; i++) r(mid2 + i, -16 + Math.round(Math.abs(i) * .12), 1, 1, i % 3 ? hc : mix(hc, '#ffffff', .7)); r(mid2 - 8, -15, 1, 1, hc); r(mid2 + 8, -15, 1, 1, hc); if (b2 > .5) r(mid2, -17, 1, 1, '#ffffff'); } // halo
+  }
   // ---- weapons (right hand, then left), held upright in the fist ----
   for (const [it, gx] of [[e.rhand, bx + 1], [e.lhand, ax + 1]]) {
     if (!it || it.ty === 'shield') continue;
@@ -153,5 +226,7 @@ export function drawWorn(c, e, st) {
     else if (b === 'Dagger') { S([[gx + 1, 26, 3, 11], [gx + 2, 24, 1, 2]], P.m); r(gx + 2, 27, 1, 8, lit(P.m)); B(gx - 1, 36, 7, 2, P.trim); B(gx + 1, 38, 2, 5, '#5a3a1c'); B(gx + 1, 43, 2, 2, P.trim); }
     else if (b === 'Mace') { B(gx + 1, 14, 2, 32, P.wood); disc(gx + 2, 10, 5, P.m); r(gx + 2, 2, 1, 3, P.m); r(gx - 4, 10, 3, 1, P.m); r(gx + 6, 10, 3, 1, P.m); r(gx + 2, 15, 1, 3, P.m); if (it.ri >= 3) r(gx + 1, 9, 2, 2, P.gem); }
     else { B(gx + 1, 0, 2, 48, P.wood); S([[gx, -8, 4, 9], [gx + 1, -11, 2, 3]], P.m); r(gx + 1, -7, 1, 7, lit(P.m)); r(gx - 1, 2, 6, 1, P.trim); r(gx - 1, 3, 1, 2, P.trim); r(gx + 4, 3, 1, 2, P.trim); }
+    const BOX = { Sword: [gx, 6, 4, 28], Axe: [gx + 3, 8, 9, 16], Dagger: [gx + 1, 24, 3, 12], Mace: [gx - 3, 5, 11, 10] }, bx2 = BOX[b] || [gx, -11, 4, 14]; // where the blade / head is
+    rust(it, bx2[0], bx2[1], bx2[2], bx2[3]); weaponFx(it, bx2[0], bx2[1], bx2[2], bx2[3]);
   }
 }

@@ -2,7 +2,7 @@ import {petInfo} from './pets.js';
 import {farmHtml} from './farm.js';
 import {lookStyle,capeColor} from './look.js';
 import {drawWorn} from './gearart.js';
-import {drawBackdrop,drawShadows,drawForeground,drawEffects,drawCape,drawHeroAura,drawMobFx} from './scene.js';
+import {drawBackdrop,drawShadows,drawForeground,drawEffects,drawCape,drawHeroAura,drawWings,drawMobFx} from './scene.js';
 import {$,PET,RC,S,SP,mode,run,save} from './state.js';
 import {activeAuras} from './auras.js';
 import {L,fmtN,mpMax,pReq,petStars,stats} from './stats.js';
@@ -67,7 +67,7 @@ function blk(x,y,w,h,c,o){o=o||{};const O=F(o.ink||inkOf(c)),Dk=F(shd(c));
  Rf(x+w-1,y+1,1,h-2,Dk);Rf(x+1,y+h-1,w-2,1,Dk);Rf(x+w-1,y+h-1,1,1,F(rr(c,.5)));
  if(o.tex)for(let j=2;j<h-1;j+=3)for(let i=2+(j%2?2:0);i<w-1;i+=4)Rf(x+i,y+j,1,1,Dk)}
 
-const GCTX={Rf,blk,shape,F,lit,shd,ink:inkOf}; // what gearart.js needs from this module (functions read SC/FL at call time)
+const GCTX={Rf,blk,shape,F,lit,shd,ink:inkOf,get t(){return ART_T}}; // what gearart.js needs from this module (functions read SC/FL at call time)
 const HERO_ST={skin:'#d19a6e',hair:'#4a3123',tun:'#6b4f35',leg:'#3f4452',boot:'#4a3322',belt:'#2e2014',tx:7,tw:26,adult:true, // an adult build: broad shoulders, a smaller head, a calmer face
  face:(st)=>{ // eye shape, brows, nose, mouth and cheeks are all player choices (look.js); coordinates are relative to the head box (hx = head x)
   const hx=(st.tx||8)+4,R2=(x,y,w,h,c)=>Rf(hx+x,y,w,h,c),eyc=st.eye||'#2b2150',ey=F(eyc),br=F(rr(st.hairCol||'#ff9a2e',.6)),sk=st.skin,es=st.es||0,bw=st.br||0,mo=st.mo||0,ch=st.ch||0,bl=blink(),sh=F(shd(sk));
@@ -252,7 +252,7 @@ function draw(){const r=run,t=r.t;ART_T=t;const tier=Math.floor((r.stage-1)/5)%6
  // aura glow rings around hero
  const aa=activeAuras();if(aa.length){aa.forEach((aur,ai)=>{const alpha=(.1+.08*Math.sin(t*5+ai*1.2));g.globalAlpha=alpha;R(hx-1-ai,hy-5-ai,22+ai*2,34+ai*2,aur.c)});g.globalAlpha=1}
  const eqs=Object.values(S.eq).filter(Boolean),gearRi=eqs.reduce((m,it)=>Math.max(m,it.ri),-1),rcol=gearRi>=0?RC[gearRi]:'#ffffff',wi=S.eq.rhand||S.eq.lhand,wcol=wi?RC[wi.ri]:'#ffe45c';
- drawHeroAura(g,hx,hy,t,gearRi,rcol);{const cc=capeColor(gearRi,rcol);if(cc)drawCape(g,hx,hy,t,cc,r.lunge>0)}drawHero(hx,hy,r.hf>0);
+ drawHeroAura(g,hx,hy,t,gearRi,rcol);drawWings(g,hx,hy,t,gearRi,rcol);{const cc=capeColor(gearRi,rcol);if(cc)drawCape(g,hx,hy,t,cc,r.lunge>0)}drawHero(hx,hy,r.hf>0);
  if(r.rn>0){for(let q=0;q<r.rn;q++){R(hx+2+q*4,hy-7,3,1,'#ff8a2a');R(hx+3+q*4,hy-8,1,1,'#ffd34d')}}
  if(r.swT>0){frame(hx-3,hy-4,26,38,'#ffd34d',Math.min(.9,r.swT));for(let q=0;q<5;q++){const sp=(Math.floor(t*12)+q*5)%9;R(hx-2+((q*7+sp*3)%24),hy-3+((q*13+sp*5)%36),1,1,'#fff3b0')}}
  const ey=44-30*sc-(Math.sin(t*4+r.stage)>.3?1:0);if(!r.eEq)r.eEq=eqFromDrops(r.eDrops||[]);

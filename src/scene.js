@@ -222,6 +222,26 @@ export function drawCape(g, hx, hy, t, col, lunge) {
   }
   for (let i = 0; i < 5; i++) R(g, hx + 4 - 5 + i * 2.4 + Math.sin(t * 2.6 + 28 * .32) * 2.4, hy + 29, 2, 1, i % 2 ? dark : mid); // ragged hem
 }
+// Wings behind the hero once the best equipped gear is Divine (7) or better: spectral at first, then wider and edged with fire as the tier climbs.
+export function drawWings(g, hx, hy, t, ri, col) {
+  if (ri < 7) return;
+  const s = Math.min(1, (ri - 6) / 12), n = 5 + Math.round(s * 2), len = 10 + s * 12, flap = Math.sin(t * 2.2) * .12;
+  A(g, .1 + .1 * s); glow(g, hx + 10, hy + 12, 14 + s * 12, col, .35); A(g, 1);
+  const ink = shade(col, .3), dark = shade(col, .6), mid = shade(col, .9), hi = shade(col, 1.2);
+  for (const sg of [-1, 1]) {
+    const ox = hx + 10 + sg * 3, oy = hy + 14, feather = (k, pass) => { // k = 0 (low, long) .. n-1 (top, short leading edge); pass 0 = outline, 1 = fill
+      const a = -.1 + (k / (n - 1)) * 1.25 + flap, L = len * (1 - .32 * Math.pow(k / (n - 1), 2)) * (k === 0 ? .85 : 1), dx = sg * Math.cos(a), dy = -Math.sin(a);
+      for (let i = 1; i <= L; i++) {
+        const f = i / L, w = Math.max(2, Math.round(4.4 - f * 2.4)), x = ox + dx * i - (sg < 0 ? w : 0), y = oy + dy * i - w / 2;
+        if (pass === 0) R(g, x - 1, y - 1, w + 2, w + 2, ink); else R(g, x, y, w, w, f > .85 ? hi : (k % 2 ? mid : dark));
+      }
+      if (pass === 1) { const tx = ox + dx * L - (sg < 0 ? 2 : 0), ty = oy + dy * L - 1; R(g, tx, ty, 2, 2, '#ffffff'); if (ri >= 9) { A(g, .6 + .4 * Math.sin(t * 7 + k * 2)); R(g, tx, ty - 3 - hz(k + (t * 3 | 0)) * 2, 1, 2, ri >= 12 ? '#ffffff' : '#ffa21f'); R(g, tx + (sg < 0 ? 1 : 0), ty - 2, 1, 1, '#ff5a14'); A(g, 1); } }
+    };
+    for (let k = 0; k < n; k++) feather(k, 0);       // outlines first so the feathers read as one winged shape
+    for (let k = 0; k < n; k++) feather(k, 1);
+    R(g, ox - (sg < 0 ? 1 : 0), oy - 2, 2, 8, dark);  // the wing root against the shoulder blade
+  }
+}
 // Rotating rune circle at the hero's feet (richer with rarity) and sparkles for Legendary and above.
 export function drawHeroAura(g, hx, hy, t, bestRi, col) {
   if (bestRi < 1) return;

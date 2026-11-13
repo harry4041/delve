@@ -85,7 +85,12 @@ export function camp(){const st=stats();$('#sdw').innerHTML=(RL('rStart')?'<span
   else h+=PET.map((P,i)=>{const p=S.pets[i],lc=Math.round(80*Math.pow(1.5,p.lvl)*(i+1));return '<div class="it"><div><b style="color:'+P.c+'">'+P.n+'</b>'+(p.own?' lv'+p.lvl:'')+'<small>'+Math.round(P.d*(1+.3*p.lvl)*100)+'% of your attack every '+P.iv+'s</small></div><div class="row">'+(p.own?'<button class="s'+(S.ap==i?'':' alt')+'" data-a="ap" data-v="'+i+'">'+(S.ap==i?'Active':'Send')+'</button><button class="s" data-a="pl" data-v="'+i+'" '+(S.gold<lc?'disabled':'')+'>'+lc+'g</button>':'<button class="s" data-a="bp" data-v="'+i+'" '+(S.gold<P.cost?'disabled':'')+'>'+P.cost+'g</button>')+'</div></div>'}).join('');
   h+='</div>'}
  $('#cbody').innerHTML=h;drawPortrait()}
-function bulkBtns(){let o='',any=false;for(let i=0;i<9+L('bulkX');i++)if(i<9?L('bulk'+(i+1)):L('bulkX')>=i-8){any=true;o+='<button class="s alt" data-a="sellr" data-v="'+i+'">Sell '+(i<9?RN[i].toLowerCase():RN[i])+(i?' and below':'')+'</button>'}return any?o:'<span class="mute">Filter and sort your bag below, any time. More tools (quick equip, bulk selling) unlock in Upgrades, under Camp.</span>'}
+let sellSel=-1; // remembered choice in the bulk-sell dropdown (survives camp() re-renders)
+function bulkBtns(){const ok=[];for(let i=0;i<9+L('bulkX');i++)if(i<9?L('bulk'+(i+1)):L('bulkX')>=i-8)ok.push(i);
+ if(!ok.length)return '<span class="mute">Filter and sort your bag below, any time. More tools (quick equip, bulk selling) unlock in Upgrades, under Camp.</span>';
+ if(!ok.includes(sellSel))sellSel=ok[0];
+ return '<select id="sellsel" aria-label="Sell rarity" style="max-width:100%">'+ok.map(i=>'<option value="'+i+'"'+(i===sellSel?' selected':'')+'>Sell '+(i<9?RN[i].toLowerCase():RN[i])+(i?' and below':'')+'</option>').join('')+'</select><button class="s alt" data-a="sellr">Sell</button>'}
+document.addEventListener('change',e=>{if(e.target&&e.target.id==='sellsel')sellSel=+e.target.value});
 function sellBelow(m){S.bag=S.bag.filter(it=>{if(it.ri<=m){S.gold+=val(it);return false}return true})}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b||b.disabled)return;const a=b.dataset.a,v=b.dataset.v;
  if(a=='delve'||a=='delveAgain'){if(a=='delveAgain')delveAgain();else startRun();return}
@@ -96,7 +101,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b
  else if(a=='spd'){S.speed=S.speed>=maxSpd()?1:S.speed*2}else if(a=='end'){if(run&&!run.over){run.hp=0;die()}}else if(a=='reset'){if(b.dataset.c){setS(def());setUid(1);setTab('g');save();camp()}else{b.dataset.c=1;b.textContent='Tap again to erase all progress';setTimeout(()=>{delete b.dataset.c;b.textContent='Reset save'},4000)}}
  else if(a=='cast')cast(+v);
  else{if(a=='eq')equip(v);if(a=='sell')sell(v);if(a=='un'){const it=S.eq[v];delete S.eq[v];S.bag.push(it)}
-  if(a=='best'&&L('tidy'))autoEquip();if(a=='sellr'&&(+v<9?L('bulk'+(+v+1)):L('bulkX')>=+v-8))sellBelow(+v);if(a=='asc')ascend();
+  if(a=='best'&&L('tidy'))autoEquip();if(a=='sellr'){const el=document.getElementById('sellsel'),i=el?+el.value:+v;if(i>=0&&(i<9?L('bulk'+(i+1)):L('bulkX')>=i-8))sellBelow(i)}if(a=='asc')ascend();
   if(a=='lbClear'){try{localStorage.removeItem('hd-lb')}catch(e){}}
   if(a=='bagUp'){const c=bagUpgradeCost();if(S.gold>=c&&bagCap()!==Infinity){S.gold-=c;S.bagLvl++}}
   if(a=='forgeOpen'){setForgeMode(true);setForgeSelected([])}

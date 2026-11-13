@@ -7,7 +7,15 @@ import { RTREE, STB, reqStage, ascFee } from './ascension.js';
 
 // ---------------------------------------------------------------- changelog (add new entries at the TOP; `id` must be unique)
 export const CHANGELOG = [
+  { id: '2026-11-13e', date: '2026-11-13', title: 'Gear that looks like its rarity', items: [
+    'Common gear is now old, dull and rusty, with cracks and rust speckles. Uncommon is plain, Rare and above is polished.',
+    'Armour now keeps its steel, leather and cloth look instead of turning one flat rarity colour; rarity shows in trim, gems and glow.',
+    'Chest armour gets glowing seams and a rune at Epic, burning shoulders from Mythic and a burning hem at tier 9. Gloves and boots get glowing runes, then flames. Amulets radiate light.',
+    'Legendary gems pulse and weapons glint. Mythic weapons burn, Celestial helmets get a flame crest, Divine weapons throw embers, and Primordial shields burn too.',
+    'Wearing Divine gear or better gives you wings behind your back, which grow larger and get fire-tipped feathers at higher tiers. From tier 10 you also get a halo, and from tier 9 the fire burns in the item colour instead of orange.',
+  ] },
   { id: '2026-11-13d', date: '2026-11-13', title: 'Grown-up enemies', items: [
+    'Bulk selling is now one dropdown ("Sell rare and below"...) with a Sell button instead of a long wall of buttons; it remembers your choice.',
     'Shields are bigger and better drawn: the Buckler is a large studded round shield, the Shield has a bevelled rim, chevron and boss, and the Aegis has a large gem and gilded wings.',
     'Zombies, bandits, orcs and the Death Knight boss now have the same adult-proportioned heads as your hero, with faces redrawn to match (skeletons and cultists keep their skull and hood).',
   ] },

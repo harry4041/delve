@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>running</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+</head><body><div id="app">
+<header><h1>Delve</h1><div id="top"></div></header>
+<section id="battle" hidden>
+ <div class="cv"><canvas id="c" width="192" height="108"></canvas><div id="fxl"></div>
+  <div id="over" hidden><div class="px" style="font-size:12px">Defeated</div><div id="ovt"></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button data-a="delveAgain" style="background:#d94a4a;color:#fff;border-color:#fff">⚔ Delve Again</button><button data-a="camp">Go to camp</button></div></div></div>
+ <div class="bar"><i id="hpb"></i><span id="hpt"></span></div>
+ <div class="bar m" id="mpw"><i id="mpb"></i><span id="mpt"></span></div>
+ <div class="bar e"><i id="ehb"></i><span id="ent"></span></div>
+ <div class="row sp" style="margin:6px 0"><div class="row" id="spells"></div><div class="row"><button class="s alt" data-a="spd" id="spdb"></button><button class="s alt" data-a="end">End run</button></div></div>
+ <div class="mute">Last drop</div><div id="last"></div><div class="mute" style="margin-top:6px">Loot this run</div><div id="feed"></div>
+</section>
+<section id="camp" hidden>
+ <div class="row sp"><div class="tabs"><button data-a="tab" data-v="g" id="tg">Gear</button><button data-a="tab" data-v="u" id="tu">Upgrades</button><button data-a="tab" data-v="v" id="tv">Vault</button><button data-a="tab" data-v="m" id="tm">Magic</button><button data-a="tab" data-v="p" id="tp">Pets</button><button data-a="tab" data-v="r" id="tr2">Auras</button><button data-a="tab" data-v="i" id="ti">Idle</button><button data-a="tab" data-v="a" id="ta">Ascend</button><button data-a="tab" data-v="l" id="tl">Scores</button><button data-a="tab" data-v="x" id="tx">Account</button></div></div>
+ <div style="margin:8px 0"><button data-a="delve" style="width:100%;font-size:22px;padding:10px;background:var(--btn);border-width:4px;box-shadow:5px 5px 0 var(--ink)">⚔ DELVE</button></div>
+ <div id="sdw" class="row" style="margin:6px 0"></div><div id="cbody"></div><div style="margin:16px 0"><button class="s alt" data-a="reset">Reset save</button></div>
+</section>
+</div>
+<script type="module">
+// Dev helper (not a test): builds a fully maxed-out save with the game's own tables and exposes it as window.__save (JSON string).
+// Used by admin/make-test-account.mjs. Params: ?ri=40&il=300
+window.__HD_NO_BOOT_INIT = true;
+try { localStorage.removeItem('hd-cloud'); localStorage.removeItem('hollow-delve-2'); } catch (e) {}
+const q = new URLSearchParams(location.search), RI = +(q.get('ri') || 40), IL = +(q.get('il') || 300);
+await import('/src/main.js'); // boots the game the normal way so the circular imports resolve in their usual order
+const st = await import('/src/state.js'), sk = await import('/src/skilltree.js'), asc = await import('/src/ascension.js'), it = await import('/src/items.js'), au = await import('/src/auras.js'), sx = await import('/src/stats.js');
+const S = st.def();
+for (const n of sk.TREE) S.tr[n.k] = n.m < 999 ? n.m : 60;                       // every upgrade at max (endless masteries at level 60)
+for (const n of asc.RTREE) S.rl[n.k] = n.m < 999 ? n.m : 40;                      // every relic at max (endless ones at 40)
+for (const a of au.AURAS) S.auras[a.k] = 10;
+S.magic = true; S.petsOn = true; S.ap = 0; S.pets = st.PET.map(() => ({ own: 1, lvl: 30, star: 5 }));
+S.gold = 1e12; S.gems = 5000; S.relics = 1000; S.asc = 25; S.best = S.bestOverall = 150; S.bagLvl = 12; S.vaultUnlocked = true; S.vaultLvl = 10; S.lastT = Date.now(); S.farm = { t: Date.now(), gold: 0, gems: 0 };
+const TY = { head: 'head', chest: 'chest', gloves: 'gloves', legs: 'legs', boots: 'boots', amu1: 'amulet', amu2: 'amulet', amu3: 'amulet', lhand: 'shield', rhand: 'weapon' };
+S.eq = {}; let id = 1;
+for (const sl of st.SL) { const x = it.gen(IL, RI, TY[sl], undefined, 3); x.id = id++; S.eq[sl] = x; }
+S.bag = []; for (const sl of ['rhand', 'chest', 'head']) { const x = it.gen(IL, RI, TY[sl], undefined, 3); x.id = id++; S.bag.push(x); }
+S.uid = id + 1;
+st.setS(S);
+let info = '';
+try { const s = sx.stats(); info = 'atk=' + s.atk + ' hp=' + s.hp + ' finite=' + Object.values(s).every(v => typeof v !== 'number' || Number.isFinite(v)) + ' power=' + sx.powerLevel(); } catch (e) { info = 'stats error ' + e.message; }
+window.__save = JSON.stringify(S); window.__info = info;
+document.title = 'ready ' + info;
+</script></body></html>

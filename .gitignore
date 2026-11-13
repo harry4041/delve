@@ -4,3 +4,4 @@ dist
 
 admin/node_modules
 admin/serviceAccountKey.json
+admin/maxsave.json
