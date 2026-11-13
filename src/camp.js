@@ -118,4 +118,4 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b
   if(a=='pl'&&S.gold>=petLc(+v)){S.gold-=petLc(+v);S.pets[v].lvl++}
   if(a=='upAura'){const aur=AURAS.find(x=>x.k===v),lv=S.auras&&S.auras[v];if(aur&&lv){const c=auraUpCost(aur);if((S.gems||0)>=c){S.gems-=c;S.auras[v]=lv+1}}}
   if(a=='buyAura'){const aur=AURAS.find(x=>x.k===v);if(aur&&!auraOwned(v)&&(S.gems||0)>=aur.gems){S.gems-=aur.gems;S.auras=S.auras||{};S.auras[v]=1}}
-  save();camp()}});
+  {const sy=window.scrollY;save();camp();if(a=='tr')window.scrollTo(0,sy)}}});

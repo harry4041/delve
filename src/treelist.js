@@ -44,7 +44,7 @@ export function treeList(G) {
   const groups = [];
   if (G.hub && NODE[G.hub]) groups.push({ name: 'Core', col: '--c2', keys: [G.hub] });
   for (const a of G.arms) groups.push({ name: a.n, col: a.c, keys: a.ks, arm: a });
-  const all = groups.flatMap((g) => g.keys.map((k) => ({ ...info(k), g })));
+  const all = groups.flatMap((g) => g.keys.map((k, i) => ({ ...info(k), g, i }))); // i = fixed position in the arm: the default order never depends on prices, so rows do not jump after a purchase
   const vis = all.filter((x) => x.visible), hidden = all.filter((x) => !x.visible);
   const nBuy = vis.filter((x) => x.aff).length, nOwned = vis.filter((x) => x.l > 0).length;
   const pass = (x) => (o.f === 'buy' ? x.aff : o.f === 'owned' ? x.l > 0 : true);
@@ -60,7 +60,7 @@ export function treeList(G) {
   } else {
     let any = false;
     for (const g of groups) {
-      const rows = all.filter((x) => x.g === g && show(x)).sort((a, b) => (depOf(a.k) - depOf(b.k)) || (a.c - b.c));
+      const rows = all.filter((x) => x.g === g && show(x)).sort((a, b) => (depOf(a.k) - depOf(b.k)) || (a.i - b.i));
       const lockedHere = all.filter((x) => x.g === g && !x.visible).length;
       if (!rows.length && !(lockedHere && !o.locked && o.f === 'all')) continue;
       any = any || rows.length > 0;
