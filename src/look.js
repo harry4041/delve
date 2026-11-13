@@ -6,25 +6,27 @@ import { RL } from './stats.js';
 
 const sw = (n, c) => ({ n, c });
 export const LOOK_GROUPS = [
-  { k: 'skin', n: 'Skin', opts: [sw('Peach', '#ffd5ac'), sw('Fair', '#f6e0cf'), sw('Tan', '#e0ac69'), sw('Bronze', '#c68642'), sw('Brown', '#8d5524'), sw('Deep', '#5c3a21'), sw('Moss', '#9bd18b'), sw('Frost', '#b8c4ff')] },
+  { k: 'skin', n: 'Skin', opts: [sw('Peach', '#ffd5ac'), sw('Fair', '#f6e0cf'), sw('Tan', '#e0ac69'), sw('Bronze', '#c68642'), sw('Brown', '#8d5524'), sw('Deep', '#5c3a21'), sw('Moss', '#9bd18b'), sw('Frost', '#b8c4ff'), sw('Weathered', '#d19a6e'), sw('Ruddy', '#c98a68')] },
   { k: 'hs', n: 'Hair style', opts: [sw('Spiky', null), sw('Short', null), sw('Long', null), sw('Mohawk', null), sw('Bald', null)] },
-  { k: 'hair', n: 'Hair colour', opts: [sw('Ginger', '#ff9a2e'), sw('Blonde', '#f2d16b'), sw('Brown', '#6b4226'), sw('Black', '#1f1a24'), sw('Red', '#c0392b'), sw('White', '#e8e8f0'), sw('Blue', '#3d8bff'), sw('Pink', '#ff7ab8'), sw('Green', '#4cc46a'), sw('Purple', '#a04fd0')] },
-  { k: 'tun', n: 'Outfit', opts: [sw('Blue', '#3d8bff'), sw('Red', '#d94a4a'), sw('Green', '#3fa86a'), sw('Purple', '#8a5ad0'), sw('Gold', '#d9a63a'), sw('Teal', '#2fb5b0'), sw('Black', '#34303f'), sw('White', '#d8d8e8'), sw('Orange', '#e0803a'), sw('Pink', '#e070a8')] },
-  { k: 'scarf', n: 'Scarf', opts: [sw('Red', '#d94a4a'), sw('None', null), sw('Blue', '#3d8bff'), sw('Gold', '#e8c050'), sw('Green', '#3fa86a'), sw('Purple', '#8a5ad0'), sw('White', '#e8e8f0'), sw('Black', '#2a2434')] },
+  { k: 'hair', n: 'Hair colour', opts: [sw('Ginger', '#ff9a2e'), sw('Blonde', '#f2d16b'), sw('Brown', '#6b4226'), sw('Black', '#1f1a24'), sw('Red', '#c0392b'), sw('White', '#e8e8f0'), sw('Blue', '#3d8bff'), sw('Pink', '#ff7ab8'), sw('Green', '#4cc46a'), sw('Purple', '#a04fd0'), sw('Chestnut', '#4a3123'), sw('Ash', '#8d8578')] },
+  { k: 'tun', n: 'Outfit', opts: [sw('Blue', '#3d8bff'), sw('Red', '#d94a4a'), sw('Green', '#3fa86a'), sw('Purple', '#8a5ad0'), sw('Gold', '#d9a63a'), sw('Teal', '#2fb5b0'), sw('Black', '#34303f'), sw('White', '#d8d8e8'), sw('Orange', '#e0803a'), sw('Pink', '#e070a8'), sw('Leather', '#6b4f35'), sw('Slate', '#4a5568'), sw('Moss', '#4e5d3a'), sw('Wine', '#6e2f3a')] },
+  { k: 'scarf', n: 'Scarf', opts: [sw('Red', '#d94a4a'), sw('None', null), sw('Blue', '#3d8bff'), sw('Gold', '#e8c050'), sw('Green', '#3fa86a'), sw('Purple', '#8a5ad0'), sw('White', '#e8e8f0'), sw('Black', '#2a2434'), sw('Wine', '#7a2a35'), sw('Ash', '#7d7a74')] },
   { k: 'cape', n: 'Cape', opts: [sw('Auto', 'auto'), sw('None', null), sw('Crimson', '#b02838'), sw('Royal', '#2a50b8'), sw('Forest', '#2a7a3a'), sw('Violet', '#7a3ab8'), sw('Gold', '#c8982a'), sw('Black', '#26202e'), sw('White', '#d8d8e8')] },
-  { k: 'eye', n: 'Eye colour', opts: [sw('Night', '#2b2150'), sw('Sky', '#2a6fd0'), sw('Emerald', '#2a9a4a'), sw('Brown', '#6a3a1a'), sw('Violet', '#8a2ab0'), sw('Ember', '#d02a2a'), sw('Gold', '#d0a020')] },
+  { k: 'eye', n: 'Eye colour', opts: [sw('Night', '#2b2150'), sw('Sky', '#2a6fd0'), sw('Emerald', '#2a9a4a'), sw('Brown', '#6a3a1a'), sw('Violet', '#8a2ab0'), sw('Ember', '#d02a2a'), sw('Gold', '#d0a020'), sw('Steel', '#5a6472')] },
   // Face: shapes are drawn by HERO_ST.face in render.js (all four default to the original look at index 0). Append new options at the END of a group.
   { k: 'es', n: 'Eye shape', opts: [sw('Round', null), sw('Narrow', null), sw('Wide', null), sw('Sleepy', null), sw('Happy', null)] },
   { k: 'br', n: 'Brows', opts: [sw('Neutral', null), sw('Angry', null), sw('Worried', null), sw('Raised', null), sw('None', null)] },
   { k: 'mo', n: 'Mouth', opts: [sw('Smile', null), sw('Grin', null), sw('Neutral', null), sw('Smirk', null), sw('Frown', null), sw('Surprised', null)] },
-  { k: 'ch', n: 'Cheeks', opts: [sw('None', null), sw('Blush', null), sw('Freckles', null), sw('Both', null), sw('Stubble', null)] },
+  { k: 'ch', n: 'Cheeks', opts: [sw('None', null), sw('Blush', null), sw('Freckles', null), sw('Both', null), sw('Stubble', null), sw('Scar', null), sw('Rugged', null)] },
 ];
 const G = Object.fromEntries(LOOK_GROUPS.map((g) => [g.k, g]));
 
 // Index chosen for a group, always inside the option range.
+// Options a player has not chosen yet fall back to DEFAULT (a weathered, muted look); explicit choices always win, and Reset clears them.
+export const DEFAULT = { skin: 8, hs: 1, hair: 10, tun: 10, scarf: 8, eye: 3, mo: 2, ch: 4 };
 export function lookIdx(k) {
   const v = S.look && S.look[k], n = G[k].opts.length;
-  return Number.isInteger(v) && v >= 0 && v < n ? v : 0;
+  return Number.isInteger(v) && v >= 0 && v < n ? v : (DEFAULT[k] || 0);
 }
 const opt = (k) => G[k].opts[lookIdx(k)];
 

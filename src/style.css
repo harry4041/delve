@@ -27,6 +27,7 @@ button.alt{background:var(--panel);color:var(--ink)}
 .slots{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .sl{border:2px dashed var(--mute);padding:3px 6px;min-height:50px;cursor:pointer}.sl.f{border-style:solid}
 .sl small,.it small{color:var(--mute);display:block}
+.it.tl.aff{background:color-mix(in srgb,var(--panel) 88%,var(--gold))}.it.tl.lk{opacity:.65}.it small{display:block}
 .it{display:flex;justify-content:space-between;gap:6px;align-items:center;padding:4px 0;border-bottom:2px dotted var(--mute)}
 .up{color:var(--c1)}.dn{color:#d94a4a}
 .tabs{display:flex;gap:6px;flex-wrap:wrap}.tabs.main{flex-wrap:nowrap;gap:4px}.tabs.main button{flex:1 1 0;min-width:0;padding:2px 1px;font-size:17px;white-space:nowrap}@media (max-width:400px){.tabs.main button{font-size:15px}}button.dot{position:relative}button.dot::after{content:'';position:absolute;top:-6px;right:-5px;width:11px;height:11px;background:var(--gold);border:2px solid var(--ink);border-radius:50%}#more{margin:8px 0}#more[hidden]{display:none}#more .tabs{margin:3px 0 8px}#more .mute{font-size:15px}.tabs button.on{background:var(--ink);color:var(--bg)}

@@ -25,6 +25,7 @@ const out=[],ck=(n,c,x)=>out.push(n+':'+(c?'ok':'FAIL'+(x!==undefined?'('+x+')':
 window.onerror=(m,u,l)=>out.push('ERR '+m+' @'+String(u).split('/').pop()+':'+l);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 try{
+ localStorage.removeItem('hd-tv');localStorage.removeItem('hd-tl'); // other test pages leave the web view selected in this profile
  await import('/src/main.js');
  const st=await import('/src/state.js'),cp=await import('/src/camp.js'),w=await import('/src/wiki.js'),as=await import('/src/ascension.js'),au=await import('/src/auras.js'),sts=await import('/src/stats.js');
  const KEY='hollow-delve-2',S=()=>st.S,body=()=>document.querySelector('#cbody').innerHTML;
@@ -65,7 +66,7 @@ try{
  // nav state survives re-render, and other tabs unaffected
  await sec('pets');cp.camp();ck('section-survives-rerender',body().includes('Farm job'));
  go('g');ck('other-tabs-still-render',body().length>200);
- go('u');ck('upgrades-tab-still-renders',body().includes('svg'));
+ go('u');ck('upgrades-tab-still-renders',body().includes('tlist')&&body().includes('data-a="tr"'));
 }catch(e){out.push('EXC '+e.message+' | '+(e.stack||'').split(String.fromCharCode(10))[1])}
 document.title=out.join(' ');
 </script></body></html>

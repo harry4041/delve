@@ -7,6 +7,15 @@ import { RTREE, STB, reqStage, ascFee } from './ascension.js';
 
 // ---------------------------------------------------------------- changelog (add new entries at the TOP; `id` must be unique)
 export const CHANGELOG = [
+  { id: '2026-11-13c', date: '2026-11-13', title: 'Upgrades as a list (and the web)', items: [
+    'The Upgrades, Magic and Pets tabs now open as a plain list of EVERY upgrade, like before: what it does, your level, what you get now, what it needs and its price. Affordable ones are highlighted and ones you cannot get yet are dimmed with what they need.',
+    'Filter by Can buy or Owned, sort cheapest first, or tap Hide locked for a shorter list.',
+    'Prefer the old skill web? Tap Web at the top of the tab. The game remembers your choice.',
+  ] },
+  { id: '2026-11-13b', date: '2026-11-13', title: 'A more grown-up hero', items: [
+    'The default hero has a weathered, muted look to match the enemies: a laced leather jerkin over linen sleeves, bracers, a belt pouch, dark patched trousers, boots, a short dark crop and stubble.',
+    'New muted colour options for skin, hair, outfit and scarf, a steel eye colour, and Scar and Rugged cheek options. Anything you already chose in the Look tab stays as it was; press Reset to try the new default.',
+  ] },
   { id: '2026-11-13a', date: '2026-11-13', title: 'Fix: saving for newly verified accounts', items: [
     'Fixed a problem where an account that had just verified its email could show "The server refused the request" and never sync. The game now refreshes your sign-in automatically before saving to the cloud. If you saw this, reload the page (or sign out and back in) once.',
   ] },
@@ -185,7 +194,7 @@ function stats() {
 
 function power() {
   return h('Upgrades')
-    + p('The Upgrades tab is a web of nodes bought with gold. Core nodes such as Might (damage), Vigor (health), Haste (speed) and Greed (gold) get more expensive with every level. Many other nodes unlock special mechanics. A node appears once you meet its prerequisites. Round nodes can be levelled, diamonds are one-off unlocks, and hexagons are endless Masteries. A pulsing gold ring means you can afford it now.')
+    + p('The Upgrades tab lists the upgrades you can buy with gold (switch to the Web view at the top for a skill-tree picture). Core nodes such as Might (damage), Vigor (health), Haste (speed) and Greed (gold) get more expensive with every level. Many other nodes unlock special mechanics. A node appears once you meet its prerequisites. Round nodes can be levelled, diamonds are one-off unlocks, and hexagons are endless Masteries. A pulsing gold ring means you can afford it now.')
     + p('Upgrades are reset when you ascend (a few logistics upgrades can be kept with a relic).')
     + h('Magic')
     + p('Buy <b>Arcane Awakening</b> with relics to unlock spells and the Magic web. Spells use mana and have a cooldown:')

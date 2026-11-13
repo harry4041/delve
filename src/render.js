@@ -68,20 +68,20 @@ function blk(x,y,w,h,c,o){o=o||{};const O=F(o.ink||inkOf(c)),Dk=F(shd(c));
  if(o.tex)for(let j=2;j<h-1;j+=3)for(let i=2+(j%2?2:0);i<w-1;i+=4)Rf(x+i,y+j,1,1,Dk)}
 
 const GCTX={Rf,blk,shape,F,lit,shd,ink:inkOf}; // what gearart.js needs from this module (functions read SC/FL at call time)
-const HERO_ST={skin:'#ffd5ac',hair:'#ff9a2e',tun:'#3d8bff',leg:'#6a4f8a',boot:'#8a5a2a',belt:'#6a4a2a',tx:7,tw:26,adult:true, // an adult build: broad shoulders, a smaller head, a calmer face
+const HERO_ST={skin:'#d19a6e',hair:'#4a3123',tun:'#6b4f35',leg:'#3f4452',boot:'#4a3322',belt:'#2e2014',tx:7,tw:26,adult:true, // an adult build: broad shoulders, a smaller head, a calmer face
  face:(st)=>{ // eye shape, brows, nose, mouth and cheeks are all player choices (look.js); coordinates are relative to the head box (hx = head x)
   const hx=(st.tx||8)+4,R2=(x,y,w,h,c)=>Rf(hx+x,y,w,h,c),eyc=st.eye||'#2b2150',ey=F(eyc),br=F(rr(st.hairCol||'#ff9a2e',.6)),sk=st.skin,es=st.es||0,bw=st.br||0,mo=st.mo||0,ch=st.ch||0,bl=blink(),sh=F(shd(sk));
   const eye=(x)=>{ // x = left edge of this eye (4 wide)
    if(bl){R2(x,9,4,1,ey);return}
-   if(es===0){R2(x,8,4,3,F('#fff'));R2(x+1,8,2,3,ey);R2(x+1,8,1,1,F('#fff'))}                                  // round: whites, iris, a single glint
-   else if(es===1){R2(x,8,4,2,F('#fff'));R2(x+1,8,2,2,ey);R2(x-1,7,6,1,sh)}                                      // narrow, with a lid line
-   else if(es===2){R2(x-1,7,6,4,F('#fff'));R2(x+1,7,2,4,ey);R2(x+1,7,1,1,F('#fff'))}                             // wide
-   else if(es===3){R2(x,8,4,3,F('#fff'));R2(x+1,9,2,2,ey);R2(x,8,4,1,sh)}                                       // sleepy: heavy lids
+   if(es===0){R2(x,8,4,2,F('#d8d0c4'));R2(x+1,8,2,2,ey);R2(x,7,4,1,sh)}                                         // round: small off-white eyes, dark iris, a lid shadow
+   else if(es===1){R2(x,9,4,1,F('#d8d0c4'));R2(x+1,9,2,1,ey);R2(x-1,8,6,1,sh);R2(x,7,4,1,sh)}                     // narrow: a squint
+   else if(es===2){R2(x,7,4,3,F('#e8e2d8'));R2(x+1,7,2,3,ey);R2(x+1,7,1,1,F('#fff'))}                             // wide
+   else if(es===3){R2(x,8,4,2,F('#d8d0c4'));R2(x+1,9,2,1,ey);R2(x,8,4,1,sh);R2(x,7,4,1,sh)}                       // sleepy: heavy lids
    else{R2(x,10,1,1,ey);R2(x+1,9,2,1,ey);R2(x+3,10,1,1,ey)}                                                      // happy: ^ ^
   };
   eye(3);eye(9);
-  if(bw===0){R2(3,6,4,1,br);R2(9,6,4,1,br)}                                                                       // neutral
-  else if(bw===1){R2(3,5,2,1,br);R2(5,6,2,1,br);R2(9,6,2,1,br);R2(11,5,2,1,br)}                                   // angry: slanting down to the nose
+  if(bw===0){R2(2,5,5,1,br);R2(3,6,4,1,br);R2(9,5,5,1,br);R2(9,6,4,1,br)}                                       // neutral: heavy, level brows
+  else if(bw===1){R2(2,4,3,1,br);R2(4,5,3,1,br);R2(5,6,2,1,br);R2(9,6,2,1,br);R2(9,5,3,1,br);R2(11,4,3,1,br)}      // angry: slanting down to the nose
   else if(bw===2){R2(3,6,2,1,br);R2(5,5,2,1,br);R2(9,5,2,1,br);R2(11,6,2,1,br)}                                   // worried: slanting up to the middle
   else if(bw===3){R2(3,4,4,1,br);R2(9,4,4,1,br)}                                                                   // raised
   R2(7,9,2,4,sh);R2(6,12,4,1,sh);R2(7,9,1,1,F(lit(sk)));                                                          // nose with a bridge, shaded side and nostrils
@@ -94,10 +94,11 @@ const HERO_ST={skin:'#ffd5ac',hair:'#ff9a2e',tun:'#3d8bff',leg:'#6a4f8a',boot:'#
   else{R2(6,12,4,3,dark);R2(7,13,2,1,F('#c0605a'));R2(6,11,4,1,lip)}                                              // surprised
   if(ch===1||ch===3)for(const x of[2,11])R2(x,10,3,2,F(mixHex(sk,'#ff8fa6',.45)));                                // blush (soft, mixed with the skin tone)
   if(ch===2||ch===3){const fr=F(rr(sk,.72));for(const [x,y] of [[3,10],[5,11],[11,10],[9,11],[7,10]])R2(x,y,1,1,fr)} // freckles
-  if(ch===4){const st2=F(rr(sk,.82));for(let y=11;y<15;y++)for(let x=3;x<13;x++)if((x+y)%2===0&&!(y===13&&x>=5&&x<=10))R2(x,y,1,1,st2)} // stubble
+  if(ch===4||ch===6){const st2=F(rr(sk,.78));for(let y=10;y<15;y++)for(let x=3;x<13;x++)if((x*5+y*3)%4===0&&!(y>=12&&y<=13&&x>=5&&x<=10))R2(x,y,1,1,st2)} // stubble
+  if(ch===5||ch===6){const sc=F(rr(sk,.6));R2(11,8,1,1,sc);R2(11,9,1,1,F('#c98f86'));R2(10,10,1,1,F('#c98f86'));R2(10,11,1,1,sc);R2(9,12,1,1,F('#c98f86'))} // a scar across the cheek
  },
  pre:(e,st)=>{ // tunic emblem and shoulder shading
-  const cx=(st.tx||8)+(st.tw||24)/2;Rf(cx-2,24,4,5,F('#e8c050'));Rf(cx-2,24,2,1,F('#fff3b0'));Rf(cx-1,26,2,2,F('#b8861c'));Rf(st.tx+3,20,2,8,F(shd(st.tun)));Rf(st.tx+st.tw-5,20,2,8,F(shd(st.tun)))},
+  },
  post:(e,st)=>{ // scarf that flutters (hidden under helmets and hoods, or when the player chose none)
   if(!st.scarf||(e.head&&['Helm','Hood'].includes(baseOf(e.head))))return;const w=Math.round(Math.sin(ART_T*5)),cx=(st.tx||8)+(st.tw||24)/2;
   blk(cx-6,17,12,4,st.scarf);blk(cx+5,19+(w>0?1:0),5,9,st.scarf);Rf(cx+6,26+(w>0?1:0),3,1,F(shd(st.scarf)))}};
@@ -115,6 +116,7 @@ function bodyFine(e,st){
   Rf(tx,33,tw,4,F(st.belt));Rf(tx,33,tw,1,F(lit(st.belt)));Rf(tx,36,tw,1,F(shd(st.belt)));blk(tx+10,33,4,4,'#e8c050');Rf(tx+11,34,1,1,F('#fff3b0')); // belt, buckle
   for(const x of[ax,bx]){blk(x,20,6,16,st.tun,{tex:1});Rf(x,33,6,2,F(shd(st.tun)))}              // sleeves with cuffs
  }
+ if(st.adult)adultClothes(st,tx,tw,ax,bx);
  for(const x of[ax,bx]){blk(x,35,6,6,sk);Rf(x+1,39,1,2,F(shd(sk)));Rf(x+3,39,1,2,F(shd(sk)))} // hands with finger lines
  if(st.adult){adultHead(e,st,hx,hb);return}
  {
@@ -128,6 +130,19 @@ function bodyFine(e,st){
   if(st.face)st.face(st)}
 }
 
+// Weathered adventurer's clothes for adult characters (drawn over the generic body, under any worn gear): a leather jerkin laced over a
+// linen shirt, leather bracers, a belt with a pouch, patched dark trousers and cuffed boots. Muted colours and no flat dotted cloth.
+function adultClothes(st,tx,tw,ax,bx){
+ const cx=tx+tw/2,tun=st.tun,lg=st.leg,bt=st.boot,linen=mixHex(tun,'#cbbfa3',.62),lace=F('#c8b88f'),dk='#2e2014',brass='#8a7a55';
+ for(const x of[tx+3,tx+tw-11]){blk(x,40,8,13,lg);Rf(x+3,41,1,11,F(shd(lg)));Rf(x+1,45,6,3,F(shd(lg)));Rf(x+1,45,6,1,F(lit(lg)));Rf(x+1,47,6,1,F(rr(lg,.55)))}  // seam and a darker knee patch
+ for(const x of[tx+2,tx+tw-12]){blk(x,52,10,6,bt);Rf(x,52,10,2,F(lit(bt)));Rf(x,54,10,1,F(rr(bt,.5)));Rf(x+4,54,2,1,F(brass));Rf(x+1,57,8,1,F(rr(bt,.4)))}   // cuffed boots with a strap
+ blk(tx,18,tw,22,tun);Rf(tx+1,19,1,17,F(lit(tun)));Rf(tx+tw-3,19,2,17,F(shd(tun)));Rf(tx+5,26,1,6,F(shd(tun)));Rf(tx+tw-8,24,1,7,F(shd(tun)));          // jerkin with folds
+ Rf(cx-3,18,6,1,F(linen));Rf(cx-2,19,4,1,F(linen));Rf(cx-1,20,2,1,F(linen));Rf(cx-4,18,1,2,F(shd(linen)));Rf(cx+3,18,1,2,F(shd(linen)));                   // linen collar showing at the V
+ for(let k=0;k<5;k++){Rf(cx-1,21+k*3,1,1,lace);Rf(cx,22+k*3,1,1,lace);Rf(cx-1,23+k*3,1,1,lace)}                                                          // lacing
+ Rf(tx,33,tw,3,F(dk));Rf(tx,33,tw,1,F('#4a3822'));blk(cx-2,33,4,3,brass);Rf(cx-1,34,2,1,F('#b9a97a'));                                                       // belt and buckle
+ blk(tx+tw-9,34,6,6,'#4a3322');Rf(tx+tw-9,34,6,2,F('#5a4230'));Rf(tx+tw-7,36,2,1,F(brass));                                                                 // belt pouch
+ for(const x of[ax,bx]){blk(x,20,6,16,linen);Rf(x,33,6,2,F(shd(linen)));blk(x,28,6,7,'#3a2a1c');Rf(x,30,6,1,F('#5a4230'));Rf(x,32,6,1,F('#5a4230'))}        // linen sleeves with leather bracers
+}
 // Adult head: 12x14 (vs the 16x17 cartoon head), longer neck, defined jaw; hair is fitted to it. hx is the head box x.
 function adultHead(e,st,hx,hb){
  const sk=st.skin,hr=st.hair,hs=st.hs||0,h2=hr?lit(hr):null,hid=hb==='Helm'||hb==='Hood';

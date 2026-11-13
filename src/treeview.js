@@ -3,6 +3,7 @@ import {L,fmtN} from './stats.js';
 import {GRAPHS,MAGIC_K,NODE,NODEC,can,cost,dep} from './skilltree.js';
 import {hasMagic} from './ascension.js';
 import {treeVal} from './gear.js';
+import {treeList,treeMode,viewToggle} from './treelist.js';
 /* ===== SKILL TREE WEB VIEW ===== */
 /* Hub-and-spoke SVG graph. Data lives in GRAPHS (skilltree.js); tapping a node inspects it, the Buy button reuses the data-a="tr" handler. */
 const TV_R=26,TV_HR=36,TV_GAP=150,TV_AR=1.15,TV_WEDGE=110; // TV_WEDGE keeps every arm inside its own 90-degree wedge
@@ -181,12 +182,14 @@ function tvPanel(G,k){
   +'<small>'+n.d+(cv?' — <span style="color:var(--c1)">'+cv+'</span>':'')+'</small>'
   +(reqs?'<small>Needs: '+reqs+'</small>':'')+(i.magic?'<small style="color:var(--hp)">Needs the Arcane Awakening relic</small>':'')}
 
-export function tree(G){
+// The Upgrades/Magic/Pets tabs call tree(G): the List view (default) or the Web, with a toggle above both.
+export function tree(G){const mode=treeMode();return viewToggle(mode)+(mode==='web'?webTree(G):treeList(G))}
+function webTree(G){
  const st=tvState(G);if(!st.vb)st.vb=tvStart(G);
  return'<div class="tvroot" id="tv_'+G.id+'"><div class="tvw" data-g="'+G.id+'">'+tvSvg(G,st)
   +'<div class="tvc"><button class="s alt" data-z="out">−</button><button class="s alt" data-z="in">+</button><button class="s alt" data-z="hub">Hub</button><button class="s alt" data-z="fit">Fit</button></div></div>'
   +'<div class="box tvp">'+tvPanel(G,st.sel)+'</div></div>'}
-function tvRefresh(id){const el=document.getElementById('tv_'+id);if(el)el.outerHTML=tree(GRAPHS[id])}
+function tvRefresh(id){const el=document.getElementById('tv_'+id);if(el)el.outerHTML=webTree(GRAPHS[id])}
 
 /* ---- pan / zoom ---- */
 function tvSvgEl(id){return (document.querySelector('#tv_'+id+' .tvsvg'))}

@@ -25,6 +25,7 @@ const out=[],ck=(n,c,x)=>out.push(n+':'+(c?'ok':'FAIL'+(x?'('+x+')':'')));
 window.onerror=(m,u,l)=>{out.push('ERR '+m+' @'+String(u).split('/').pop()+':'+l)};
 window.addEventListener('unhandledrejection',e=>out.push('REJ '+e.reason));
 try{
+ localStorage.setItem('hd-tv','web'); // these checks inspect the SVG web, which is no longer the default view
  await import('/src/main.js');
  const st=await import('/src/state.js'),bt=await import('/src/battle.js'),rd=await import('/src/render.js'),cp=await import('/src/camp.js'),tv=await import('/src/treeview.js');
  const sk=await import('/src/skilltree.js');
@@ -39,7 +40,7 @@ try{
  // buy via click
  st.setTab('u');cp.camp();document.querySelector('#tv_u .tn[data-n=might]').dispatchEvent(new MouseEvent('click',{bubbles:true}));
  const g0=st.S.gold,l0=(st.S.tr.might||0);document.querySelector('#tv_u [data-a=tr]').click();
- ck('buy',(st.S.tr.might||0)===l0+1&&st.S.gold<g0);
+ ck('buy',(st.S.tr.might||0)===l0+1&&st.S.gold<g0,JSON.stringify({l0,l:st.S.tr.might,g0,g:st.S.gold,btn:!!document.querySelector('#tv_u [data-a=tr]'),dis:(document.querySelector('#tv_u [data-a=tr]')||{}).disabled}));
  // delve: start run, simulate combat + render
  document.querySelector('[data-a=delve]').click();
  ck('delve-start',st.mode==='battle'&&st.run&&st.run.stage>=1);

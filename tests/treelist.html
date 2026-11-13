@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>running</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+</head><body><div id="app">
+<header><h1>Delve</h1><div id="top"></div></header>
+<section id="battle" hidden>
+ <div class="cv"><canvas id="c" width="192" height="108"></canvas><div id="fxl"></div>
+  <div id="over" hidden><div class="px" style="font-size:12px">Defeated</div><div id="ovt"></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button data-a="delveAgain" style="background:#d94a4a;color:#fff;border-color:#fff">⚔ Delve Again</button><button data-a="camp">Go to camp</button></div></div></div>
+ <div class="bar"><i id="hpb"></i><span id="hpt"></span></div>
+ <div class="bar m" id="mpw"><i id="mpb"></i><span id="mpt"></span></div>
+ <div class="bar e"><i id="ehb"></i><span id="ent"></span></div>
+ <div class="row sp" style="margin:6px 0"><div class="row" id="spells"></div><div class="row"><button class="s alt" data-a="spd" id="spdb"></button><button class="s alt" data-a="end">End run</button></div></div>
+ <div class="mute">Last drop</div><div id="last"></div><div class="mute" style="margin-top:6px">Loot this run</div><div id="feed"></div>
+</section>
+<section id="camp" hidden>
+ <div class="row sp"><div class="tabs"><button data-a="tab" data-v="g" id="tg">Gear</button><button data-a="tab" data-v="u" id="tu">Upgrades</button><button data-a="tab" data-v="v" id="tv">Vault</button><button data-a="tab" data-v="m" id="tm">Magic</button><button data-a="tab" data-v="p" id="tp">Pets</button><button data-a="tab" data-v="r" id="tr2">Auras</button><button data-a="tab" data-v="i" id="ti">Idle</button><button data-a="tab" data-v="a" id="ta">Ascend</button><button data-a="tab" data-v="l" id="tl">Scores</button><button data-a="tab" data-v="x" id="tx">Account</button></div></div>
+ <div style="margin:8px 0"><button data-a="delve" style="width:100%;font-size:22px;padding:10px;background:var(--btn);border-width:4px;box-shadow:5px 5px 0 var(--ink)">⚔ DELVE</button></div>
+ <div id="sdw" class="row" style="margin:6px 0"></div><div id="cbody"></div><div style="margin:16px 0"><button class="s alt" data-a="reset">Reset save</button></div>
+</section>
+</div>
+<script type="module">
+// List view of the skill webs (src/treelist.js).
+const out=[],ck=(n,c,x)=>out.push(n+':'+(c?'ok':'FAIL'+(x!==undefined?'('+x+')':'')));
+window.onerror=(m,u,l)=>out.push('ERR '+m+' @'+String(u).split('/').pop()+':'+l);
+try{
+ localStorage.removeItem('hd-tv');localStorage.removeItem('hd-tl');
+ await import('/src/main.js');
+ const st=await import('/src/state.js'),cp=await import('/src/camp.js'),tl=await import('/src/treelist.js'),sk=await import('/src/skilltree.js'),sts=await import('/src/stats.js');
+ const KEY='hollow-delve-2',S=()=>st.S,body=()=>document.querySelector('#cbody'),q=s=>document.querySelector(s),qa=s=>[...document.querySelectorAll(s)];
+ const fresh=()=>{localStorage.removeItem(KEY);localStorage.removeItem('hd-tl');st.load();st.setMode('camp');cp.view()};
+ const go=(tab)=>{st.setTab(tab);cp.camp()};
+ const names=()=>qa('#cbody .it.tl > div > b').map(b=>b.textContent);
+ const expected=(G)=>{const ks=[...(G.hub?[G.hub]:[]),...G.arms.flatMap(a=>a.ks)];return{all:ks,visible:ks.filter(k=>sts.L(k)>0||sk.can(sk.NODE[k]))}};
+ // 1 default and toggle
+ fresh();go('u');
+ ck('list-is-the-default-view',tl.treeMode()==='list'&&!!q('.tlist')&&!body().innerHTML.includes('<svg'));
+ ck('toggle-offers-list-and-web',!!q('[data-tm=list]')&&!!q('[data-tm=web]'));
+ q('[data-tm=web]').click();ck('web-view-is-one-tap-away',tl.treeMode()==='web'&&body().innerHTML.includes('<svg')&&localStorage.getItem('hd-tv')==='web');
+ q('[data-tm=list]').click();ck('and-back-to-the-list',tl.treeMode()==='list'&&!!q('.tlist')&&localStorage.getItem('hd-tv')==='list');
+ // 2a by default EVERY upgrade is listed (the original plain list), locked ones dimmed
+ fresh();S().gold=50;S().tr={};go('u');
+ ck('every-upgrade-is-listed-by-default',names().length===expected(sk.GRAPHS.u).all.length&&expected(sk.GRAPHS.u).all.every(k=>names().includes(sk.NODE[k].n)),names().length+' vs '+expected(sk.GRAPHS.u).all.length);
+ ck('nothing-is-hidden-behind-a-toggle-for-a-new-player',!body().textContent.includes('more unlock'));
+ // 2 the list shows exactly what the web shows when locked upgrades are hidden, for all three webs
+ for(const [tab,id] of [['u','u'],['m','m'],['p','p']]){
+  fresh();S().gold=5000;S().tr={might:3,vigor:2,greed:1};if(tab==='p')S().tr.den=1;S().rl=tab==='m'?{rMagic:1}:{};if(tab==='m')S().tr.arcana=1;
+  localStorage.setItem('hd-tl','{"locked":false}');go(tab);const G=sk.GRAPHS[id],ex=expected(G),got=names(),want=ex.visible.map(k=>sk.NODE[k].n);
+  ck('visible-nodes-match-the-web-rule:'+id,got.length===want.length&&want.every(n=>got.includes(n)),got.length+' vs '+want.length);
+  ck('each-visible-node-is-listed-once:'+id,new Set(got).size===got.length);
+  ck('locked-nodes-are-not-listed:'+id,ex.all.filter(k=>!ex.visible.includes(k)).every(k=>!got.includes(sk.NODE[k].n)));
+  const hidden=ex.all.length-ex.visible.length;
+  ck('locked-count-is-shown:'+id,hidden===0||body().textContent.includes('locked ('+hidden+')'),hidden);
+ }
+ // 3 locked upgrades are shown (dimmed, with what they need) and can be hidden
+ fresh();S().gold=5000;S().tr={might:3};go('u');const G=sk.GRAPHS.u,ex=expected(G);const all=names();
+ ck('locked-upgrades-are-listed-too',ex.all.every(k=>all.includes(sk.NODE[k].n))&&all.length===ex.all.length,all.length+' vs '+ex.all.length);
+ ck('locked-rows-say-what-they-need',qa('#cbody .it.tl.lk').length>0&&qa('#cbody .it.tl.lk').every(r=>r.textContent.includes('Needs')),qa('#cbody .it.tl.lk').length);
+ ck('locked-rows-cannot-be-bought',qa('#cbody .it.tl.lk [data-a=tr]').every(b=>b.disabled));
+ ck('all-chip-counts-every-upgrade',q('[data-tf=all]').textContent.includes('('+ex.all.length+')'),q('[data-tf=all]').textContent);
+ q('[data-tl]').click();ck('hide-locked-leaves-only-the-visible-nodes',names().length===ex.visible.length&&body().textContent.includes('more unlock'),names().length+' vs '+ex.visible.length);
+ ck('the-button-then-offers-to-show-them',q('[data-tl]').textContent.startsWith('Show'));
+ q('[data-tl]').click();ck('and-it-toggles-back',names().length===ex.all.length&&q('[data-tl]').textContent.startsWith('Hide'));
+ // 4 filters
+ fresh();S().gold=700;S().tr={might:2,vigor:1,regen:1};go('u');
+ const nBuy=qa('#cbody .it.tl.aff').length;
+ ck('chip-count-matches-the-affordable-rows',q('[data-tf=buy]').textContent.includes('('+nBuy+')')&&nBuy>0,q('[data-tf=buy]').textContent);
+ q('[data-tf=buy]').click();const buyRows=qa('#cbody .it.tl');
+ ck('can-buy-filter-shows-only-affordable-rows',buyRows.length===nBuy&&buyRows.every(r=>r.classList.contains('aff')&&!r.querySelector('[data-a=tr]').disabled));
+ q('[data-tf=owned]').click();ck('owned-filter-shows-only-owned',names().length>0&&names().every(n=>{const nd=Object.values(sk.NODE).find(x=>x.n===n);return sts.L(nd.k)>0}));
+ S().gold=0;go('u');q('[data-tf=buy]').click();ck('empty-filter-says-so',body().textContent.includes('Nothing matches'));
+ q('[data-tf=all]').click();
+ // 5 sort by cost
+ fresh();S().gold=3000;S().tr={might:2,vigor:1};go('u');q('[data-ts=cost]').click();
+ const keys=qa('#cbody .it.tl [data-a=tr]').map(b=>b.dataset.v);let sorted=true;let prev=-1;for(const k of keys){const n=sk.NODE[k];if(sk.can(n)){const c=sk.cost(n);if(c<prev)sorted=false;prev=c}}
+ ck('cheapest-first-sorts-by-cost',keys.length>3&&sorted,keys.slice(0,5).join(','));
+ ck('cheapest-first-has-no-section-headings',!body().innerHTML.includes('class="px"'));
+ q('[data-ts=cost]').click();ck('sort-toggles-back-to-sections',body().innerHTML.includes('class="px"'));
+ // 6 buying from the list
+ fresh();S().gold=1000;S().tr={};go('u');
+ const btn=q('#cbody .it.tl.aff [data-a=tr]'),k0=btn.dataset.v,c0=sk.cost(sk.NODE[k0]),l0=sts.L(k0),g0=S().gold;btn.click();
+ ck('buying-from-the-list-works',sts.L(k0)===l0+1&&S().gold===g0-c0,k0);
+ ck('the-list-redraws-with-the-new-level',(()=>{const r=qa('#cbody .it.tl').find(x=>x.querySelector('b').textContent===sk.NODE[k0].n);return !!r&&(r.textContent.includes((l0+1)+'/')||r.textContent.includes('Lv '+(l0+1))||r.textContent.includes('owned')||r.textContent.includes('Max'))})());
+ S().gold=0;go('u');ck('unaffordable-rows-have-a-disabled-button',qa('#cbody .it.tl [data-a=tr]').every(b=>b.disabled));
+ // 7 level labels
+ fresh();S().gold=1e9;S().tr={might:3,mMight:4,sim1:1,fast:1};go('u');
+ const lab=(n)=>{const r=qa('#cbody .it.tl').find(x=>x.querySelector('b').textContent===n);return r?r.querySelector('.mute').textContent:'(none)'};
+ ck('levelled-nodes-show-n-of-max',/3\/\d+|Lv 3/.test(lab(sk.NODE.might.n)),lab(sk.NODE.might.n));
+ ck('endless-masteries-show-their-level',sk.NODE.mMight?lab(sk.NODE.mMight.n)==='Lv 4':true,lab((sk.NODE.mMight||{}).n));
+ // 8 magic and pets specifics
+ fresh();S().rl={};S().gold=1e6;S().tr={};go('m');
+ ck('magic-nodes-say-they-need-the-relic-when-magic-is-locked',body().textContent.includes('Arcane Awakening')||qa('#cbody .it.tl').length===0,qa('#cbody .it.tl').length);
+ fresh();S().tr={den:1};S().gold=1e6;go('p');ck('pets-list-renders-with-the-den',qa('#cbody .it.tl').length>0&&!!q('.tlist'));
+ fresh();go('p');ck('pets-without-the-den-still-render-without-errors',body().innerHTML.length>100);
+ // 9 persistence and bad stored values
+ fresh();go('u');q('[data-tf=buy]').click();q('[data-ts=cost]').click();const saved=JSON.parse(localStorage.getItem('hd-tl'));
+ ck('options-are-remembered',saved.f==='buy'&&saved.s==='cost');
+ go('u');ck('and-applied-after-a-redraw',q('[data-tf=buy]').className.indexOf('alt')===-1&&q('[data-ts=cost]').className.indexOf('alt')===-1);
+ let bad=true;for(const v of ['{{{','null','42','"x"','{"f":"hack","s":7,"locked":"yes"}','[]']){localStorage.setItem('hd-tl',v);try{go('u');if(!q('.tlist'))bad=false}catch(e){bad=false}}
+ ck('corrupted-stored-options-fall-back-to-defaults',bad);
+ localStorage.setItem('hd-tv','nonsense');ck('unknown-mode-falls-back-to-list',tl.treeMode()==='list');localStorage.removeItem('hd-tv');localStorage.removeItem('hd-tl');
+ // 10 the toggle is on every tree tab
+ fresh();S().tr={den:1};for(const t of ['u','m','p']){go(t);ck('toggle-present-on-'+t,!!q('[data-tm=list]'))}
+}catch(e){out.push('EXC '+e.message+' | '+(e.stack||'').split(String.fromCharCode(10))[1])}
+document.title=out.join(' ');
+</script></body></html>

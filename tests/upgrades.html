@@ -24,6 +24,7 @@
 const out=[],ck=(n,c,x)=>out.push(n+':'+(c?'ok':'FAIL'+(x!==undefined?'('+x+')':'')));
 window.onerror=(m,u,l)=>out.push('ERR '+m+' @'+String(u).split('/').pop()+':'+l);
 try{
+ localStorage.setItem('hd-tv','web'); // these checks inspect the SVG web, which is no longer the default view
  await import('/src/main.js');
  const st=await import('/src/state.js'),bt=await import('/src/battle.js'),stats=await import('/src/stats.js'),sk=await import('/src/skilltree.js'),itm=await import('/src/items.js'),asc=await import('/src/ascension.js'),gear=await import('/src/gear.js'),tv=await import('/src/treeview.js');
  const KEY='hollow-delve-2';
