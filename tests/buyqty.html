@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>running</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+</head><body><div id="app">
+<header><h1>Delve</h1><div id="top"></div></header>
+<section id="battle" hidden>
+ <div class="cv"><canvas id="c" width="192" height="108"></canvas><div id="fxl"></div>
+  <div id="over" hidden><div class="px" style="font-size:12px">Defeated</div><div id="ovt"></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button data-a="delveAgain" style="background:#d94a4a;color:#fff;border-color:#fff">⚔ Delve Again</button><button data-a="camp">Go to camp</button></div></div></div>
+ <div class="bar"><i id="hpb"></i><span id="hpt"></span></div>
+ <div class="bar m" id="mpw"><i id="mpb"></i><span id="mpt"></span></div>
+ <div class="bar e"><i id="ehb"></i><span id="ent"></span></div>
+ <div class="row sp" style="margin:6px 0"><div class="row" id="spells"></div><div class="row"><button class="s alt" data-a="spd" id="spdb"></button><button class="s alt" data-a="end">End run</button></div></div>
+ <div class="mute">Last drop</div><div id="last"></div><div class="mute" style="margin-top:6px">Loot this run</div><div id="feed"></div>
+</section>
+<section id="camp" hidden>
+ <div class="row sp"><div class="tabs"><button data-a="tab" data-v="g" id="tg">Gear</button><button data-a="tab" data-v="u" id="tu">Upgrades</button><button data-a="tab" data-v="v" id="tv">Vault</button><button data-a="tab" data-v="m" id="tm">Magic</button><button data-a="tab" data-v="p" id="tp">Pets</button><button data-a="tab" data-v="r" id="tr2">Auras</button><button data-a="tab" data-v="i" id="ti">Idle</button><button data-a="tab" data-v="a" id="ta">Ascend</button><button data-a="tab" data-v="l" id="tl">Scores</button><button data-a="tab" data-v="x" id="tx">Account</button></div></div>
+ <div style="margin:8px 0"><button data-a="delve" style="width:100%;font-size:22px;padding:10px;background:var(--btn);border-width:4px;box-shadow:5px 5px 0 var(--ink)">⚔ DELVE</button></div>
+ <div id="sdw" class="row" style="margin:6px 0"></div><div id="cbody"></div><div style="margin:16px 0"><button class="s alt" data-a="reset">Reset save</button></div>
+</section>
+</div>
+<script type="module">
+// x1 / x5 / x10 buying (src/treelist.js buyQty/bulk + the data-a="tr" handler in camp.js).
+const out=[],ck=(n,c,x)=>out.push(n+':'+(c?'ok':'FAIL'+(x!==undefined?'('+x+')':'')));
+window.onerror=(m,u,l)=>out.push('ERR '+m+' @'+String(u).split('/').pop()+':'+l);
+try{
+ localStorage.removeItem('hd-tv');localStorage.removeItem('hd-tl');localStorage.removeItem('hd-bq');
+ await import('/src/main.js');
+ const st=await import('/src/state.js'),cp=await import('/src/camp.js'),tl=await import('/src/treelist.js'),sk=await import('/src/skilltree.js'),sts=await import('/src/stats.js');
+ const KEY='hollow-delve-2',S=()=>st.S,q=s=>document.querySelector(s),L=sts.L;
+ const fresh=(gold)=>{localStorage.removeItem(KEY);st.load();S().gold=gold;st.setMode('camp');cp.view();st.setTab('u');cp.camp()};
+ const buy=(k)=>{q('[data-a=tr][data-v='+k+']').click()};
+ const priceOf=(k,from,n)=>{let t=0;for(let i=0;i<n;i++)t+=Math.round(sk.NODE[k].b*Math.pow(sk.NODE[k].g,from+i));return t};
+ // 1 the selector
+ fresh(1e9);
+ ck('selector-offers-x1-x5-x10',!!q('[data-tq="1"]')&&!!q('[data-tq="5"]')&&!!q('[data-tq="10"]'));
+ ck('default-is-x1',tl.buyQty()===1&&q('[data-tq="1"]').className.indexOf('alt')<0);
+ q('[data-tq="5"]').click();ck('x5-is-remembered',tl.buyQty()===5&&localStorage.getItem('hd-bq')==='5'&&q('[data-tq="5"]').className.indexOf('alt')<0&&q('[data-tq="1"]').className.indexOf('alt')>=0);
+ q('[data-tq="10"]').click();ck('x10-is-remembered',tl.buyQty()===10);
+ localStorage.setItem('hd-bq','7');ck('garbage-quantity-falls-back-to-x1',tl.buyQty()===1);localStorage.removeItem('hd-bq');
+ // 2 buying
+ fresh(1e12);q('[data-tq="1"]').click();let g0=S().gold;buy('might');ck('x1-buys-one-level',L('might')===1&&g0-S().gold===priceOf('might',0,1));
+ fresh(1e12);q('[data-tq="5"]').click();g0=S().gold;buy('might');ck('x5-buys-five-levels-at-the-right-total',L('might')===5&&g0-S().gold===priceOf('might',0,5),L('might')+' '+(g0-S().gold)+' vs '+priceOf('might',0,5));
+ fresh(1e12);q('[data-tq="10"]').click();g0=S().gold;buy('might');ck('x10-buys-ten-levels',L('might')===10&&g0-S().gold===priceOf('might',0,10));
+ // 3 limited by gold
+ fresh(priceOf('might',0,3)+5);q('[data-tq="10"]').click();buy('might');ck('buys-only-what-you-can-afford',L('might')===3&&S().gold===5,L('might')+' gold '+S().gold);
+ fresh(priceOf('might',0,1)-1);q('[data-tq="10"]').click();ck('cannot-afford-even-one-is-disabled',q('[data-a=tr][data-v=might]').disabled===true);
+ // 4 limited by max level
+ const one=Object.values(sk.NODE).find(n=>n.m===1&&Object.keys(n.r).length===0);
+ fresh(1e12);q('[data-tq="10"]').click();if(one){buy(one.k);ck('one-off-unlock-buys-just-one',L(one.k)===1)}
+ const cap=sk.GRAPHS.u.arms.flatMap(a=>a.ks).map(k=>sk.NODE[k]).find(n=>n.m>1&&n.m<=13);
+ if(cap){fresh(1e15);for(const [rk,rv] of Object.entries(cap.r))S().tr[rk]=rv;S().tr[cap.k]=cap.m-2;st.setTab('u');cp.camp();q('[data-tq="10"]').click();buy(cap.k);ck('stops-at-the-maximum-level',L(cap.k)===cap.m,L(cap.k)+'/'+cap.m)}
+ // 5 prerequisites still count
+ const needy=Object.values(sk.NODE).find(n=>Object.keys(n.r).length>0&&!['arcana','mender','frost'].includes(n.k));
+ fresh(1e15);q('[data-tq="10"]').click();const btn=q('[data-a=tr][data-v='+needy.k+']');ck('locked-upgrade-cannot-be-bought-in-bulk',!btn||btn.disabled);
+ // 6 label shows the combined price, in both views
+ fresh(1e12);q('[data-tq="5"]').click();const lbl=q('[data-a=tr][data-v=might]').textContent;ck('list-button-shows-x5-and-total',lbl.startsWith('×5')&&lbl.includes(sts.fmtN(priceOf('might',0,5))),lbl);
+ fresh(1e12);q('[data-tq="1"]').click();ck('x1-label-is-just-the-price',!q('[data-a=tr][data-v=might]').textContent.includes('×'));
+ q('[data-tq="5"]').click();q('[data-tm=web]').click();const node=document.querySelector('.tn[data-k=might]')||document.querySelector('[data-k=might]');ck('web-has-the-selector-too',!!q('[data-tq="10"]'));
+ if(node){node.dispatchEvent(new MouseEvent('click',{bubbles:true}));const pb=q('[data-a=tr][data-v=might]');ck('web-panel-button-shows-x5',!!pb&&pb.textContent.startsWith('×5'),pb&&pb.textContent)}
+ q('[data-tm=list]').click();
+}catch(e){out.push('EXC '+e.message+' | '+(e.stack||'').split('\n')[1])}
+try{localStorage.removeItem('hd-bq')}catch(e){} // leave no preference behind for the other pages
+document.title=out.join(' ');
+</script>
+
+</body></html>

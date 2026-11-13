@@ -3,7 +3,7 @@ import {L,fmtN} from './stats.js';
 import {GRAPHS,MAGIC_K,NODE,NODEC,can,cost,dep} from './skilltree.js';
 import {hasMagic} from './ascension.js';
 import {treeVal} from './gear.js';
-import {treeList,treeMode,viewToggle} from './treelist.js';
+import {treeList,treeMode,viewToggle,buyLabel} from './treelist.js';
 /* ===== SKILL TREE WEB VIEW ===== */
 /* Hub-and-spoke SVG graph. Data lives in GRAPHS (skilltree.js); tapping a node inspects it, the Buy button reuses the data-a="tr" handler. */
 const TV_R=26,TV_HR=36,TV_GAP=150,TV_AR=1.15,TV_WEDGE=110; // TV_WEDGE keeps every arm inside its own 90-degree wedge
@@ -178,7 +178,7 @@ function tvPanel(G,k){
  const i=tvInfo(k),n=i.n,cv=i.l>0?treeVal(k):'';
  const reqs=Object.entries(n.r).map(([q,v])=>{const m=L(q)>=v;return'<span style="color:var('+(m?'--c1':'--hp')+')">'+(m?'✓ ':'✗ ')+NODE[q].n+' '+v+'</span>'}).join(' · ');
  return'<div class="row sp"><b>'+n.n+(n.m>=999?' '+i.l:n.m>1?' '+i.l+'/'+n.m:(i.mx?' ✓':''))+'</b>'
-  +(i.mx?'<span class="mute">Max</span>':'<button class="s" data-a="tr" data-v="'+k+'" '+(i.blocked||S.gold<i.c?'disabled':'')+'>'+fmtN(i.c)+'g</button>')+'</div>'
+  +(i.mx?'<span class="mute">Max</span>':'<button class="s" data-a="tr" data-v="'+k+'" '+(i.blocked||S.gold<i.c?'disabled':'')+'>'+buyLabel(n)+'</button>')+'</div>'
   +'<small>'+n.d+(cv?' — <span style="color:var(--c1)">'+cv+'</span>':'')+'</small>'
   +(reqs?'<small>Needs: '+reqs+'</small>':'')+(i.magic?'<small style="color:var(--hp)">Needs the Arcane Awakening relic</small>':'')}
 

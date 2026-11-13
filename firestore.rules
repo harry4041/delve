@@ -14,15 +14,15 @@ service cloud.firestore {
 
     // Hard ceilings for any entry. A player's FIRST entry is held to the much lower lbStart ceilings, so a brand-new account
     // cannot post an absurd score, and later entries may only climb at a plausible pace (lbGrowth). Numbers come from
-    // tests/career.html: an honest bot reached stage 127, 27 ascensions and power ~5000 after 8 hours of play and never
-    // gained more than +25 stages / +2 ascensions / +2.5k power in 10 minutes. Limits leave roughly 2-3x headroom.
+    // tests/career.html: an honest bot (loot tuned 2026-11-13) reached stage ~180, 10 ascensions and power ~340k after 3 hours of play and never
+    // gained more than +25 stages / +2 ascensions in 10 minutes (power grows fast with gear tiers: up to ~3x in 10 minutes). Limits leave roughly 2-3x headroom.
     function lbShape(d) {
       return d.keys().hasOnly(['v', 'name', 'stage', 'power', 'asc', 'stars', 't'])
         && d.keys().hasAll(['v', 'name', 'stage', 'power', 'asc', 'stars', 't'])
         && d.v == 1
         && d.name is string && d.name.matches("^[A-Za-z0-9 _.'-]{3,18}$")
         && d.stage is int && d.stage >= 0 && d.stage <= 2000
-        && d.power is int && d.power >= 0 && d.power <= 10000000
+        && d.power is int && d.power >= 0 && d.power <= 200000000
         && d.asc is int && d.asc >= 0 && d.asc <= 200
         && d.stars is int && d.stars >= 0 && d.stars <= 200
         && d.t == request.time;
@@ -30,19 +30,19 @@ service cloud.firestore {
 
     // First entry: someone who played a long time offline before joining can still join, but not with a fantasy score.
     function lbStart(d) {
-      return d.stage <= 300 && d.power <= 500000 && d.asc <= 60 && d.stars <= 60;
+      return d.stage <= 300 && d.power <= 5000000 && d.asc <= 60 && d.stars <= 60;
     }
 
     // Later entries (at least 5 minutes apart): stage/asc/stars never fall; each may rise by a small allowance plus a
     // per-minute rate, so a long gap between publishes still allows honest catch-up. Power may swing (it falls after an
-    // ascension) but cannot more than double plus a per-minute allowance.
+    // ascension) but cannot more than quadruple plus a per-minute allowance.
     function lbGrowth(old, d) {
       return request.time > old.t + duration.value(5, 'm')
         && d.stage >= old.stage && d.asc >= old.asc && d.stars >= old.stars
         && d.stage <= old.stage + 20 + (request.time.toMillis() - old.t.toMillis()) / 30000
         && d.asc <= old.asc + 1 + (request.time.toMillis() - old.t.toMillis()) / 240000
         && d.stars <= old.stars + 3 + (request.time.toMillis() - old.t.toMillis()) / 600000
-        && d.power <= (old.power > 20000 ? old.power : 20000) * 2 + (request.time.toMillis() - old.t.toMillis()) / 120;
+        && d.power <= (old.power > 100000 ? old.power : 100000) * 4 + (request.time.toMillis() - old.t.toMillis()) / 120;
     }
 
     function nameOk(n) {

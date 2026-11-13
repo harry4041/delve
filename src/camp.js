@@ -18,6 +18,7 @@ import {tree} from './treeview.js';
 import {cast,die,startRun} from './battle.js';
 import {drawPortrait,hud,magicTab,petTab} from './render.js';
 import {chip} from './assets.js';
+import {buyQty} from './treelist.js';
 import {RELICS,RELIC_MIN_STAGE,relicInfo,ownsRelic,hasRelic} from './relics.js';
 function relicLine(it){const r=relicInfo(it);return r?'<small style="color:#ffd34d;display:block">★ '+r.power+'</small>':''}
 // Collection page: every Mythic Relic, found or still hidden
@@ -120,7 +121,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b
   if(a=='vIn'){const i=S.bag.findIndex(x=>x.id==+v);if(i>=0&&S.vault.length<vaultCap()){S.vault.push(S.bag[i]);S.bag.splice(i,1)}}
   if(a=='vAll'){for(const sl of SL){const it=S.eq[sl];if(it&&S.vault.length<vaultCap()){S.vault.push(it);delete S.eq[sl]}}}
   if(a=='vOut'){const i=S.vault.findIndex(x=>x.id==+v);if(i>=0){S.bag.push(S.vault[i]);S.vault.splice(i,1)}}if(a=='offOk')S.offMsg=null;if(a=='pa'){const p=S.pets[+v];if(p&&p.own&&p.lvl>=pReq(p.star||0)){p.star=(p.star||0)+1;p.lvl=0}}if(a=='qm')S.qmT=Math.max(0,Math.min(L('sorter'),qmT()+ +v));if(a=='sd')S.sd=Math.max(0,Math.min(RL('rStart'),(S.sd||0)+ +v));if(a=='respec'){let t=0;for(const n of RTREE)for(let i=0;i<RL(n.k);i++)t+=Math.max(1,Math.round(n.b*Math.pow(n.g,i)));S.relics+=t;S.rl={};S.sd=0}if(a=='rb'){const n=RT[v],c=rcost(n);if(RL(v)<n.m&&S.relics>=c){S.relics-=c;S.rl[v]=RL(v)+1;if(v=='rMagic')S.magic=true;}}if(a=='tab'){moreOpen=false;setTab(v);if(v!=='g'){setForgeMode(false);setForgeSelected([])}}
-  if(a=='tr'){const n=NODE[v],c=cost(n);const needsMagic=['arcana','mender','frost'].includes(v);if(can(n)&&L(v)<n.m&&S.gold>=c&&(!needsMagic||hasMagic())){S.gold-=c;S.tr[v]=L(v)+1}}
+  if(a=='tr'){const n=NODE[v];const needsMagic=['arcana','mender','frost'].includes(v);if(n&&can(n)&&(!needsMagic||hasMagic())){for(let i=0,q=buyQty();i<q&&L(v)<n.m;i++){const c=cost(n);if(!(S.gold>=c))break;S.gold-=c;S.tr[v]=L(v)+1}}}
   
   if(a=='magic'&&!hasMagic()&&S.gold>=300&&S.best>=6){S.gold-=300;S.magic=true}
   if(a=='bp'&&PET[v]&&S.pets[v]&&!S.pets[v].own&&S.gold>=PET[v].cost){farmSettle();S.gold-=PET[v].cost;S.pets[v].own=1;S.ap=+v}if(a=='ap'){farmSettle();S.ap=+v}if(a=='farmCollect'){const fc=farmCollect();if(fc.gold||fc.gems)toast('Collected '+fmtN(fc.gold)+' gold'+(fc.gems?' and '+fc.gems+' gems':'')+' from the farm')}

@@ -14,6 +14,16 @@ const emit = () => window.dispatchEvent(new CustomEvent('hd-tree'));
 
 export function treeMode() { try { return localStorage.getItem(MODE) === 'web' ? 'web' : 'list'; } catch (e) { return 'list'; } } // list is the default
 export function setTreeMode(m) { try { localStorage.setItem(MODE, m === 'web' ? 'web' : 'list'); } catch (e) { /* ignore */ } }
+const QTY = 'hd-bq'; // how many levels one Buy press gets: 1, 5 or 10 (a per-device preference, not part of the save)
+export function buyQty() { try { const v = +localStorage.getItem(QTY); return v === 5 || v === 10 ? v : 1; } catch (e) { return 1; } }
+export function setBuyQty(q) { try { localStorage.setItem(QTY, String(q === 5 || q === 10 ? q : 1)); } catch (e) { /* ignore */ } }
+// What a Buy press would do right now: up to the chosen quantity, stopping at the maximum level or when gold runs out. cnt = levels, tot = their total price.
+export function bulk(n) {
+  const q = buyQty(), l = L(n.k); let cnt = 0, tot = 0;
+  for (let i = 0; i < q && l + i < n.m; i++) { const c = Math.round(n.b * Math.pow(n.g, l + i)); if (!Number.isFinite(c) || S.gold < tot + c) break; tot += c; cnt++; }
+  return { cnt, tot };
+}
+export function buyLabel(n) { const b = bulk(n); return b.cnt > 1 ? '×' + b.cnt + ' · ' + fmtN(b.tot) + 'g' : fmtN(cost(n)) + 'g'; }
 const defaults = { f: 'all', s: 'tree', locked: true }; // filter: all | buy | owned; sort: tree | cost; locked: show the upgrades that are not available yet (default: yes)
 function opts() { try { const o = JSON.parse(localStorage.getItem(OPTS) || '{}'); return { ...defaults, ...(['all', 'buy', 'owned'].includes(o.f) ? { f: o.f } : {}), ...(o.s === 'cost' ? { s: 'cost' } : {}), ...(o.locked === false ? { locked: false } : {}) }; } catch (e) { return { ...defaults }; } }
 function setOpts(o) { try { localStorage.setItem(OPTS, JSON.stringify(o)); } catch (e) { /* ignore */ } }
@@ -32,11 +42,12 @@ function row(it, col) {
   return '<div class="it tl' + (aff ? ' aff' : '') + (blocked && !l ? ' lk' : '') + '" style="border-left:4px solid var(' + col + ');padding-left:8px">'
     + '<div style="min-width:0"><b>' + esc(n.n) + '</b> <span class="mute">' + lvl + '</span><small>' + esc(n.d) + (eff ? ' <span style="color:var(--c1)">' + esc(eff) + '</span>' : '')
     + (need ? '<br><span style="color:var(--hp)">' + need + '</span>' : '') + '</small></div>'
-    + '<div class="row" style="flex:none">' + (mx ? '<span class="mute">Max</span>' : '<button class="s' + (aff ? '' : ' alt') + '" data-a="tr" data-v="' + k + '"' + (blocked || S.gold < c ? ' disabled' : '') + '>' + fmtN(c) + 'g</button>') + '</div></div>';
+    + '<div class="row" style="flex:none">' + (mx ? '<span class="mute">Max</span>' : '<button class="s' + (aff ? '' : ' alt') + '" data-a="tr" data-v="' + k + '"' + (blocked || S.gold < c ? ' disabled' : '') + '>' + buyLabel(n) + '</button>') + '</div></div>';
 }
 
 export function viewToggle(mode) {
-  return '<div class="tabs" style="margin:0 0 8px"><button class="s' + (mode === 'list' ? '' : ' alt') + '" data-tm="list">List</button><button class="s' + (mode === 'web' ? '' : ' alt') + '" data-tm="web">Web</button></div>';
+  return '<div class="tabs" style="margin:0 0 8px"><button class="s' + (mode === 'list' ? '' : ' alt') + '" data-tm="list">List</button><button class="s' + (mode === 'web' ? '' : ' alt') + '" data-tm="web">Web</button>'
+    + '<span class="mute" style="margin:0 4px 0 12px">Buy</span>' + [1, 5, 10].map((q) => '<button class="s' + (buyQty() === q ? '' : ' alt') + '" data-tq="' + q + '" aria-label="Buy ' + q + ' at a time">x' + q + '</button>').join('') + '</div>';
 }
 
 export function treeList(G) {
@@ -78,6 +89,8 @@ document.addEventListener('click', (e) => {
   if (!t) return;
   const m = t.closest('[data-tm]');
   if (m) { setTreeMode(m.dataset.tm); emit(); return; }
+  const bq = t.closest('[data-tq]');
+  if (bq) { setBuyQty(+bq.dataset.tq); emit(); return; }
   const f = t.closest('[data-tf]');
   if (f) { setOpts({ ...opts(), f: f.dataset.tf }); emit(); return; }
   const s = t.closest('[data-ts]');

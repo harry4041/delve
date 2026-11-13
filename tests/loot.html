@@ -32,7 +32,7 @@ try{
  const click=(a,v)=>{const b=document.createElement('button');b.dataset.a=a;if(v!==undefined)b.dataset.v=v;document.body.appendChild(b);b.click();b.remove()};
  const L0={...lc.LOOT,stb:[...lc.LOOT.stb]};
  // 1 the chosen tuning and the tier ladder
- ck('tuning-is-the-chosen-one',lc.LOOT.stb[0]===4.5&&lc.LOOT.stb[1]===.225&&lc.LOOT.top===.6&&lc.LOOT.dg===.022,JSON.stringify(lc.LOOT));
+ ck('tuning-is-the-chosen-one',lc.LOOT.stb[0]===3&&lc.LOOT.stb[1]===.1&&lc.LOOT.top===.6&&lc.LOOT.dg===.04,JSON.stringify(lc.LOOT));
  let mono=true;for(let n=1;n<80;n++)if(as.STB(n)<=as.STB(n-1))mono=false;ck('tier-ladder-is-strictly-increasing',mono&&as.STB(0)===1);
  fresh();ck('uncommon-appears-inside-the-first-life',as.tierStage(1)>=10&&as.tierStage(1)<=22,as.tierStage(1));
  ck('rare-and-epic-are-reachable-in-a-normal-life',as.tierStage(2)<=40&&as.tierStage(3)<=65&&as.tierStage(4)<=95,[2,3,4].map(r=>as.tierStage(r)).join('/'));

@@ -27,6 +27,7 @@ ck('start ceilings themselves are allowed', allow(null, E(s0, p0, a0, r0)));
 { let o = E(0, 300, 0, 0), ok = true, worst = 1e9; const dt = 600e3;
   for (let i = 0; i < 60; i++) { const d = { stage: o.stage + 25, power: o.power + 2500, asc: o.asc + 2, stars: o.stars + 1 }; if (!allow(o, d, dt)) { ok = false; break } worst = Math.min(worst, 1); o = d; }
   ck('sustained worst-case honest pace for 10 h passes', ok, ok ? '(ends at stage ' + o.stage + ')' : 'blocked at stage ' + o.stage); }
+ck('honest power burst: x3 in 10 min from 120k (tier jumps) passes', allow(E(100, 120000, 10, 0), E(125, 360000, 12, 0), 600e3));
 ck('honest catch-up after 8 h offline (stage +60, asc +4, power x1.5)', allow(E(100, 3000, 20, 0), E(160, 4500, 24, 0), 8 * 3600e3));
 ck('power falls after an ascension (allowed)', allow(E(100, 5000, 20, 2), E(100, 40, 21, 2), 600e3));
 ck('stage can never go down', !allow(E(100, 5000, 20, 2), E(99, 5000, 20, 2), 600e3));
