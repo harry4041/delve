@@ -183,7 +183,7 @@ function tvPanel(G,k){
   +(reqs?'<small>Needs: '+reqs+'</small>':'')+(i.magic?'<small style="color:var(--hp)">Needs the Arcane Awakening relic</small>':'')}
 
 // The Upgrades/Magic/Pets tabs call tree(G): the List view (default) or the Web, with a toggle above both.
-export function tree(G){const mode=treeMode();return viewToggle(mode)+(mode==='web'?webTree(G):treeList(G))}
+export function tree(G,qty=true){const mode=treeMode();return viewToggle(mode,qty)+(mode==='web'?webTree(G):treeList(G))}
 function webTree(G){
  const st=tvState(G);if(!st.vb)st.vb=tvStart(G);
  return'<div class="tvroot" id="tv_'+G.id+'"><div class="tvw" data-g="'+G.id+'">'+tvSvg(G,st)

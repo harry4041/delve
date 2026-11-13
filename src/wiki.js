@@ -7,6 +7,11 @@ import { RTREE, STB, reqStage, ascFee } from './ascension.js';
 
 // ---------------------------------------------------------------- changelog (add new entries at the TOP; `id` must be unique)
 export const CHANGELOG = [
+  { id: '2026-11-13i', date: '2026-11-13', title: 'Leaderboard fixes, bulk buying on Magic and Pets', items: [
+    'You can join (or rejoin) the leaderboards at any time, however far you have got. There is no longer a limit on the scores a new entry may start with.',
+    'Leaderboard entries keep up with fast progress. If your scores jump faster than one update allows, your entry climbs a step with each update until it shows your real scores.',
+    'The x1/x5/x10 buttons now sit at the top of the Magic and Pets tabs, and they also set how many levels a pet level-up buys.',
+  ] },
   { id: '2026-11-13h', date: '2026-11-13', title: 'Seven more Mythic Relics', items: [
     'Seven new relics, each with its own art and power: Crown of the Drowned King (kills heal 10%), Stormcaller Gauntlets (crits call lightning), Rimeplate Greaves (every 6th hit freezes), Windrunner Boots (+25% attack speed), Midas Locket (+60% gold), Eye of the Seer (+20% crit) and Voidreaver Axe (triple damage on enemies under 25% health). Ten relics in all.',
     'You cannot miss a drop now: a big gold banner appears when one drops, the Gear tab gets a star and a notice with an Equip button, the defeat screen mentions it, and selling a relic takes two taps.',
@@ -277,7 +282,7 @@ function online() {
   return h('Accounts and cloud saves')
     + p('You need an account to play: sign in with your email and password (or create an account) when the game opens, and you stay signed in on that device. Verify your email (Account tab) to turn on cloud saves, then your progress follows you between devices. Your game always saves on the device first; the cloud copy is updated every few minutes and when you leave the page. If two devices disagree you are asked which one to keep.')
     + h('Leaderboards')
-    + p('The Leaderboards tab lists the top players for deepest stage, power level, ascensions and pet stars. To appear on it you must be signed in with a verified email and have chosen a <b>username</b> on the Account tab (3 to 18 letters, numbers, dots, dashes or underscores; every username is unique). Joining is then one tap. Only your username and four scores are shown, never your email. Scores come from each player\'s own game, so impossible entries may be removed. You can leave the boards at any time.')
+    + p('The Leaderboards tab lists the top players for deepest stage, power level, ascensions and pet stars. To appear on it you must be signed in with a verified email and have chosen a <b>username</b> on the Account tab (3 to 18 letters, numbers, dots, dashes or underscores; every username is unique). Joining is then one tap. Only your username and four scores are shown, never your email. Scores come from each player\'s own game, so impossible entries may be removed. You can leave the boards and join again at any time, however far you have got. If your scores rise faster than one update allows, your entry climbs with each update until it shows your real scores.')
     + h('Gifts')
     + p('Sometimes we send gifts (gold, gems or items) to everyone or to one player. They are collected automatically after signing in, or with the button on the Account tab, and each can only be claimed once.');
 }

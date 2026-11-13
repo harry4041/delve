@@ -108,5 +108,6 @@ try{
   ck('auth-never-answering-falls-back-to-the-form-with-a-note',gated()&&!!g$('#g-form')&&gate().textContent.includes('could not restore'));
  }
 }catch(e){out.push('EXC '+e.message+' | '+(e.stack||'').split(String.fromCharCode(10))[1])}
+try{localStorage.removeItem('hd-owner');localStorage.removeItem('hollow-delve-2-other-account');localStorage.removeItem('hd-cloud')}catch(e){} // leave no device owner behind: a later page signing in as another uid would see its save set aside
 document.title=out.join(' ');
 </script></body></html>

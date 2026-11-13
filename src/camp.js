@@ -130,7 +130,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b
   
   if(a=='magic'&&!hasMagic()&&S.gold>=300&&S.best>=6){S.gold-=300;S.magic=true}
   if(a=='bp'&&PET[v]&&S.pets[v]&&!S.pets[v].own&&S.gold>=PET[v].cost){farmSettle();S.gold-=PET[v].cost;S.pets[v].own=1;S.ap=+v}if(a=='ap'){farmSettle();S.ap=+v}if(a=='farmCollect'){const fc=farmCollect();if(fc.gold||fc.gems)toast('Collected '+fmtN(fc.gold)+' gold'+(fc.gems?' and '+fc.gems+' gems':'')+' from the farm')}
-  if(a=='pl'&&S.gold>=petLc(+v)){S.gold-=petLc(+v);S.pets[v].lvl++}
+  if(a=='pl'&&PET[v]&&S.pets[v]&&S.pets[v].own){for(let i=0,q=buyQty();i<q;i++){const c=petLc(+v);if(!(S.gold>=c))break;S.gold-=c;S.pets[v].lvl++}} // levels up to the x1/x5/x10 buy quantity
   if(a=='upAura'){const aur=AURAS.find(x=>x.k===v),lv=S.auras&&S.auras[v];if(aur&&lv){const c=auraUpCost(aur);if((S.gems||0)>=c){S.gems-=c;S.auras[v]=lv+1}}}
   if(a=='buyAura'){const aur=AURAS.find(x=>x.k===v);if(aur&&!auraOwned(v)&&(S.gems||0)>=aur.gems){S.gems-=aur.gems;S.auras=S.auras||{};S.auras[v]=1}}
   {const sy=window.scrollY;save();camp();if(a=='tr')window.scrollTo(0,sy)}}});

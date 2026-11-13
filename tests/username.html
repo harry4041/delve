@@ -102,8 +102,10 @@ try{
  // 10 the leaderboard follows the username
  reset();await T.onUser(user(true));await settle();await un.claimUsername('Harry');S().lbName='Harry';S().bestOverall=12;S().best=12;
  ck('join-publishes-the-username',(await lb.publish(true))==='published'&&docs.get('lb/u1').name==='Harry');
+ docs.get('lb/u1').t=Date.now()-600e3;lb.resetPublishState(); // the rules allow one write per 5 minutes: let that gap pass (the fake server time is 0)
  await un.claimUsername('Henry');await sleep(250);
  ck('renaming-while-on-the-boards-renames-the-entry',S().lbName==='Henry'&&docs.get('lb/u1').name==='Henry'&&docs.get('lb/u1').stage===12,JSON.stringify(docs.get('lb/u1')));
+ S().username='Hal';S().lbName='Hal';const rr=await lb.publish(true);ck('a-rename-right-after-a-write-is-scheduled-not-refused',rr==='scheduled'&&docs.get('lb/u1').name==='Henry',rr);lb.resetPublishState();S().username='Henry';S().lbName='Henry';
  S().username='';S().lbName='Henry';lb.resetPublishState();ck('no-username-means-no-publish',(await lb.publish(true))==='skipped');
  const nm=lb.snapshot().name;S().username='Zed';ck('snapshot-uses-the-username-as-the-name',lb.snapshot().name==='Zed'&&nm==='Henry');
 }catch(e){out.push('EXC '+e.message+' | '+(e.stack||'').split(String.fromCharCode(10))[1])}

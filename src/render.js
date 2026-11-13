@@ -7,7 +7,8 @@ import {$,PET,RC,S,SP,mode,run,save} from './state.js';
 import {activeAuras} from './auras.js';
 import {L,fmtN,mpMax,pReq,petStars,stats} from './stats.js';
 import {GRAPHS} from './skilltree.js';
-import {hasMagic,hasSp,maxSpd,petLc} from './ascension.js';
+import {hasMagic,hasSp,maxSpd,petLc,petBulk} from './ascension.js';
+import {qtyBar,buyQty} from './treelist.js';
 import {tree} from './treeview.js';
 import {ename,tick} from './battle.js';
 import {delveAgain} from './camp.js';
@@ -216,16 +217,16 @@ function eqFromDrops(d){const e={},best=(k,it)=>{if(!e[k]||it.ri>e[k].ri)e[k]=it
  am.sort((a,b)=>b.ri-a.ri).slice(0,3).forEach((it,i)=>{e['amu'+(i+1)]=it});hands.sort((a,b)=>b.ri-a.ri);
  const w=hands.find(i=>i.ty=='weapon'),sh=hands.find(i=>i.ty=='shield');if(w)e.rhand=w;if(sh)e.lhand=sh;else{const w2=hands.find(i=>i.ty=='weapon'&&i!==w);if(w2)e.lhand=w2}
  return e}
-export function petTab(){if(!L('den'))return '<div class="box"><b>Pets</b><div class="mute" style="margin-top:6px">Unlock the Pet den below to adopt companions.</div></div>'+tree(GRAPHS.p);
- let h='<div class="box"><div class="row sp"><b>Companions</b><span class="mute">Stars: '+petStars()+'</span></div><div class="mute" style="margin:6px 0">Ascend a pet at its required level to give it a star. Each star makes that pet hit 60% harder and gives your hero +1.5% damage and gold. Ascending resets the pet level, but stars are permanent and survive your own ascensions.</div>';
- h+=PET.map((P,i)=>{const p=S.pets[i],st=p.star||0,lc=petLc(i),req=pReq(st);return '<div class="it"><div><b style="color:'+P.c+'">'+P.n+'</b>'+(p.own?' lv'+p.lvl+(st?' '+'★'.repeat(Math.min(st,8))+(st>8?'+'+(st-8):''):''):'')+'<small><b>'+P.ab+'</b> ('+P.tag+'): '+(p.own?petInfo(i):P.desc)+'<br>Hits for '+Math.round(P.d*(1+.3*p.lvl+.25*L('bond'))*(1+.6*st)*100)+'% of your attack every '+P.iv+'s'+(p.own?' · ascends at lv'+req:'')+'</small></div><div class="row">'+(p.own?'<button class="s'+(S.ap==i?'':' alt')+'" data-a="ap" data-v="'+i+'">'+(S.ap==i?'Active':'Send')+'</button><button class="s" data-a="pl" data-v="'+i+'" '+(S.gold<lc?'disabled':'')+'>'+fmtN(lc)+'g</button>'+(p.lvl>=req?'<button class="s" data-a="pa" data-v="'+i+'">Ascend ★</button>':''):'<button class="s" data-a="bp" data-v="'+i+'" '+(S.gold<P.cost?'disabled':'')+'>'+fmtN(P.cost)+'g</button>')+'</div></div>'}).join('')+'</div>';return h+farmHtml()+'<h2>Pet skills</h2>'+tree(GRAPHS.p)}
-export function magicTab(){const on=hasMagic();let h='<div class="box"><div class="px" style="font-size:9px;margin-bottom:6px">Magic</div>';
+export function petTab(){if(!L('den'))return qtyBar()+'<div class="box"><b>Pets</b><div class="mute" style="margin-top:6px">Unlock the Pet den below to adopt companions.</div></div>'+tree(GRAPHS.p,false);
+ let h=qtyBar()+'<div class="box"><div class="row sp"><b>Companions</b><span class="mute">Stars: '+petStars()+'</span></div><div class="mute" style="margin:6px 0">Ascend a pet at its required level to give it a star. Each star makes that pet hit 60% harder and gives your hero +1.5% damage and gold. Ascending resets the pet level, but stars are permanent and survive your own ascensions.</div>';
+ const pq=buyQty();h+=PET.map((P,i)=>{const p=S.pets[i],st=p.star||0,lc=petLc(i),req=pReq(st),pb=p.own?petBulk(i,pq):{cnt:0};return '<div class="it"><div><b style="color:'+P.c+'">'+P.n+'</b>'+(p.own?' lv'+p.lvl+(st?' '+'★'.repeat(Math.min(st,8))+(st>8?'+'+(st-8):''):''):'')+'<small><b>'+P.ab+'</b> ('+P.tag+'): '+(p.own?petInfo(i):P.desc)+'<br>Hits for '+Math.round(P.d*(1+.3*p.lvl+.25*L('bond'))*(1+.6*st)*100)+'% of your attack every '+P.iv+'s'+(p.own?' · ascends at lv'+req:'')+'</small></div><div class="row">'+(p.own?'<button class="s'+(S.ap==i?'':' alt')+'" data-a="ap" data-v="'+i+'">'+(S.ap==i?'Active':'Send')+'</button><button class="s" data-a="pl" data-v="'+i+'" '+(S.gold<lc?'disabled':'')+'>'+(pb.cnt>1?'×'+pb.cnt+' · '+fmtN(pb.tot):fmtN(lc))+'g</button>'+(p.lvl>=req?'<button class="s" data-a="pa" data-v="'+i+'">Ascend ★</button>':''):'<button class="s" data-a="bp" data-v="'+i+'" '+(S.gold<P.cost?'disabled':'')+'>'+fmtN(P.cost)+'g</button>')+'</div></div>'}).join('')+'</div>';return h+farmHtml()+'<h2>Pet skills</h2>'+tree(GRAPHS.p,false)}
+export function magicTab(){const on=hasMagic();let h=qtyBar()+'<div class="box"><div class="px" style="font-size:9px;margin-bottom:6px">Magic</div>';
  if(!on)h+='<div class="mute">Spellcasting is locked. Buy the <b>Arcane Awakening</b> relic in the Ascend tab (5 relics) to unlock Fireball. Skills appear in the tree below as you unlock them.</div>';
  else{const st=stats(),pow=1+.2*L('arcana'),cdm=Math.pow(.97,L('spCdr')),row=(a,b)=>'<div class="row sp"><span class="mute">'+a+'</span><b>'+b+'</b></div>';
   h+=row('Max mana',mpMax())+row('Mana regen',(3+L('arcana')*.5+L('spRegen')*.4+st.mpr).toFixed(1)+' per second')+row('Cooldowns','x'+Math.round(cdm*100)+'%')+row('Spell crit',L('spCrit')?'yes, uses your crit chance':'locked')+row('Echo chance',Math.min(50,L('spEcho')*3)+'%');
   const info=[i=>'about '+fmtN(Math.round((st.atk*3+20)*pow*(1+.25*L('spFirePow'))))+' damage at stage 10'+(L('spBurn')?', plus a burn':''),i=>'heals '+fmtN(Math.round(st.hp*.35*(1+.08*L('spHeal'))))+' health',i=>'stuns for '+(3+L('arcana')*.2+L('spFrostDur')*.5).toFixed(1)+' s'+(L('spShatter')?', enemy takes +'+(L('spShatter')*10)+'% damage':''),i=>'about '+fmtN(Math.round((st.atk*6+40)*pow*(1+.25*L('spFirePow'))))+' damage at stage 10'];
   h+='<div style="margin-top:8px">'+SP.map((sp,i)=>hasSp(i)?'<div class="it"><div><b>'+sp.n+'</b><small>'+sp.c+' mana, '+(sp.cd*cdm).toFixed(1)+' s cooldown, '+info[i](i)+'</small></div></div>':'<div class="it mute"><div><b>'+sp.n+'</b><small>Locked</small></div></div>').join('')+'</div>'}
- return h+'</div><h2>Skill tree</h2>'+tree(GRAPHS.m)}
+ return h+'</div><h2>Skill tree</h2>'+tree(GRAPHS.m,false)}
 export function drawPortrait(n){n=n||0;const c=document.getElementById('pv');if(!c)return;g=c.getContext('2d');
  try{g.setTransform(4,0,0,4,0,0);g.imageSmoothingEnabled=false;R(0,0,48,40,'#0c0912');
   for(let a=0;a<7;a++)for(let q=-1;q<5;q++)R(q*12+(a%2?6:0),a*6,11,5,(q+a)%3?'#17121f':'#1f1829');

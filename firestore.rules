@@ -4,45 +4,40 @@ rules_version = '2';
 // a server-stamped time, and at most one write per 60 s (cost/abuse control, enforced server-side).
 // gifts/global and gifts/<uid>: read-only for players; you create them in the Firebase console.
 // lb/<uid>: the public leaderboard entry of a player who opted in (see leaderboard.js). Anyone may read (max 50 rows per
-// query); only the verified owner may write: a modest first entry (lbStart), then values that never go down and rise at a
-// plausible pace (lbGrowth).
+// query); only the verified owner may write: any first entry within the hard caps (no start ceiling, so a veteran can join or
+// rejoin at any time), then values that never go down and rise at a plausible pace (lbGrowth).
 // usernames/<lowercase name> and users/<uid>: see username.js. A leaderboard entry's name must equal its owner's username.
 // banned/<uid>: create a document here in the console to stop an account publishing (delete lb/<uid> to remove its entry).
 // These rules cannot prove a score is real: the game runs in the player's browser.
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Hard ceilings for any entry. A player's FIRST entry is held to the much lower lbStart ceilings, so a brand-new account
-    // cannot post an absurd score, and later entries may only climb at a plausible pace (lbGrowth). Numbers come from
-    // tests/career.html: an honest bot (loot tuned 2026-11-13) reached stage ~180, 10 ascensions and power ~340k after 3 hours of play and never
-    // gained more than +25 stages / +2 ascensions in 10 minutes (power grows fast with gear tiers: up to ~3x in 10 minutes). Limits leave roughly 2-3x headroom.
+    // Hard ceilings for any entry (src/leaderboard.js LB.cap must match; tests/lb-rules-model.mjs checks it). The client trims its
+    // scores to these, so a long-lived player is never locked out. Pace numbers come from tests/career.html (2026-11-13, ten relics):
+    // an honest bot reached stage ~170 in 1 h and ~330 in 5.5 h, rose at most +55 stages and +9M power in 10 minutes, and
+    // reached power ~44M; limits leave roughly 2-3x headroom.
     function lbShape(d) {
       return d.keys().hasOnly(['v', 'name', 'stage', 'power', 'asc', 'stars', 't'])
         && d.keys().hasAll(['v', 'name', 'stage', 'power', 'asc', 'stars', 't'])
         && d.v == 1
         && d.name is string && d.name.matches("^[A-Za-z0-9 _.'-]{3,18}$")
-        && d.stage is int && d.stage >= 0 && d.stage <= 2000
-        && d.power is int && d.power >= 0 && d.power <= 200000000
-        && d.asc is int && d.asc >= 0 && d.asc <= 200
-        && d.stars is int && d.stars >= 0 && d.stars <= 200
+        && d.stage is int && d.stage >= 0 && d.stage <= 100000
+        && d.power is int && d.power >= 0 && d.power <= 1000000000000000
+        && d.asc is int && d.asc >= 0 && d.asc <= 10000
+        && d.stars is int && d.stars >= 0 && d.stars <= 10000
         && d.t == request.time;
-    }
-
-    // First entry: someone who played a long time offline before joining can still join, but not with a fantasy score.
-    function lbStart(d) {
-      return d.stage <= 300 && d.power <= 5000000 && d.asc <= 60 && d.stars <= 60;
     }
 
     // Later entries (at least 5 minutes apart): stage/asc/stars never fall; each may rise by a small allowance plus a
     // per-minute rate, so a long gap between publishes still allows honest catch-up. Power may swing (it falls after an
-    // ascension) but cannot more than quadruple plus a per-minute allowance.
+    // ascension) but cannot grow more than tenfold plus a per-second allowance.
     function lbGrowth(old, d) {
       return request.time > old.t + duration.value(5, 'm')
         && d.stage >= old.stage && d.asc >= old.asc && d.stars >= old.stars
-        && d.stage <= old.stage + 20 + (request.time.toMillis() - old.t.toMillis()) / 30000
-        && d.asc <= old.asc + 1 + (request.time.toMillis() - old.t.toMillis()) / 240000
-        && d.stars <= old.stars + 3 + (request.time.toMillis() - old.t.toMillis()) / 600000
-        && d.power <= (old.power > 100000 ? old.power : 100000) * 4 + (request.time.toMillis() - old.t.toMillis()) / 120;
+        && d.stage <= old.stage + 50 + (request.time.toMillis() - old.t.toMillis()) / 6000
+        && d.asc <= old.asc + 2 + (request.time.toMillis() - old.t.toMillis()) / 120000
+        && d.stars <= old.stars + 5 + (request.time.toMillis() - old.t.toMillis()) / 300000
+        && d.power <= (old.power > 1000000 ? old.power : 1000000) * 10 + (request.time.toMillis() - old.t.toMillis()) / 1;
     }
 
     function nameOk(n) {
@@ -85,7 +80,7 @@ service cloud.firestore {
         && !exists(/databases/$(database)/documents/banned/$(uid))
         && lbShape(request.resource.data)
         && request.resource.data.name == get(/databases/$(database)/documents/users/$(uid)).data.name // an entry may only use its owner's username
-        && (resource == null ? lbStart(request.resource.data) : lbGrowth(resource.data, request.resource.data));
+        && (resource == null || lbGrowth(resource.data, request.resource.data));
       allow delete: if request.auth != null && request.auth.uid == uid;
     }
 

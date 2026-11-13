@@ -10,6 +10,7 @@ import { cloudState, withFirebase, setAfterSync, setAfterPush, cloudErr } from '
 import { lbTab as runsTab } from './vault-leaderboard.js';
 import { toast } from './toast.js';
 import { validUsername, onUsernameChange } from './username.js';
+import { LB, lbClamp, tMs } from './lbrules.js';
 
 export const BOARDS = [
   { k: 'stage', n: 'Deepest stage', f: 'stage', unit: 'stage' },
@@ -27,9 +28,9 @@ export function snapshot() {
   return { v: 1, name: S.username || S.lbName, stage: Math.max(0, Math.floor(S.bestOverall || S.best || 0)), power: Math.max(0, Math.floor(powerLevel())), asc: Math.max(0, Math.floor(S.asc || 0)), stars: Math.max(0, Math.floor(petStars())) };
 }
 
-let lastSig = '', lastAt = 0, known = null; // known: this account's entry as last read or written; stage/asc/stars in it can never fall (firestore.rules)
+let lastSig = '', lastAt = 0, known = null, catchingUp = false, retryT = 0; // known: this account's entry as last read or written; stage/asc/stars in it can never fall (firestore.rules)
 try { lastAt = +localStorage.getItem(AT) || 0; } catch (e) { /* ignore */ }
-export function resetPublishState() { lastSig = ''; lastAt = 0; known = null; } // for tests and for switching accounts
+export function resetPublishState() { lastSig = ''; lastAt = 0; known = null; catchingUp = false; clearTimeout(retryT); } // for tests and for switching accounts
 export async function publish(force) {
   const c = cloudState();
   if (!c.user || !c.user.verified || !S.lbName || !S.username) return 'skipped'; // the entry's name must be the player's username (firestore.rules)
@@ -39,11 +40,17 @@ export async function publish(force) {
   // The rules never let stage, ascensions or pet stars fall, so after a "Reset save" (or on a second device) publish the best of what is
   // already on the board and what this save has: a reset game keeps its old leaderboard entry until it overtakes it.
   if (!known || known.uid !== c.user.uid) { const d = await F.getDoc(ref); known = { uid: c.user.uid, ...(d.exists() ? d.data() : {}) }; }
-  const m = { ...e, stage: Math.max(e.stage, known.stage || 0), asc: Math.max(e.asc, known.asc || 0), stars: Math.max(e.stars, known.stars || 0) };
+  const had = known.stage !== undefined, dt = Date.now() - tMs(known.t);
+  if (had && dt < LB.gap + LB.skew) { // the rules refuse writes closer than 5 minutes: a rename waits for the gap instead of failing
+    if (force && known.name !== e.name) { clearTimeout(retryT); retryT = setTimeout(() => publish(true).catch(() => {}), LB.gap + LB.skew - dt + 1000); return 'scheduled'; }
+    return 'skipped';
+  }
+  const m = lbClamp(e, had ? known : null, dt);
   if (!force && ['name', 'stage', 'power', 'asc', 'stars'].every((k) => m[k] === known[k])) { lastSig = sig; return 'skipped'; } // nothing new to say: save a write
   await F.setDoc(ref, { ...m, t: F.serverTimestamp() });
-  known = { uid: c.user.uid, ...m };
-  lastSig = sig; lastAt = Date.now();
+  known = { uid: c.user.uid, ...m, t: Date.now() };
+  catchingUp = ['stage', 'power', 'asc', 'stars'].some((k) => m[k] < Math.min(e[k], LB.cap[k]));
+  lastSig = catchingUp ? '' : sig; lastAt = catchingUp ? Date.now() - PUBLISH_EVERY + LB.gap + LB.skew + 5000 : Date.now(); // still catching up: try again as soon as the rules allow
   try { localStorage.setItem(AT, String(lastAt)); } catch (err) { /* ignore */ }
   return 'published';
 }
@@ -71,7 +78,7 @@ function pubErr(e) {
   const c = cloudState(), wait = 5 * 60e3 - (Date.now() - lastAt);
   if (c.user && !c.user.verified) return 'Verify your email on the Account tab to join the leaderboards.';
   if (wait > 0) return 'Entries can only be updated every 5 minutes. Please try again in about ' + Math.ceil(wait / 60e3) + ' min.';
-  return 'The leaderboard did not accept these scores. A new entry can start at up to stage 300, power 500,000, 60 ascensions and 60 pet stars, and scores can only rise at a realistic pace. Try again in a few minutes.';
+  return 'The leaderboard did not accept this update. Please try again in a few minutes.';
 }
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const medal = (i) => (i === 0 ? '#ffd34d' : i === 1 ? '#cfd6e6' : i === 2 ? '#d9955a' : 'var(--mute)');
@@ -88,7 +95,7 @@ function joinBlock() {
     return '<div class="row sp"><span>Join as <b>' + esc(S.username) + '</b></span><button class="s" data-lbl="join">Join</button></div>'
       + '<div class="mute" style="margin-top:4px">Only your username and four scores are shown, never your email.</div>';
   }
-  return '<div class="row sp"><span>On the boards as <b>' + esc(S.lbName) + '</b></span><span class="row"><button class="s alt" data-lbr="refresh">Refresh</button><button class="s alt" data-lbl="leave">Leave</button></span></div>';
+  return (catchingUp ? '<div class="mute" style="margin-bottom:4px">Your entry is catching up to your real scores; it climbs with each update.</div>' : '') + '<div class="row sp"><span>On the boards as <b>' + esc(S.lbName) + '</b></span><span class="row"><button class="s alt" data-lbr="refresh">Refresh</button><button class="s alt" data-lbl="leave">Leave</button></span></div>';
 }
 function boardTable(b) {
   const c = cache[b.k];

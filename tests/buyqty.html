@@ -60,6 +60,18 @@ try{
  q('[data-tq="5"]').click();q('[data-tm=web]').click();const node=document.querySelector('.tn[data-k=might]')||document.querySelector('[data-k=might]');ck('web-has-the-selector-too',!!q('[data-tq="10"]'));
  if(node){node.dispatchEvent(new MouseEvent('click',{bubbles:true}));const pb=q('[data-a=tr][data-v=might]');ck('web-panel-button-shows-x5',!!pb&&pb.textContent.startsWith('×5'),pb&&pb.textContent)}
  q('[data-tm=list]').click();
+ // 7 Magic and Pets tabs: the chips sit at the top of the tab (once), and pet level-ups follow the quantity
+ const asc=await import('/src/ascension.js');
+ const tabFresh=(t,gold)=>{fresh(gold);S().tr.den=1;S().pets[0].own=1;S().pets[0].lvl=0;S().ap=0;st.setTab(t);cp.camp()};
+ for(const t of ['m','p']){tabFresh(t,1e12);const body=q('#cbody'),chips=body.querySelectorAll('[data-tq="5"]'),first=body.querySelector('button');
+  ck('tab-'+t+'-has-the-selector-once-at-the-top',chips.length===1&&first&&first.dataset.tq==='1',chips.length+' '+(first&&first.outerHTML.slice(0,60)));}
+ tabFresh('p',1e12);q('[data-tq="5"]').click();
+ const pc=n=>{let t=0;for(let i=0;i<n;i++)t+=asc.petLc(0,i);return t};
+ const plb=q('[data-a=pl][data-v="0"]');ck('pet-level-button-shows-x5-and-total',!!plb&&plb.textContent.startsWith('×5')&&plb.textContent.includes(sts.fmtN(pc(5))),plb&&plb.textContent);
+ g0=S().gold;plb.click();ck('x5-levels-a-pet-five-times-at-the-right-total',S().pets[0].lvl===5&&g0-S().gold===pc(5),S().pets[0].lvl+' '+(g0-S().gold)+' vs '+pc(5));
+ tabFresh('p',pc(2)+3);q('[data-tq="10"]').click();q('[data-a=pl][data-v="0"]').click();ck('pet-levels-stop-when-gold-runs-out',S().pets[0].lvl===2&&S().gold===3,S().pets[0].lvl+' '+S().gold);
+ tabFresh('p',1e12);S().pets[1].own=0;q('[data-tq="10"]').click();cp.camp();ck('unowned-pet-has-no-level-button',!q('[data-a=pl][data-v="1"]'));
+ tabFresh('u',1e12);ck('upgrades-tab-keeps-the-selector-beside-list-web',q('[data-tm=list]').parentElement===q('[data-tq="5"]').parentElement);
 }catch(e){out.push('EXC '+e.message+' | '+(e.stack||'').split('\n')[1])}
 try{localStorage.removeItem('hd-bq')}catch(e){} // leave no preference behind for the other pages
 document.title=out.join(' ');

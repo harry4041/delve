@@ -45,9 +45,13 @@ function row(it, col) {
     + '<div class="row" style="flex:none">' + (mx ? '<span class="mute">Max</span>' : '<button class="s' + (aff ? '' : ' alt') + '" data-a="tr" data-v="' + k + '"' + (blocked || S.gold < c ? ' disabled' : '') + '>' + buyLabel(n) + '</button>') + '</div></div>';
 }
 
-export function viewToggle(mode) {
+// The x1/x5/x10 chips. On the Upgrades tab they sit beside List/Web; the Magic and Pets tabs show them at the very top instead
+// (qtyBar) because their skill tree starts far down the page, and there they also set how many levels a pet level-up buys.
+export function qtyChips() { return '<span class="mute" style="margin:0 4px 0 12px">Buy</span>' + [1, 5, 10].map((q) => '<button class="s' + (buyQty() === q ? '' : ' alt') + '" data-tq="' + q + '" aria-label="Buy ' + q + ' at a time">x' + q + '</button>').join(''); }
+export function qtyBar() { return '<div class="tabs" style="margin:0 0 8px;align-items:center">' + qtyChips().replace('margin:0 4px 0 12px', 'margin:0 4px 0 0') + '</div>'; }
+export function viewToggle(mode, qty = true) {
   return '<div class="tabs" style="margin:0 0 8px"><button class="s' + (mode === 'list' ? '' : ' alt') + '" data-tm="list">List</button><button class="s' + (mode === 'web' ? '' : ' alt') + '" data-tm="web">Web</button>'
-    + '<span class="mute" style="margin:0 4px 0 12px">Buy</span>' + [1, 5, 10].map((q) => '<button class="s' + (buyQty() === q ? '' : ' alt') + '" data-tq="' + q + '" aria-label="Buy ' + q + ' at a time">x' + q + '</button>').join('') + '</div>';
+    + (qty ? qtyChips() : '') + '</div>';
 }
 
 export function treeList(G) {

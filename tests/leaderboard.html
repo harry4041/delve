@@ -61,7 +61,14 @@ try{
  ck('verified-player-with-a-name-publishes',r1==='published'&&docs.get('lb/u1').name==='Tester'&&docs.get('lb/u1').stage===40&&docs.get('lb/u1').v===1&&!!docs.get('lb/u1').t,r1+' '+JSON.stringify(docs.get('lb/u1')));
  ck('entry-never-contains-the-email',!JSON.stringify(docs.get('lb/u1')).includes('a@b.c'));
  const before=calls.setDoc;ck('publish-is-throttled',(await lb.publish(false))==='skipped'&&calls.setDoc===before);
- S().bestOverall=41;ck('force-publishes-anyway',(await lb.publish(true))==='published'&&docs.get('lb/u1').stage===41);
+ S().bestOverall=41;ck('a-write-within-the-5-minute-gap-is-skipped-not-refused',(await lb.publish(true))==='skipped'&&docs.get('lb/u1').stage===40);
+ lb.resetPublishState();ck('force-publishes-once-the-gap-has-passed',(await lb.publish(true))==='published'&&docs.get('lb/u1').stage===41); // the fake server time is 0, so a re-read entry looks old
+ // no start ceiling: a veteran can join (or rejoin after Leave) with real scores; a too-fast jump is trimmed to what the rules allow
+ reset();await T.onUser(user(true));await settle();S().lbName='Vet';S().username='Vet';S().bestOverall=900;S().asc=40;
+ ck('a-veteran-joins-with-the-real-stage',(await lb.publish(true))==='published'&&docs.get('lb/u1').stage===900&&docs.get('lb/u1').asc===40,JSON.stringify(docs.get('lb/u1')));
+ docs.get('lb/u1').t=Date.now()-600e3;lb.resetPublishState();S().bestOverall=5000;
+ const r9=await lb.publish(true),e9=docs.get('lb/u1');ck('a-huge-jump-is-trimmed-to-the-allowed-pace',r9==='published'&&e9.stage>900&&e9.stage<1100,r9+' '+e9.stage);
+ await render();ck('the-tab-says-the-entry-is-catching-up',body().includes('catching up'));
  // 4 reading boards
  reset();for(let i=0;i<40;i++)docs.set('lb/p'+i,{v:1,name:'Player'+i,stage:10+i,power:1000-i*10,asc:i%5,stars:i%7,t:1});
  let c=await lb.loadBoard('stage');ck('board-returns-the-top-25-highest-first',c.rows.length===25&&c.rows[0].stage===49&&c.rows[24].stage===25&&c.rows.every((r,i)=>i===0||r.stage<=c.rows[i-1].stage));
@@ -95,7 +102,7 @@ try{
  // 8b after a Reset save the old entry survives: publish the best of the board and the save, never a lower stage
  reset();docs.set('lb/u1',{v:1,name:'Old',stage:29,power:1000,asc:1,stars:2,t:1});await T.onUser(user(true));await settle();S().lbName='Harry';S().username='Harry';S().bestOverall=0;S().best=0;S().asc=0;
  ck('reset-save-publishes-the-best-ever-not-zero',(await lb.publish(true))==='published'&&docs.get('lb/u1').stage===29&&docs.get('lb/u1').asc===1&&docs.get('lb/u1').stars>=2&&docs.get('lb/u1').name==='Harry',JSON.stringify(docs.get('lb/u1')));
- S().bestOverall=35;ck('then-a-higher-stage-goes-through',(await lb.publish(true))==='published'&&docs.get('lb/u1').stage===35);
+ S().bestOverall=35;lb.resetPublishState();ck('then-a-higher-stage-goes-through',(await lb.publish(true))==='published'&&docs.get('lb/u1').stage===35);
  const w0=calls.setDoc;S().bestOverall=10;lb.resetPublishState();ck('unchanged-scores-do-not-cost-a-write',(await lb.publish(false))==='skipped'&&calls.setDoc===w0);
  // refusals explain themselves
  reset();await T.onUser(user(true));await settle();S().username='Brave_Delver';await render();window.__failNext=1;q('[data-lbl=join]').click();await sleep(250);

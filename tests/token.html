@@ -27,7 +27,7 @@ const out=[],ck=(n,c,x)=>out.push(n+':'+(c?'ok':'FAIL'+(x!==undefined?'('+x+')':
 window.onerror=(m,u,l)=>out.push('ERR '+m+' @'+String(u).split('/').pop()+':'+l);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 try{
- window.__HD_NO_BOOT_INIT=true;localStorage.removeItem('hd-cloud');
+ window.__HD_NO_BOOT_INIT=true;localStorage.removeItem('hd-cloud');localStorage.removeItem('hd-owner');localStorage.removeItem('hollow-delve-2-other-account'); // an owner tag from another page would make claimDevice set this page's save aside
  await import('/src/main.js');
  const st=await import('/src/state.js'),cloud=await import('/src/cloud.js'),T=cloud._test;
  const KEY='hollow-delve-2',S=()=>st.S;

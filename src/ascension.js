@@ -48,5 +48,7 @@ export function startStage(){return (1+3*Math.min(S.sd||0,RL('rStart')))}
 export function hasMagic(){return (RL('rMagic')>0)}
 export function hasSp(i){return (i==0?hasMagic():i==1?(hasMagic()&&L('mender')>0):i==2?(hasMagic()&&L('frost')>0):(hasMagic()&&L('spMeteor')>0))}
 export function maxSpd(){return (L('sim2')?4:L('sim1')?2:1)}
-export function petLc(i){return (Math.round(200*Math.pow(1.8,S.pets[i].lvl)*PET[i].t*(1+2*(S.pets[i].star||0))*Math.pow(.97,L('ptMaster'))))}
+export function petLc(i,lvl){return (Math.round(200*Math.pow(1.8,lvl===undefined?S.pets[i].lvl:lvl)*PET[i].t*(1+2*(S.pets[i].star||0))*Math.pow(.97,L('ptMaster'))))}
+// Levelling a pet q levels at once (the x1/x5/x10 buy quantity): how many levels the gold covers right now and their total price.
+export function petBulk(i,q){const l=S.pets[i].lvl;let cnt=0,tot=0;for(let j=0;j<q;j++){const c=petLc(i,l+j);if(!Number.isFinite(c)||S.gold<tot+c)break;tot+=c;cnt++}return {cnt,tot}}
 function pets(){return (PET.map((P,i)=>{const p=S.pets[i],lc=petLc(i);return '<div class="it"><div><b style="color:'+P.c+'">'+P.n+'</b>'+(p.own?' lv'+p.lvl:'')+'<small>'+Math.round(P.d*(1+.3*p.lvl+.25*L('bond'))*100)+'% of your attack every '+P.iv+'s</small></div><div class="row">'+(p.own?'<button class="s'+(S.ap==i?'':' alt')+'" data-a="ap" data-v="'+i+'">'+(S.ap==i?'Active':'Send')+'</button><button class="s" data-a="pl" data-v="'+i+'" '+(S.gold<lc?'disabled':'')+'>'+lc+'g</button>':'<button class="s" data-a="bp" data-v="'+i+'" '+(S.gold<P.cost?'disabled':'')+'>'+P.cost+'g</button>')+'</div></div>'}).join(''))}
