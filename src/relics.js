@@ -56,7 +56,7 @@ export function makeRelic(id, stage, topRi) {
 export function rollRelic(stage, topRi) {
   if (stage < RELIC_MIN_STAGE || stage % 10 !== 0) return null;
   const pool = RELICS.filter((r) => !ownsRelic(r.id)); if (!pool.length) return null;
-  const chance = Math.min(.6, .04 + .025 * (S.relicPity || 0));
+  const chance = Math.min(.6, .01 + .02 * (S.relicPity || 0)); // 1% per boss kill, +2% for each boss kill without a relic (about 9 boss kills per relic on average)
   if (Math.random() >= chance) { S.relicPity = (S.relicPity || 0) + 1; return null; }
   S.relicPity = 0; return makeRelic(pool[Math.floor(Math.random() * pool.length)].id, stage, topRi);
 }

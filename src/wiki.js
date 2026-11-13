@@ -7,6 +7,9 @@ import { RTREE, STB, reqStage, ascFee } from './ascension.js';
 
 // ---------------------------------------------------------------- changelog (add new entries at the TOP; `id` must be unique)
 export const CHANGELOG = [
+  { id: '2026-11-13k', date: '2026-11-13', title: 'Rarer relics', items: [
+    'Mythic Relics are rarer: each boss kill has a 1% chance, plus 2% for every boss kill since your last relic (up to 60%). That is about one relic every 9 boss kills on average.',
+  ] },
   { id: '2026-11-13j', date: '2026-11-13', title: 'Fairer relic drops', items: [
     'A Mythic Relic is now rolled when you defeat a boss, not when it appears. Losing to a boss no longer wastes a relic or resets your relic pity.',
   ] },

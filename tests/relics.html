@@ -39,6 +39,8 @@ try{
  ck('no-drop-on-non-boss-stage',rl.rollRelic(35,3)===null);
  st.S.relicPity=0;Math.random=()=>.99;const miss=rl.rollRelic(40,3);ck('miss-grows-pity',miss===null&&st.S.relicPity===1);
  Math.random=()=>0;const hit=rl.rollRelic(40,3);Math.random=rnd;ck('hit-gives-relic-and-resets-pity',!!hit&&!!hit.un&&st.S.relicPity===0);
+ st.S.relicPity=0;Math.random=()=>.0099;ck('base-chance-is-1-percent',!!rl.rollRelic(40,3));st.S.relicPity=0;Math.random=()=>.0101;ck('just-over-1-percent-misses',rl.rollRelic(40,3)===null);
+ st.S.relicPity=5;Math.random=()=>.1099;ck('pity-adds-2-percent-per-boss',!!rl.rollRelic(40,3));st.S.relicPity=5;Math.random=()=>.1101;ck('pity-5-misses-above-11-percent',rl.rollRelic(40,3)===null);Math.random=rnd;
  st.S.relicPity=1000;let n60=0;Math.random=()=>.59;ck('chance-capped-at-60-percent',!!rl.rollRelic(40,3));st.S.relicPity=1000;Math.random=()=>.61;ck('cap-means-61-misses',rl.rollRelic(40,3)===null);Math.random=rnd;
  // 3 ownership: no duplicates, worn vs carried
  reset();st.S.eq.rhand=rl.makeRelic('emberfang',40,3);st.S.bag.push(rl.makeRelic('wyrmscale',40,3));
