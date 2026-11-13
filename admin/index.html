@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Delve admin</title>
+<style>
+:root{--bg:#14111f;--pn:#1f1a33;--ln:#3a3158;--tx:#e8e4f5;--mu:#9a93b8;--ac:#ffcc4d;--bad:#ff6b6b;--ok:#6bd68a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:14px system-ui,sans-serif;display:flex;height:100vh}
+#side{width:280px;border-right:1px solid var(--ln);display:flex;flex-direction:column}#side input{margin:10px;padding:8px;background:var(--pn);border:1px solid var(--ln);color:var(--tx);border-radius:6px}
+#list{overflow:auto;flex:1}.p{padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--ln)}.p:hover{background:var(--pn)}.p.on{background:var(--pn);border-left:3px solid var(--ac)}.p small{display:block;color:var(--mu)}
+#main{flex:1;overflow:auto;padding:16px}h2{margin:0 0 4px}.mu{color:var(--mu)}
+.tabs{display:flex;gap:6px;margin:12px 0}button{background:var(--pn);color:var(--tx);border:1px solid var(--ln);border-radius:6px;padding:6px 12px;cursor:pointer}button.on,button.pri{background:var(--ac);color:#222;border-color:var(--ac)}button.bad{color:var(--bad)}
+.it{background:var(--pn);border:1px solid var(--ln);border-radius:8px;padding:10px;margin:8px 0;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px 8px;align-items:end}
+.it label{font-size:11px;color:var(--mu);display:block}.it input,.f input,textarea.raw{width:100%;padding:5px;background:var(--bg);border:1px solid var(--ln);color:var(--tx);border-radius:4px;font:inherit}
+.it .w2{grid-column:span 2}.it .w4{grid-column:span 4}textarea.raw{height:70vh;font-family:monospace;font-size:12px}
+.f{display:grid;grid-template-columns:140px 220px;gap:6px;align-items:center;max-width:400px}#msg{position:fixed;right:16px;bottom:16px;padding:10px 14px;border-radius:8px;background:var(--pn);border:1px solid var(--ln)}
+.bar{position:sticky;top:-16px;background:var(--bg);padding:8px 0;z-index:2;display:flex;gap:8px;align-items:center}
+</style></head><body>
+<div id="side"><input id="q" placeholder="Search username..."><div id="list"></div></div>
+<div id="main"><p class="mu">Pick a player on the left.</p></div><div id="msg" hidden></div>
+<script>
+let players=[],cur=null,S=null,tab='basics',dirty=false;const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const say=(t,bad)=>{const m=$('#msg');m.hidden=false;m.textContent=t;m.style.color=bad?'var(--bad)':'var(--ok)';clearTimeout(say.t);say.t=setTimeout(()=>m.hidden=true,4000)};
+const api=async(u,o)=>{const r=await fetch(u,o),j=await r.json();if(!r.ok)throw new Error(j.error||r.status);return j};
+async function load(){players=await api('/api/players');drawList()}
+function drawList(){const q=$('#q').value.toLowerCase();
+ $('#list').innerHTML=players.filter(p=>(p.name||'(no username)').toLowerCase().includes(q)||p.uid.toLowerCase().includes(q)).map(p=>'<div class="p'+(cur===p.uid?' on':'')+'" data-u="'+p.uid+'"><b>'+esc(p.name||'(no username)')+'</b><small>best '+(p.summary.best||0)+' · asc '+(p.summary.asc||0)+' · '+(p.updated?new Date(p.updated).toLocaleString():'')+'</small></div>').join('')||'<p class="mu" style="padding:12px">No players.</p>'}
+$('#q').oninput=drawList;
+$('#list').onclick=async e=>{const d=e.target.closest('.p');if(!d)return;if(dirty&&!confirm('Discard unsaved changes?'))return;
+ try{const r=await api('/api/save/'+d.dataset.u);cur=d.dataset.u;S=r.save;dirty=false;tab='basics';drawList();draw()}catch(x){say(x.message,1)}};
+function draw(){const p=players.find(x=>x.uid===cur);
+ const tabs=[['basics','Basics'],['eq','Equipped ('+Object.keys(S.eq||{}).length+')'],['bag','Bag ('+(S.bag||[]).length+')'],['vault','Vault ('+(S.vault||[]).length+')'],['raw','Raw JSON']];
+ $('#main').innerHTML='<div class="bar"><div><h2>'+esc(p.name||'(no username)')+'</h2><span class="mu">'+cur+'</span></div><span style="flex:1"></span><span id="dt" class="mu">'+(dirty?'unsaved changes':'')+'</span><button class="pri" id="sv">Save to cloud</button></div>'
+  +'<div class="tabs">'+tabs.map(([k,t])=>'<button data-t="'+k+'" class="'+(tab===k?'on':'')+'">'+t+'</button>').join('')+'</div><div id="body"></div>';body()}
+function mark(){dirty=true;const d=$('#dt');if(d)d.textContent='unsaved changes'}
+function body(){const b=$('#body');
+ if(tab==='basics'){const F=['gold','gems','relics','asc','best','bestOverall'];b.innerHTML='<div class="f">'+F.map(k=>'<label>'+k+'</label><input data-k="'+k+'" type="number" value="'+(S[k]||0)+'">').join('')+'</div><p class="mu">Large numbers are fine; use plain digits.</p>'}
+ else if(tab==='raw'){b.innerHTML='<textarea class="raw" id="raw" spellcheck="false">'+esc(JSON.stringify(S,null,1))+'</textarea><p class="mu">Edits here replace the whole save when you press Apply.</p><button id="ar">Apply raw JSON</button>'}
+ else{const items=tab==='eq'?Object.entries(S.eq||{}):(S[tab]||[]).map((it,i)=>[i,it]);b.innerHTML=items.map(([k,it])=>card(k,it)).join('')||'<p class="mu">Empty.</p>'}}
+function card(k,it){const n=(f,d)=>(it[f]===undefined?d:it[f]);
+ return '<div class="it" data-k="'+esc(k)+'"><div class="w2"><label>name'+(tab==='eq'?' · slot '+esc(k):'')+'</label><input data-f="nm" value="'+esc(it.nm||'')+'"></div>'
+ +'<div><label>type</label><input data-f="ty" value="'+esc(it.ty||'')+'"></div><div><label>rarity (ri)</label><input data-f="ri" type="number" value="'+n('ri',0)+'"></div><div><label>item level</label><input data-f="il" type="number" value="'+n('il',1)+'"></div><div><label>sub-level</label><input data-f="lv" type="number" value="'+n('lv',1)+'"></div>'
+ +'<div class="w4"><label>stats (JSON)</label><input data-f="st" value="'+esc(JSON.stringify(it.st||{}))+'"></div><div class="w2" style="display:flex;gap:6px"><button data-x="dup">Duplicate</button><button class="bad" data-x="del">Delete</button></div></div>'}
+$('#main').onclick=async e=>{const t=e.target.closest('button');if(!t)return;
+ if(t.dataset.t){tab=t.dataset.t;draw();return}
+ if(t.id==='sv'){try{await api('/api/save/'+cur,{method:'POST',body:JSON.stringify(S)});dirty=false;say('Saved. The previous version is kept in saves_backup.');await load();draw()}catch(x){say(x.message,1)}return}
+ if(t.id==='ar'){try{S=JSON.parse($('#raw').value);mark();say('Applied (not saved yet).');draw()}catch(x){say('Invalid JSON: '+x.message,1)}return}
+ const c=t.closest('.it');if(!c||!t.dataset.x)return;const k=c.dataset.k;
+ if(tab==='eq'){if(t.dataset.x==='del'){if(!confirm('Unequip and delete '+k+'?'))return;delete S.eq[k]}else{say('Duplicate works on bag and vault items.',1);return}}
+ else{const a=S[tab];if(t.dataset.x==='del'){if(!confirm('Delete this item?'))return;a.splice(+k,1)}else{const n=JSON.parse(JSON.stringify(a[+k]));n.id=S.uid=(S.uid||1)+1;a.splice(+k+1,0,n)}}
+ mark();draw()};
+$('#main').oninput=e=>{const i=e.target;if(i.dataset.k&&!i.closest('.it')){S[i.dataset.k]=Number(i.value)||0;mark();return}
+ const c=i.closest('.it');if(!c||!i.dataset.f)return;const it=tab==='eq'?S.eq[c.dataset.k]:S[tab][+c.dataset.k],f=i.dataset.f;
+ if(f==='st'){try{it.st=JSON.parse(i.value);i.style.borderColor=''}catch(x){i.style.borderColor='var(--bad)';return}}else if(f==='nm'||f==='ty')it[f]=i.value;else it[f]=Number(i.value)||0;mark()};
+window.onbeforeunload=()=>dirty||undefined;load().catch(e=>say(e.message,1));
+</script></body></html>
