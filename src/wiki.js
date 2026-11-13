@@ -7,6 +7,10 @@ import { RTREE, STB, reqStage, ascFee } from './ascension.js';
 
 // ---------------------------------------------------------------- changelog (add new entries at the TOP; `id` must be unique)
 export const CHANGELOG = [
+  { id: '2026-11-13d', date: '2026-11-13', title: 'Grown-up enemies', items: [
+    'Shields are bigger and better drawn: the Buckler is a large studded round shield, the Shield has a bevelled rim, chevron and boss, and the Aegis has a large gem and gilded wings.',
+    'Zombies, bandits, orcs and the Death Knight boss now have the same adult-proportioned heads as your hero, with faces redrawn to match (skeletons and cultists keep their skull and hood).',
+  ] },
   { id: '2026-11-13c', date: '2026-11-13', title: 'Upgrades as a list (and the web)', items: [
     'The Upgrades, Magic and Pets tabs now open as a plain list of EVERY upgrade, like before: what it does, your level, what you get now, what it needs and its price. Affordable ones are highlighted and ones you cannot get yet are dimmed with what they need.',
     'Filter by Can buy or Owned, sort cheapest first, or tap Hide locked for a shorter list.',

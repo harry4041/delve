@@ -118,7 +118,7 @@ function bodyFine(e,st){
  }
  if(st.adult)adultClothes(st,tx,tw,ax,bx);
  for(const x of[ax,bx]){blk(x,35,6,6,sk);Rf(x+1,39,1,2,F(shd(sk)));Rf(x+3,39,1,2,F(shd(sk)))} // hands with finger lines
- if(st.adult){adultHead(e,st,hx,hb);return}
+ if(st.adult||st.ah){adultHead(e,st,hx,hb);return}
  {
   blk(hx-2,6,3,5,sk);blk(hx+15,6,3,5,sk);                                                          // ears
   blk(hx,0,16,17,sk);Rf(hx+1,15,14,1,F(shd(sk)));Rf(hx+3,2,5,1,F(lit(sk)));Rf(hx+13,1,1,14,F(shd(sk)));  // head, jaw shade, forehead light
@@ -167,11 +167,12 @@ function heroStyle(){return{...HERO_ST,...lookStyle()}}
 function drawHero(x,y,fl){drawFigure(x,y,S.eq,heroStyle(),fl,false,1)}
 // Enemy kinds (0 zombie, 1 skeleton, 2 bandit, 3 orc, 4 cultist, 5 boss death knight). Same fine-pixel units as the hero (see above).
 function enStyle(ty,tint){const d=rr(tint,.55);
- if(ty==0)return{skin:'#7fae6a',hair:'#3a2a1a',tun:'#5a4a3a',leg:'#3a3a50',boot:'#2a2a2a',belt:'#2a1a10',
-  face:(st)=>{Rf(14,6,5,5,F('#2a1a10'));Rf(15,7,3,3,F('#e04040'));Rf(15,7,1,1,F('#ffb0b0'));Rf(22,7,4,4,F('#e8e0a0'));Rf(23,8,2,2,F('#2a1a10'));Rf(23,8,1,1,F('#fff'));  // mismatched eyes
-   Rf(14,4,5,1,F('#3a2a1a'));Rf(21,4,6,1,F('#3a2a1a'));Rf(20,10,1,3,F(shd(st.skin)));                                                                        // brows, nose
-   Rf(15,13,10,3,F('#2a1a10'));Rf(16,13,2,1,F('#e8e0c4'));Rf(21,13,2,1,F('#e8e0c4'));Rf(24,15,1,4,F('#9ad07a'));                                             // slack jaw, teeth, drool
-   Rf(18,1,1,5,F('#2a1a10'));Rf(17,2,3,1,F('#2a1a10'));Rf(17,4,3,1,F('#2a1a10'))},                                                                           // stitched scar
+ if(ty==0)return{skin:'#7fae6a',hair:'#3a2a1a',hs:1,ah:true,tun:'#5a4a3a',leg:'#3a3a50',boot:'#2a2a2a',belt:'#2a1a10',
+  face:(st)=>{const hx=(st.tx||8)+4,R=(x,y,w,h,c)=>Rf(hx+x,y,w,h,F(c));
+   R(3,6,4,4,'#2a1a10');R(4,7,2,2,'#e04040');R(4,7,1,1,'#ffb0b0');R(9,7,4,3,'#e8e0a0');R(10,8,2,2,'#2a1a10');R(10,8,1,1,'#fff');                    // mismatched eyes
+   R(3,5,4,1,'#3a2a1a');R(9,5,4,1,'#3a2a1a');R(7,9,2,3,shd(st.skin));                                                                          // brows, nose
+   R(4,13,8,2,'#2a1a10');R(5,13,2,1,'#e8e0c4');R(9,13,2,1,'#e8e0c4');R(11,14,1,4,'#9ad07a');                                                   // slack jaw, teeth, drool
+   R(5,2,1,5,'#2a1a10');R(4,3,3,1,'#2a1a10');R(4,5,3,1,'#2a1a10')},                                                                            // stitched scar
   pre:()=>{Rf(11,25,6,4,F('#8a2a2a'));Rf(12,27,4,1,F('#e8c4c0'));Rf(22,23,6,1,F('#2a1a10'));for(const x of[23,25,27])Rf(x,22,1,3,F('#2a1a10'));                // wound, stitches
    for(const x of[9,13,17,22,26])Rf(x,38,2,2,F('#1a0f24'))}};                                                                                                // torn hem
  if(ty==1)return{skin:'#e8e0c4',hair:null,tun:'#d6ceb2',leg:'#d6ceb2',boot:'#b9b196',belt:'#b9b196',
@@ -186,14 +187,16 @@ function enStyle(ty,tint){const d=rr(tint,.55);
     Rf(14,5,5,5,F('#1a0f24'));Rf(22,5,5,5,F('#1a0f24'));Rf(15,7,2,2,F('#ff4630'));Rf(24,7,2,2,F('#ff4630'));Rf(15,7,1,1,F('#ffd0c0'));Rf(24,7,1,1,F('#ffd0c0')); // sockets
     Rf(19,10,3,4,F('#1a0f24'));Rf(24,1,1,5,F(B3));Rf(23,5,2,1,F(B3))}},                                         // nose cavity, crack
   pre:()=>{Rf(12,38,16,6,F('#5a3a3a'));Rf(14,42,3,3,F('#3a2222'));Rf(22,43,4,3,F('#3a2222'))}};              // ragged loincloth
- if(ty==2)return{skin:'#e8b890',hair:'#c0392b',tun:d,leg:'#4a3a2a',boot:'#2a1a10',belt:'#2a1a10',
-  face:(st)=>{Rf(15,7,4,2,F('#16141f'));Rf(22,7,4,2,F('#16141f'));Rf(16,7,1,1,F('#fff'));Rf(23,7,1,1,F('#fff'));Rf(14,5,5,1,F('#3a1a10'));Rf(22,5,5,1,F('#3a1a10'));Rf(18,6,1,1,F('#3a1a10'));Rf(22,6,1,1,F('#3a1a10')); // narrowed eyes, scowl
-   blk(13,10,15,6,'#8a2a20');Rf(14,11,13,1,F('#b04030'));Rf(11,3,19,3,F('#8a2a20'));Rf(11,3,19,1,F('#b04030'));Rf(29,4,4,2,F('#8a2a20'));Rf(31,6,2,3,F('#6a1a14'))}, // mask, headband and knot
+ if(ty==2)return{skin:'#e8b890',hair:'#c0392b',hs:1,ah:true,tun:d,leg:'#4a3a2a',boot:'#2a1a10',belt:'#2a1a10',
+  face:(st)=>{const hx=(st.tx||8)+4,R=(x,y,w,h,c)=>Rf(hx+x,y,w,h,F(c));
+   R(3,8,4,2,'#16141f');R(9,8,4,2,'#16141f');R(4,8,1,1,'#fff');R(10,8,1,1,'#fff');R(3,6,4,1,'#3a1a10');R(9,6,4,1,'#3a1a10');R(6,7,1,1,'#3a1a10');R(9,7,1,1,'#3a1a10'); // narrowed eyes, scowl
+   blk(hx+2,11,12,5,'#8a2a20');R(3,12,10,1,'#b04030');R(1,3,14,3,'#8a2a20');R(1,3,14,1,'#b04030');R(14,4,4,2,'#8a2a20');R(16,6,2,3,'#6a1a14')}, // mask, headband and knot
   pre:()=>{for(let k=0;k<11;k++){Rf(10+k*2,21+k*2,3,3,F('#6a4a2a'));Rf(10+k*2,21+k*2,3,1,F('#8a6a3a'))}blk(18,29,4,4,'#e8c050');blk(30,33,3,9,'#6a6a78');Rf(30,33,3,1,F('#cfd6e6'))}}; // bandolier, buckle, dagger
- if(ty==3)return{skin:'#5a9a4a',hair:'#2a2a20',tun:d,leg:'#5a4a3a',boot:'#3a2a1a',belt:'#2a1a10',sc:1.15,tx:7,tw:26,
-  face:(st)=>{Rf(13,4,14,2,F('#2a2a20'));Rf(15,7,4,3,F('#ffd24a'));Rf(23,7,4,3,F('#ffd24a'));Rf(16,8,1,2,F('#2a1a10'));Rf(24,8,1,2,F('#2a1a10'));Rf(15,7,1,1,F('#fff3b0')); // brow ridge, eyes
-   Rf(19,9,4,3,F(shd(st.skin)));Rf(14,13,14,3,F('#2a1a10'));Rf(15,11,2,6,F('#f4ecd0'));Rf(25,11,2,6,F('#f4ecd0'));Rf(16,16,1,1,F('#c8c0a0'));                     // nose, mouth, tusks
-   Rf(13,2,3,1,F('#c03030'));Rf(25,2,3,1,F('#c03030'));Rf(13,9,2,1,F('#c03030'));Rf(27,9,2,1,F('#c03030'))},                                                          // war paint
+ if(ty==3)return{skin:'#5a9a4a',hair:'#2a2a20',hs:3,ah:true,tun:d,leg:'#5a4a3a',boot:'#3a2a1a',belt:'#2a1a10',sc:1.15,tx:7,tw:26,
+  face:(st)=>{const hx=(st.tx||8)+4,R=(x,y,w,h,c)=>Rf(hx+x,y,w,h,F(c));
+   R(3,5,10,2,'#2a2a20');R(3,8,4,3,'#ffd24a');R(9,8,4,3,'#ffd24a');R(4,9,1,2,'#2a1a10');R(10,9,1,2,'#2a1a10');R(3,8,1,1,'#fff3b0');                // brow ridge, eyes
+   R(3,3,2,1,'#c03030');R(11,3,2,1,'#c03030');R(2,12,2,1,'#c03030');R(12,12,2,1,'#c03030');                                                        // war paint
+   R(7,9,2,3,shd(st.skin));R(4,13,8,2,'#2a1a10');R(4,11,2,5,'#f4ecd0');R(10,11,2,5,'#f4ecd0');R(5,15,1,1,'#c8c0a0')},                           // nose, mouth, tusks
   pre:()=>{for(const x of[11,15,19,23,27])blk(x,21,3,3,'#e8e0c4');blk(19,34,4,4,'#e8e0c4');Rf(20,36,1,1,F('#1a0f24'));Rf(22,36,1,1,F('#1a0f24'))},                       // bone necklace, skull belt
   post:(e)=>{if(!e.chest)for(const x of[0,33]){blk(x,17,8,7,'#6a6a78');Rf(x+1,17,6,1,F('#9a9aa8'));Rf(x+1,13,2,4,F('#cfd6e6'));Rf(x+3,12,2,5,F('#cfd6e6'));Rf(x+5,14,2,3,F('#cfd6e6'))}}}; // spiked pauldrons
  if(ty==4)return{skin:'#9a8aa0',hair:rr(tint,.45),tun:rr(tint,.5),leg:rr(tint,.5),boot:'#1a1424',belt:'#d0b040',robe:true,
@@ -201,11 +204,13 @@ function enStyle(ty,tint){const d=rr(tint,.55);
    blk(18,24,4,11,'#e050ff');Rf(19,25,1,9,F('#ff9aff'));Rf(18,34,4,2,F('#d0b040'))},                                                                                      // rune sash
   post:(e,st)=>{const hd=st.tun,hl=lit(hd);shape([[8,-5,24,8],[7,2,6,19],[27,2,6,19]],hd);Rf(10,-4,18,1,F(hl));blk(13,3,14,15,'#0c0814');Rf(13,3,14,1,F(shd(hd)));       // hood and its dark opening
    Rf(15,8,3,3,F('#ff4fa0'));Rf(23,8,3,3,F('#ff4fa0'));Rf(15,8,1,1,F('#ffd0ec'));Rf(23,8,1,1,F('#ffd0ec'));Rf(18,13,4,1,F('#4a3a50'))}};                                  // glowing eyes
- return{skin:'#cfc8dc',hair:'#8a2ab0',tun:'#2a2438',leg:'#2a2438',boot:'#1a1424',belt:'#d0b040',sc:1.3,tx:7,tw:26,
-  face:()=>{Rf(14,6,5,4,F('#1a0f24'));Rf(22,6,5,4,F('#1a0f24'));Rf(15,7,3,2,F('#ff3a3a'));Rf(23,7,3,2,F('#ff3a3a'));Rf(15,7,1,1,F('#fff'));Rf(23,7,1,1,F('#fff'));Rf(14,4,5,1,F('#3a1a50'));Rf(22,4,5,1,F('#3a1a50'));Rf(15,13,11,2,F('#1a0f24'));Rf(17,13,1,2,F('#cfc8dc'));Rf(21,13,1,2,F('#cfc8dc'))},
+ return{skin:'#cfc8dc',hair:'#8a2ab0',hs:1,ah:true,tun:'#2a2438',leg:'#2a2438',boot:'#1a1424',belt:'#d0b040',sc:1.3,tx:7,tw:26,
+  face:(st)=>{const hx=(st.tx||8)+4,R=(x,y,w,h,c)=>Rf(hx+x,y,w,h,F(c));
+   R(3,7,4,3,'#1a0f24');R(9,7,4,3,'#1a0f24');R(4,8,3,2,'#ff3a3a');R(9,8,3,2,'#ff3a3a');R(4,8,1,1,'#fff');R(9,8,1,1,'#fff');R(3,5,4,1,'#3a1a50');R(9,5,4,1,'#3a1a50');
+   R(7,9,2,3,shd(st.skin));R(4,13,8,2,'#1a0f24');R(6,13,1,2,'#cfc8dc');R(9,13,1,2,'#cfc8dc')},
   pre:()=>{blk(14,20,12,16,'#3a3450');Rf(14,20,12,1,F('#5a5470'));const p=.5+.5*Math.sin(ART_T*3);g.globalAlpha=.6+.4*p;Rf(18,25,4,6,'#ff3a3a');g.globalAlpha=1;Rf(19,26,2,2,'#ffb0a0')},   // plate with a pulsing core
   post:(e)=>{if(!e.chest)for(const x of[0,33]){blk(x,15,8,9,'#2e2a3c');Rf(x+1,15,6,1,F('#5a5470'));Rf(x,22,8,1,F('#c01818'));Rf(x+1,10,2,5,F('#8a8aa0'));Rf(x+3,8,2,7,F('#8a8aa0'));Rf(x+5,11,2,4,F('#8a8aa0'))} // pauldrons with spikes
-   shape([[12,-3,16,4]],'#d0b040');for(const x of[13,17,21,25])Rf(x,-6+(x===17||x===21?-2:0),2,5,F('#d0b040'));Rf(19,-2,2,2,F('#c01818'));Rf(12,-3,16,1,F('#f0d878'))}}}   // crown
+   shape([[12,-3,15,4]],'#d0b040');for(const x of[13,17,21,24])Rf(x,-6+(x===17||x===21?-2:0),2,5,F('#d0b040'));Rf(19,-2,2,2,F('#c01818'));Rf(12,-3,15,1,F('#f0d878'))}}}   // crown
 function eqFromDrops(d){const e={},best=(k,it)=>{if(!e[k]||it.ri>e[k].ri)e[k]=it},am=[],hands=[];
  for(const it of d){const t=it.ty;if(t=='head')best('head',it);else if(t=='chest')best('chest',it);else if(t=='gloves')best('gloves',it);else if(t=='legs')best('legs',it);else if(t=='boots')best('boots',it);else if(t=='amulet')am.push(it);else hands.push(it)}
  am.sort((a,b)=>b.ri-a.ri).slice(0,3).forEach((it,i)=>{e['amu'+(i+1)]=it});hands.sort((a,b)=>b.ri-a.ri);
