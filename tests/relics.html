@@ -43,8 +43,9 @@ try{
  // 3 ownership: no duplicates, worn vs carried
  reset();st.S.eq.rhand=rl.makeRelic('emberfang',40,3);st.S.bag.push(rl.makeRelic('wyrmscale',40,3));
  ck('has-relic-only-when-worn',rl.hasRelic('emberfang')&&!rl.hasRelic('wyrmscale')&&rl.ownsRelic('wyrmscale'));
- Math.random=()=>0;const only=rl.rollRelic(40,3);Math.random=rnd;ck('only-unowned-can-drop',!!only&&only.un==='phoenix');
- st.S.vault=[rl.makeRelic('phoenix',40,3)];Math.random=()=>0;ck('nothing-drops-when-all-owned',rl.rollRelic(40,3)===null);Math.random=rnd;
+ Math.random=()=>0;const only=rl.rollRelic(40,3);Math.random=rnd;ck('only-unowned-can-drop',!!only&&['phoenix','drowned','stormcaller','rime','windrunner','midas','seer','voidreaver'].includes(only.un));
+ st.S.vault=rl.RELICS.filter(x=>!['emberfang','wyrmscale'].includes(x.id)).map(x=>rl.makeRelic(x.id,40,3));Math.random=()=>0;ck('nothing-drops-when-all-owned',rl.rollRelic(40,3)===null);Math.random=rnd;
+ ck('there-are-ten-relics',rl.RELICS.length===10&&new Set(rl.RELICS.map(x=>x.id)).size===10);
  ck('relics-cannot-be-forged',!sx.fOK(Object.assign(rl.makeRelic('emberfang',40,3),{ri:0})));
  // 4 hostile saves
  reset();const bad=rl.makeRelic('emberfang',40,3);bad.un='BAD ID!';const bad2=rl.makeRelic('phoenix',40,3);bad2.un={x:1};
@@ -73,13 +74,41 @@ try{
  reset();st.S.relicPity=1000;let got=null;
  for(let a=0;a<80&&!got;a++){r=fresh();r.stage=39;r.eHp=1;r.hT=10;bt.tick(.1);got=(r.eDrops||[]).find(x=>x.un)||null}
  ck('boss-can-drop-a-relic',!!got&&r.stage===40&&r.boss===true,JSON.stringify([r.stage,r.boss,got&&got.un]));
- if(got){r.hT=10;r.eHp=1;st.S.relicFound={};bt.tick(.1);ck('looting-records-the-relic',st.S.relicFound[got.un]===1&&r.loot.some(x=>x.un===got.un),JSON.stringify(st.S.relicFound))}
+ if(got){r.hT=10;r.eHp=1;st.S.relicFound={};bt.tick(.1);ck('looting-records-the-relic',st.S.relicFound[got.un]===1&&r.loot.some(x=>x.un===got.un),JSON.stringify(st.S.relicFound));
+  const bn=document.getElementById('relicbn');ck('finding-a-relic-raises-a-banner',!!bn&&bn.textContent.includes('MYTHIC RELIC FOUND')&&bn.textContent.includes(rl.relicInfo(got).power),bn&&bn.textContent);
+  ck('finding-a-relic-flags-the-gear-tab',st.S.relicNew===got.un);
+  r.over=false;bt.die();ck('defeat-screen-mentions-the-relic',document.querySelector('#ovt').innerHTML.includes('Mythic Relic')&&document.querySelector('#ovt').innerHTML.includes(got.nm));
+  bn&&bn.remove()}
+
+ // 6b the seven newer powers. Each relic is built with plain stats; the 'off' twin is the same item without its id, so only the power differs.
+ const wear=(id,slot,on)=>{const it=rl.makeRelic(id,40,3);it.st={atk:5};if(!on)delete it.un;st.S.eq[slot]=it};
+ const dmgOf=(setup)=>{reset();setup();const r=fresh();r.hT=10;r.eHp=r.eMax=1e12;r.eAtk=0;const e0=r.eHp;Math.random=()=>0;bt.tick(.1);Math.random=rnd;return e0-r.eHp};
+ {const a=dmgOf(()=>wear('stormcaller','gloves',true)),b=dmgOf(()=>wear('stormcaller','gloves',false));ck('stormcaller-crit-adds-60-percent-lightning',a>0&&b>0&&a/b>1.5&&a/b<1.7,a+'/'+b)}
+ {const a=dmgOf(()=>{wear('voidreaver','rhand',true)}),b=dmgOf(()=>wear('voidreaver','rhand',false));ck('voidreaver-no-bonus-on-healthy-enemy',Math.abs(a/b-1)<.05,a+'/'+b);
+  const low=(on)=>{reset();wear('voidreaver','rhand',on);const r=fresh();r.hT=10;r.eMax=1e12;r.eHp=2e11;r.eAtk=0;const e0=r.eHp;Math.random=()=>0;bt.tick(.1);Math.random=rnd;return e0-r.eHp};
+  const x=low(true),y=low(false);ck('voidreaver-triples-damage-below-25-percent',x>0&&y>0&&x/y>2.9&&x/y<3.1,x+'/'+y)}
+ {const crit=(on)=>{reset();wear('seer','amu1',on);const r=fresh();r.hT=10;r.eAtk=0;Math.random=()=>.2;bt.tick(.1);Math.random=rnd;return r.critT>0};ck('seer-adds-crit-chance',crit(true)===true&&crit(false)===false)}
+ {const hits=(on)=>{reset();wear('windrunner','boots',on);const r=fresh();r.hT=0;r.eAtk=0;let n=0,last=r.eHp;Math.random=()=>.999;for(let i=0;i<100;i++){bt.tick(.1);if(r.eHp<last)n++;last=r.eHp}Math.random=rnd;return n};const a=hits(true),b=hits(false);ck('windrunner-attacks-faster',a>b&&a>=b*1.15,a+' vs '+b)}
+ {const run1=(on)=>{reset();wear('rime','legs',on);const r=fresh();r.hT=0;r.eAtk=0;let mx=0,hit=0,last=r.eHp;Math.random=()=>.999;for(let i=0;i<120;i++){bt.tick(.1);if(r.eHp<last)hit++;last=r.eHp;mx=Math.max(mx,r.stun)}Math.random=rnd;return {mx,hit}};const a=run1(true),b=run1(false);ck('rime-freezes-every-sixth-hit',a.mx>=1.3&&b.mx===0&&a.hit>=5,JSON.stringify([a,b]))}
+ {const gold=(on)=>{reset();wear('midas','amu1',on);const r=fresh();r.stage=40;r.hT=10;r.eHp=1;r.eAtk=0;const g0=st.S.gold;Math.random=()=>.5;bt.tick(.1);Math.random=rnd;return st.S.gold-g0};const a=gold(true),b=gold(false);ck('midas-adds-60-percent-gold',b>0&&a/b>1.55&&a/b<1.65,a+'/'+b)}
+ {const heal=(on)=>{reset();wear('drowned','head',on);const r=fresh();r.hT=10;r.eHp=1;r.eAtk=0;r.hp=1;Math.random=()=>.5;bt.tick(.1);Math.random=rnd;return r.hp};const a=heal(true),b=heal(false);const mh=sx.stats().hp;ck('drowned-heals-10-percent-on-kill',a-b>mh*.09&&a-b<mh*.11,(a-b)+' vs '+mh*.1)}
+ // 6c finding a relic: a banner, a flag on the Gear tab, the defeat screen, and a two-tap sell
  // 8 UI
  reset();st.S.eq.rhand=rl.makeRelic('emberfang',40,3);st.S.relicFound={emberfang:1};st.setMode('camp');cp.view();st.setTab('g');cp.camp();
  const html=document.querySelector('#cbody').innerHTML;
  ck('gear-tab-shows-relic-power',html.includes('burns for 30%')&&html.includes('Relic'),html.length);
- ck('collection-lists-found-and-hidden',html.includes('MYTHIC RELICS 1/3')&&html.includes('???'));
+ ck('collection-lists-found-and-hidden',html.includes('MYTHIC RELICS 1/10')&&html.includes('???'));
  ck('relic-icon-glows',as.icon(st.S.eq.rhand).includes('ic relic'));
+reset();{const it=rl.makeRelic('midas',40,3);st.S.bag=[it];st.S.relicNew='midas';st.setMode('camp');cp.view();st.setTab('g');cp.camp();
+  const h2=document.querySelector('#cbody').innerHTML;ck('gear-tab-has-a-new-relic-notice',h2.includes('New Mythic Relic')&&h2.includes('Equip it')&&h2.includes('Midas Locket'));
+  ck('gear-button-shows-a-star',document.querySelector('#tg').textContent.includes('\u2605'));
+  ck('relic-row-is-highlighted-and-sell-says-confirm',h2.includes('border-color:#ffd34d')&&h2.includes('Sell\u2026'));
+  const sendA=(a,v)=>{const b=document.createElement('button');b.dataset.a=a;if(v!==undefined)b.dataset.v=v;document.body.appendChild(b);b.click();b.remove()};
+  sendA('sell',it.id);ck('first-sell-tap-keeps-the-relic',st.S.bag.length===1&&document.querySelector('#cbody').innerHTML.includes('Really sell?'));
+  sendA('sell',it.id);ck('second-tap-sells-it',st.S.bag.length===0);
+  const it2=rl.makeRelic('midas',40,3);st.S.bag=[it2];st.S.relicNew='midas';st.setTab('g');cp.camp();sendA('relicSeen');ck('got-it-clears-the-notice',st.S.relicNew===''&&!document.querySelector('#cbody').innerHTML.includes('New Mythic Relic'));
+  const it3=rl.makeRelic('midas',40,3);st.S.bag=[it3];st.S.relicNew='midas';sendA('eq',it3.id);st.setTab('g');cp.camp();ck('equipping-clears-the-notice',st.S.relicNew===''&&st.S.eq.amu1&&st.S.eq.amu1.un==='midas');
+  const q1=rl.makeRelic('seer',40,3);st.S.bag=[q1,rl.makeRelic('seer',40,3)];st.S.bag.forEach((x,i)=>x.id=900+i);st.S.relicNew='';sendA('sell',900);ck('sell-arm-is-per-relic',st.S.bag.length===2)}
  reset();st.setMode('camp');cp.view();st.setTab('g');cp.camp();ck('hint-before-any-relic',document.querySelector('#cbody').innerHTML.includes('Mythic Relics: rare unique'));
 }catch(e){out.push('EXC '+e.message+' | '+(e.stack||'').split('\n')[1])}
 Math.random=Math.random;document.title=out.join(' ');

@@ -7,6 +7,10 @@ import { RTREE, STB, reqStage, ascFee } from './ascension.js';
 
 // ---------------------------------------------------------------- changelog (add new entries at the TOP; `id` must be unique)
 export const CHANGELOG = [
+  { id: '2026-11-13h', date: '2026-11-13', title: 'Seven more Mythic Relics', items: [
+    'Seven new relics, each with its own art and power: Crown of the Drowned King (kills heal 10%), Stormcaller Gauntlets (crits call lightning), Rimeplate Greaves (every 6th hit freezes), Windrunner Boots (+25% attack speed), Midas Locket (+60% gold), Eye of the Seer (+20% crit) and Voidreaver Axe (triple damage on enemies under 25% health). Ten relics in all.',
+    'You cannot miss a drop now: a big gold banner appears when one drops, the Gear tab gets a star and a notice with an Equip button, the defeat screen mentions it, and selling a relic takes two taps.',
+  ] },
   { id: '2026-11-13g', date: '2026-11-13', title: 'Better gear climbs faster, buy x1 / x5 / x10', items: [
     'Gear tiers now climb about 1.5x faster: Divine gear (with wings) first drops around stage 106 instead of 190, and tier 10 around stage 178. Enemies grow a little faster to match, so the overall pace is similar, but good gear now shows up in a normal life.',
     'Upgrades have a Buy x1 / x5 / x10 selector next to the List/Web toggle. One press buys that many levels (as many as you can afford, up to the maximum) and the button shows the combined price. It is remembered.',

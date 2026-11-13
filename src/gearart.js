@@ -12,6 +12,9 @@ const hex = (s) => [parseInt(s.slice(1, 3), 16), parseInt(s.slice(3, 5), 16), pa
 export const mix = (a, b, t) => { const A = hex(a), B = hex(b); return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0')).join(''); };
 const MAT = { steel: '#9ca6ba', leather: '#8f5e2e', cloth: '#9a8a76', wood: '#7a5230', gold: '#e8c050' };
 const CLOTH = { Tunic: '#a08e74', Robe: '#7d6aa0', Hood: '#5f7a62', Cap: '#8a7a6a', Breeches: '#94805f', Trousers: '#6f7488', Wraps: '#c0ae8c' }; // natural colour of each cloth piece
+// Relics with their own always-on effects (the generic rarity fire/halo effects are skipped for these)
+const OWNFX = new Set(['drowned', 'stormcaller', 'rime', 'windrunner', 'midas', 'seer', 'voidreaver']);
+const own = (it) => !!it && OWNFX.has(it.un);
 const hsh = (n) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }; // stable pseudo-random 0..1
 let CLK = 0; // animation clock (seconds), set at the top of drawWorn
 function pal(it, mat) {
@@ -77,7 +80,12 @@ export function drawWorn(c, e, st) {
   if (e.legs) {
     const b = baseOf(e.legs), P = pal(e.legs, b === 'Greaves' ? 'steel' : 'cloth');
     for (const x of [g.legL, g.legR]) {
-      if (b === 'Trousers') { B(x, 40, 8, 13, P.m, { tex: 1 }); r(x + 1, 46, 6, 1, shd(P.m)); r(x, 40, 8, 1, P.trim); }
+      if (e.legs.un === 'rime') { // Rimeplate Greaves (relic): ice-blue plate with frosted knees, crystal spikes and glittering rime
+        const ice = '#6fa8c8', fr = '#bfe8ff';
+        B(x, 40, 8, 6, ice); r(x + 3, 41, 1, 4, '#e8f8ff'); B(x - 1, 45, 10, 4, fr); B(x, 49, 8, 4, ice); r(x, 40, 8, 1, '#ffffff');
+        r(x + 4, 43, 1, 3, '#ffffff'); r(x + 3, 44, 3, 1, '#ffffff'); r(x + 4, 47, 1, 2, '#ffffff'); r(x - 1, 46, 1, 2, '#ffffff'); r(x + 8, 46, 1, 2, '#ffffff');
+        for (let i = 0; i < 3; i++) r(x + Math.floor(hsh(i * 3 + Math.floor(CLK * 4) + x) * 8), 41 + Math.floor(hsh(i + 7 + Math.floor(CLK * 4)) * 11), 1, 1, '#ffffff');
+      } else if (b === 'Trousers') { B(x, 40, 8, 13, P.m, { tex: 1 }); r(x + 1, 46, 6, 1, shd(P.m)); r(x, 40, 8, 1, P.trim); }
       else if (b === 'Breeches') { B(x - 1, 40, 10, 9, P.m, { tex: 1 }); r(x - 1, 47, 10, 2, shd(P.m)); r(x - 1, 48, 10, 1, P.trim); B(x + 1, 49, 6, 4, mix(P.m, '#ffffff', .3)); }
       else { B(x, 40, 8, 6, P.m); B(x - 1, 45, 10, 4, lit(P.m)); r(x + 4, 46, 1, 1, P.trim); r(x + 1, 46, 1, 1, P.trim); B(x, 49, 8, 4, P.m); r(x + 3, 49, 1, 4, lit(P.m)); r(x, 40, 8, 1, P.trim); }
     }
@@ -87,13 +95,18 @@ export function drawWorn(c, e, st) {
   if (e.boots) {
     const b = baseOf(e.boots), P = pal(e.boots, b === 'Treads' ? 'steel' : 'leather');
     for (const x of [g.bootL, g.bootR]) {
-      if (b === 'Boots') { B(x, 50, 10, 8, P.m); B(x, 49, 10, 3, lit(P.m)); r(x, 53, 10, 1, P.trim); r(x + 4, 53, 2, 1, '#fff3b0'); r(x, 57, 10, 1, P.dk); }
+      if (e.boots.un === 'windrunner') { // Windrunner Boots (relic): cream leather with gold trim, a small wing at each ankle and a trail of dust
+        const sg = x === g.bootL ? -1 : 1, fl = Math.round(Math.sin(CLK * 9));
+        B(x, 50, 10, 8, '#e6dcc4'); B(x, 49, 10, 3, '#f6efe0'); r(x, 53, 10, 1, '#d8b040'); r(x, 57, 10, 1, '#8a7a5a'); r(x + 4, 53, 2, 1, '#fff3b0');
+        for (let k = 0; k < 4; k++) { const w = 5 - k; r(sg < 0 ? x - 1 - w : x + 10, 49 + k * 2 + (k === 0 ? fl : 0), w, 1, k % 2 ? '#dfe9f5' : '#ffffff'); }
+        for (let i = 0; i < 3; i++) { const ph = (CLK * 1.6 + i * .33 + (sg < 0 ? 0 : .5)) % 1; r(sg < 0 ? x + 9 + ph * 6 : x - ph * 6, 58 - Math.floor(ph * 3), 1, 1, '#cfc4a8'); }
+      } else if (b === 'Boots') { B(x, 50, 10, 8, P.m); B(x, 49, 10, 3, lit(P.m)); r(x, 53, 10, 1, P.trim); r(x + 4, 53, 2, 1, '#fff3b0'); r(x, 57, 10, 1, P.dk); }
       else if (b === 'Sandals') { B(x, 56, 10, 2, P.m); r(x + 1, 52, 2, 4, P.m); r(x + 5, 52, 2, 4, P.m); r(x + 1, 50, 8, 1, P.m); r(x + 1, 52, 1, 1, P.trim); }
       else { B(x - 1, 49, 12, 9, P.m); r(x, 50, 10, 2, lit(P.m)); r(x, 53, 10, 1, P.trim); for (let i = 0; i < 10; i += 2) r(x + i, 57, 1, 1, P.dk); r(x + 1, 51, 1, 1, P.trim); r(x + 8, 51, 1, 1, P.trim); }
     }
   }
   if (e.boots) for (const x of [g.bootL, g.bootR]) rust(e.boots, x, 50, 10, 8);
-  if (e.boots && e.boots.ri >= 3) for (const x of [g.bootL, g.bootR]) { // boots: a glowing rune on the toe, ground-fire at the heel from 5, bigger with embers from 7
+  if (e.boots && e.boots.ri >= 3 && !own(e.boots)) for (const x of [g.bootL, g.bootR]) { // boots: a glowing rune on the toe, ground-fire at the heel from 5, bigger with embers from 7
     const it = e.boots, P = pal(it, 'steel'); r(x + 3, 55, 4, 1, P.gem); r(x + 4, 54, 2, 1, mix(P.gem, '#ffffff', .5));
     if (it.ri >= 5) flame(it, x, 58, 10, 2 + (it.ri >= 7 ? 2 : 0) + (it.ri >= 9 ? 2 : 0), x);
     if (it.ri >= 7) embers(it, x, 56, 10, 2 + Math.min(3, it.ri - 7), x + 3);
@@ -133,12 +146,16 @@ export function drawWorn(c, e, st) {
   if (e.gloves) {
     const b = baseOf(e.gloves), P = pal(e.gloves, b === 'Gauntlets' ? 'steel' : 'leather');
     for (const x of [ax, bx]) {
-      if (b === 'Mitts') { B(x - 1, 34, 8, 8, P.m); r(x - 1, 34, 8, 2, P.trim); r(x + 1, 38, 1, 3, shd(P.m)); }
+      if (e.gloves.un === 'stormcaller') { // Stormcaller Gauntlets (relic): blue-steel with a gold bolt inlay and crackling arcs
+        B(x - 1, 31, 8, 11, '#2c3a5c'); B(x - 2, 29, 10, 3, '#3d4f7a'); r(x - 2, 29, 10, 1, '#ffe45c'); r(x, 40, 6, 2, shd('#2c3a5c'));
+        r(x + 3, 32, 2, 1, '#ffe45c'); r(x + 2, 33, 2, 1, '#ffe45c'); r(x + 3, 34, 2, 1, '#ffe45c'); r(x + 2, 35, 2, 1, '#ffe45c'); r(x + 3, 36, 1, 2, '#ffffff');
+        if (Math.floor(CLK * 14) % 3) for (let k = 0; k < 5; k++) r(x - 1 + k * 2, 27 - ((k + Math.floor(CLK * 14)) % 3), 1, 1, k % 2 ? '#bfe8ff' : '#ffffff');
+      } else if (b === 'Mitts') { B(x - 1, 34, 8, 8, P.m); r(x - 1, 34, 8, 2, P.trim); r(x + 1, 38, 1, 3, shd(P.m)); }
       else if (b === 'Gauntlets') { B(x - 1, 31, 8, 11, P.m); B(x - 2, 29, 10, 3, lit(P.m)); r(x, 40, 6, 2, shd(P.m)); r(x + 2, 33, 1, 6, lit(P.m)); r(x - 2, 29, 10, 1, P.trim); }
       else { for (let y = 33; y < 41; y += 2) r(x, y, 6, 1, P.m); r(x, 34, 6, 1, lit(P.m)); r(x, 31, 6, 2, P.trim); }
     }
   }
-  if (e.gloves && e.gloves.ri >= 3) for (const x of [ax, bx]) { // gloves: a glowing rune on the back of the hand, flames above the knuckles from 5
+  if (e.gloves && e.gloves.ri >= 3 && !own(e.gloves)) for (const x of [ax, bx]) { // gloves: a glowing rune on the back of the hand, flames above the knuckles from 5
     const it = e.gloves, P = pal(it, 'steel'); r(x + 2, 37, 2, 2, P.gem); r(x + 2, 37, 1, 1, '#ffffff');
     if (it.ri >= 5) flame(it, x, 35, 6, 3 + (it.ri >= 7 ? 2 : 0), x + 5);
     if (it.ri >= 7) embers(it, x - 1, 34, 8, 2 + Math.min(3, it.ri - 7), x);
@@ -156,7 +173,13 @@ export function drawWorn(c, e, st) {
     const it = e['amu' + (i + 1)]; if (!it) return;
     const b = baseOf(it), P = pal(it, 'gold');
     r(x + 1, y - 3, 1, 3, P.trim);
-    if (b === 'Charm') { B(x, y, 4, 4, P.trim); r(x + 1, y + 1, 2, 2, P.gem); }
+    if (it.un === 'midas') { // Midas Locket (relic): a heavy gold locket stamped with a coin, shedding gold
+      B(x - 1, y, 6, 6, '#e8c050'); r(x + 1, y + 1, 2, 4, '#fff3b0'); r(x, y + 2, 4, 1, '#fff3b0'); r(x - 1, y, 6, 1, '#fff3b0');
+      for (let i = 0; i < 3; i++) { const ph = (CLK * 1.2 + i * .33) % 1; r(x - 1 + i * 3, y + 6 + Math.round(ph * 8), 1, 1, ph > .7 ? '#a07820' : '#ffd34d'); }
+    } else if (it.un === 'seer') { // Eye of the Seer (relic): a dark talisman holding an open violet eye
+      const pu2 = .5 + .5 * Math.sin(CLK * 2.5), eye = mix('#8a4fff', '#ff7aff', pu2);
+      B(x - 1, y + 1, 6, 4, '#2a1f4a'); r(x, y + 2, 4, 2, '#f4f0ff'); r(x + 1, y + 2, 2, 2, eye); r(x + 1, y + 2, 1, 1, '#ffffff'); r(x + 2, y - 1, 1, 2, eye); r(x - 2, y + 2, 1, 1, eye); r(x + 5, y + 2, 1, 1, eye);
+    } else if (b === 'Charm') { B(x, y, 4, 4, P.trim); r(x + 1, y + 1, 2, 2, P.gem); }
     else if (b === 'Amulet') { B(x, y, 4, 5, P.trim); r(x + 1, y + 1, 2, 3, P.gem); r(x + 1, y + 1, 1, 1, '#ffffff'); }
     else if (b === 'Talisman') { r(x + 1, y, 2, 1, P.trim); B(x, y + 1, 4, 3, P.gem); r(x + 1, y + 4, 2, 1, P.trim); r(x + 1, y + 2, 2, 1, '#ffffff'); }
     else { B(x, y, 4, 5, P.trim); r(x + 1, y + 1, 2, 2, lit(P.trim)); r(x + 1, y + 3, 2, 1, shd(P.trim)); }
@@ -215,7 +238,14 @@ export function drawWorn(c, e, st) {
   // ---- head (hl = left edge of the headgear, hw = its width: adults have a smaller head than the cartoon enemies) ----
   if (e.head) {
     const b = baseOf(e.head), hw = (st.adult || st.ah) ? 14 : 18, hl = hx + 8 - hw / 2, mid = hl + hw / 2;
-    if (b === 'Cap') { const P = pal(e.head, 'cloth'); S([[hl, -3, hw, 6], [hl + 2, -5, hw - 4, 3]], P.m); r(hl + 3, -4, hw / 2 - 1, 1, lit(P.m)); B(hl - 3, 3, hw + 6, 2, shd(P.m)); r(hl, 2, hw, 1, P.trim); r(mid - 1, -7, 2, 2, e.head.ri >= 3 ? P.gem : lit(P.m)); }
+    if (e.head.un === 'drowned') { // Crown of the Drowned King (relic): a gold crown crusted with coral and pearls, dripping seawater
+      const pu = .5 + .5 * Math.sin(CLK * 2), aqua = '#3aa7b8', gold = '#c9a24a';
+      S([[hl + 1, -8, 3, 6], [mid - 2, -12, 4, 10], [hl + hw - 4, -8, 3, 6]], gold);
+      B(hl, -3, hw, 5, '#2a6a7a'); r(hl, -3, hw, 1, aqua); r(hl, 1, hw, 1, gold);
+      for (const px of [hl + 2, mid - 1, hl + hw - 3]) { r(px, -2, 2, 2, '#ffffff'); r(px, -2, 1, 1, mix('#9fe8ff', '#ffffff', pu)); }
+      r(mid - 1, -13, 2, 2, '#ffffff'); r(hl + 2, -9, 1, 1, aqua); r(hl + hw - 3, -9, 1, 1, aqua); r(hl - 1, 0, 1, 4, aqua); r(hl + hw, 0, 1, 4, aqua);
+      for (let i = 0; i < 4; i++) { const ph = (CLK * 1.1 + i * .27) % 1; r(hl + 1 + i * Math.floor(hw / 4), 2 + Math.round(ph * 16), 1, 2, ph > .7 ? '#9fe8ff' : aqua); }
+    } else if (b === 'Cap') { const P = pal(e.head, 'cloth'); S([[hl, -3, hw, 6], [hl + 2, -5, hw - 4, 3]], P.m); r(hl + 3, -4, hw / 2 - 1, 1, lit(P.m)); B(hl - 3, 3, hw + 6, 2, shd(P.m)); r(hl, 2, hw, 1, P.trim); r(mid - 1, -7, 2, 2, e.head.ri >= 3 ? P.gem : lit(P.m)); }
     else if (b === 'Helm') {
       const P = pal(e.head, 'steel');
       if (e.head.ri >= 3) { S([[mid - 2, -12, 4, 9]], P.acc); r(mid - 1, -11, 1, 6, lit(P.acc)); }
@@ -233,8 +263,8 @@ export function drawWorn(c, e, st) {
   if (e.head) { // helmet wear and enchantments: rust on old helms, a flame crest from 6, a floating halo from 10
     const hw2 = (st.adult || st.ah) ? 14 : 18, hl2 = hx + 8 - hw2 / 2, mid2 = hl2 + hw2 / 2, hb = baseOf(e.head);
     if (hb === 'Helm') rust(e.head, hl2, -3, hw2, 14); else if (hb === 'Cap' || hb === 'Hood') rust(e.head, hl2, -3, hw2, 7);
-    if (e.head.ri >= 6) { const top = hb === 'Helm' ? (e.head.ri >= 3 ? -12 : -6) : hb === 'Crown' ? -12 : hb === 'Hood' ? -9 : -7; flame(e.head, mid2 - 4, top + 1, 8, 4 + Math.min(5, e.head.ri - 6), 9); }
-    if (e.head.ri >= 10) { const hc = RC[e.head.ri] || '#ffffff', b2 = .5 + .5 * Math.sin(CLK * 3); for (let i = -7; i <= 7; i++) r(mid2 + i, -16 + Math.round(Math.abs(i) * .12), 1, 1, i % 3 ? hc : mix(hc, '#ffffff', .7)); r(mid2 - 8, -15, 1, 1, hc); r(mid2 + 8, -15, 1, 1, hc); if (b2 > .5) r(mid2, -17, 1, 1, '#ffffff'); } // halo
+    if (e.head.ri >= 6 && !own(e.head)) { const top = hb === 'Helm' ? (e.head.ri >= 3 ? -12 : -6) : hb === 'Crown' ? -12 : hb === 'Hood' ? -9 : -7; flame(e.head, mid2 - 4, top + 1, 8, 4 + Math.min(5, e.head.ri - 6), 9); }
+    if (e.head.ri >= 10 && !own(e.head)) { const hc = RC[e.head.ri] || '#ffffff', b2 = .5 + .5 * Math.sin(CLK * 3); for (let i = -7; i <= 7; i++) r(mid2 + i, -16 + Math.round(Math.abs(i) * .12), 1, 1, i % 3 ? hc : mix(hc, '#ffffff', .7)); r(mid2 - 8, -15, 1, 1, hc); r(mid2 + 8, -15, 1, 1, hc); if (b2 > .5) r(mid2, -17, 1, 1, '#ffffff'); } // halo
   }
   // ---- weapons (right hand, then left), held upright in the fist ----
   for (const [it, gx] of [[e.rhand, bx + 1], [e.lhand, ax + 1]]) {
@@ -249,12 +279,18 @@ export function drawWorn(c, e, st) {
       B(gx + 1, 37, 3, 6, '#3a1a10'); for (let y = 38; y < 43; y += 2) r(gx + 1, y, 3, 1, '#7a3a20');
       B(gx, 43, 5, 3, '#c04a2a'); r(gx + 2, 44, 1, 1, core);
       flame(FR, gx - 1, 6, 6, 5, 3); embers(FR, gx - 3, 4, 10, 5, 9);
+    } else if (it.un === 'voidreaver') { // Voidreaver Axe (relic): a double-bladed axe of near-black iron with a violet void edge and orbiting motes
+      const pu = .5 + .5 * Math.sin(CLK * 3), edge = mix('#8a4fff', '#e0b8ff', pu);
+      B(gx + 1, 4, 2, 42, '#1a1424'); r(gx + 1, 2, 2, 3, '#3a2a52');
+      S([[gx + 3, 8, 7, 4], [gx + 3, 12, 9, 8], [gx + 3, 20, 7, 4]], '#241a34'); S([[gx - 6, 8, 7, 4], [gx - 8, 12, 9, 8], [gx - 6, 20, 7, 4]], '#241a34');
+      B(gx - 1, 13, 6, 6, '#3a2a52'); r(gx + 11, 13, 1, 6, edge); r(gx - 8, 13, 1, 6, edge); r(gx + 4, 14, 5, 1, '#b06bff'); r(gx - 6, 14, 5, 1, '#b06bff'); r(gx + 1, 15, 2, 2, edge);
+      for (let i = 0; i < 6; i++) r(gx + 2 + Math.round(Math.cos(CLK * 3 + i * 1.05) * 11), 16 + Math.round(Math.sin(CLK * 3 + i * 1.05) * 8), 1, 1, i % 2 ? '#d8a8ff' : '#8a4fff');
     } else if (b === 'Sword') { S([[gx, 8, 4, 27], [gx + 1, 5, 2, 3]], P.m); r(gx + 1, 9, 1, 24, lit(P.m)); r(gx + 3, 9, 1, 24, shd(P.m)); B(gx - 3, 34, 10, 3, P.trim); B(gx + 1, 37, 2, 6, '#5a3a1c'); B(gx, 43, 4, 3, P.trim); }
     else if (b === 'Axe') { B(gx + 1, 8, 2, 38, P.wood); S([[gx + 3, 8, 7, 4], [gx + 3, 12, 9, 8], [gx + 3, 20, 7, 4]], P.m); r(gx + 11, 13, 1, 6, lit(P.m)); r(gx + 4, 9, 5, 1, lit(P.m)); B(gx - 2, 12, 3, 3, P.m); }
     else if (b === 'Dagger') { S([[gx + 1, 26, 3, 11], [gx + 2, 24, 1, 2]], P.m); r(gx + 2, 27, 1, 8, lit(P.m)); B(gx - 1, 36, 7, 2, P.trim); B(gx + 1, 38, 2, 5, '#5a3a1c'); B(gx + 1, 43, 2, 2, P.trim); }
     else if (b === 'Mace') { B(gx + 1, 14, 2, 32, P.wood); disc(gx + 2, 10, 5, P.m); r(gx + 2, 2, 1, 3, P.m); r(gx - 4, 10, 3, 1, P.m); r(gx + 6, 10, 3, 1, P.m); r(gx + 2, 15, 1, 3, P.m); if (it.ri >= 3) r(gx + 1, 9, 2, 2, P.gem); }
     else { B(gx + 1, 0, 2, 48, P.wood); S([[gx, -8, 4, 9], [gx + 1, -11, 2, 3]], P.m); r(gx + 1, -7, 1, 7, lit(P.m)); r(gx - 1, 2, 6, 1, P.trim); r(gx - 1, 3, 1, 2, P.trim); r(gx + 4, 3, 1, 2, P.trim); }
     const BOX = { Sword: [gx, 6, 4, 28], Axe: [gx + 3, 8, 9, 16], Dagger: [gx + 1, 24, 3, 12], Mace: [gx - 3, 5, 11, 10] }, bx2 = BOX[b] || [gx, -11, 4, 14]; // where the blade / head is
-    rust(it, bx2[0], bx2[1], bx2[2], bx2[3]); weaponFx(it, bx2[0], bx2[1], bx2[2], bx2[3]);
+    rust(it, bx2[0], bx2[1], bx2[2], bx2[3]); if (!own(it)) weaponFx(it, bx2[0], bx2[1], bx2[2], bx2[3]);
   }
 }

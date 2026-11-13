@@ -55,3 +55,10 @@ button.alt{background:var(--panel);color:var(--ink)}
 /* Mythic Relics: a pulsing gold frame around the icon */
 .ic.relic{border-color:#ffd34d;animation:relicGlow 1.8s ease-in-out infinite}
 @keyframes relicGlow{0%,100%{box-shadow:0 0 3px #ffd34d88}50%{box-shadow:0 0 10px 2px #ffd34dcc}}
+/* Relic found banner and the Gear tab notice */
+#relicbn{position:fixed;left:50%;top:14%;transform:translateX(-50%);z-index:9999;width:min(92vw,460px);text-align:center;padding:16px 14px;background:linear-gradient(#2a1f05ee,#14110cee);border:3px solid #ffd34d;box-shadow:0 0 0 3px #00000088,0 0 40px 8px #ffd34d88;cursor:pointer;animation:rbIn .5s ease-out,relicGlow 1.6s ease-in-out infinite .5s}
+#relicbn .rb-top{font-family:'Press Start 2P',monospace;font-size:11px;color:#ffd34d;letter-spacing:1px}
+#relicbn .rb-name{font-family:'Press Start 2P',monospace;font-size:15px;color:#fff;margin:12px 0 8px;text-shadow:0 0 12px #ffd34d}
+#relicbn .rb-pow{color:#ffe9a8;font-size:20px}#relicbn .rb-fl{color:#b9a56a;font-style:italic;font-size:17px;margin-top:6px}#relicbn .rb-hint{color:#8a7a4a;font-size:15px;margin-top:10px}
+@keyframes rbIn{from{transform:translateX(-50%) scale(.6);opacity:0}to{transform:translateX(-50%) scale(1);opacity:1}}
+.newrelic{border-color:#ffd34d!important;box-shadow:0 0 14px #ffd34d88;margin:8px 0}
