@@ -7,6 +7,9 @@ import { RTREE, STB, reqStage, ascFee } from './ascension.js';
 
 // ---------------------------------------------------------------- changelog (add new entries at the TOP; `id` must be unique)
 export const CHANGELOG = [
+  { id: '2026-11-13j', date: '2026-11-13', title: 'Fairer relic drops', items: [
+    'A Mythic Relic is now rolled when you defeat a boss, not when it appears. Losing to a boss no longer wastes a relic or resets your relic pity.',
+  ] },
   { id: '2026-11-13i', date: '2026-11-13', title: 'Leaderboard fixes, bulk buying on Magic and Pets', items: [
     'You can join (or rejoin) the leaderboards at any time, however far you have got. There is no longer a limit on the scores a new entry may start with.',
     'Leaderboard entries keep up with fast progress. If your scores jump faster than one update allows, your entry climbs a step with each update until it shows your real scores.',

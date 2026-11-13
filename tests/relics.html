@@ -72,9 +72,13 @@ try{
  reset();r=fresh();r.eAtk=1e12;r.hp=10;{let i=0;for(;i<40&&!r.over;i++)bt.tick(.1);ck('no-revive-without-relic',r.over===true&&!r.phUsed)}
  // 7 a boss at stage 40 can drop a relic, and looting it records it
  reset();st.S.relicPity=1000;let got=null;
- for(let a=0;a<80&&!got;a++){r=fresh();r.stage=39;r.eHp=1;r.hT=10;bt.tick(.1);got=(r.eDrops||[]).find(x=>x.un)||null}
- ck('boss-can-drop-a-relic',!!got&&r.stage===40&&r.boss===true,JSON.stringify([r.stage,r.boss,got&&got.un]));
- if(got){r.hT=10;r.eHp=1;st.S.relicFound={};bt.tick(.1);ck('looting-records-the-relic',st.S.relicFound[got.un]===1&&r.loot.some(x=>x.un===got.un),JSON.stringify(st.S.relicFound));
+ // the relic is rolled when the boss DIES, so reaching the boss alone gives nothing and losing to it keeps the pity
+ r=fresh();r.stage=39;r.eHp=1;r.hT=10;bt.tick(.1);ck('reaching-the-boss-rolls-nothing-yet',r.stage===40&&r.boss===true&&!(r.eDrops||[]).some(x=>x.un)&&st.S.relicPity===1000,st.S.relicPity);
+ r.eAtk=1e12;r.hp=1;for(let i=0;i<40&&!r.over;i++)bt.tick(.1);ck('losing-to-the-boss-keeps-the-pity',r.over===true&&st.S.relicPity===1000&&!r.loot.some(x=>x.un),st.S.relicPity);
+ reset();st.S.relicPity=1000;st.S.relicFound={};
+ for(let a=0;a<80&&!got;a++){r=fresh();r.stage=39;r.eHp=1;r.hT=10;bt.tick(.1);if(!r.boss)continue;r.eHp=1;r.hT=10;bt.tick(.1);got=r.loot.find(x=>x.un)||null}
+ ck('killing-the-boss-can-drop-a-relic',!!got&&r.stage===41,JSON.stringify([r.stage,got&&got.un]));
+ if(got){ck('looting-records-the-relic',st.S.relicFound[got.un]===1&&r.loot.some(x=>x.un===got.un),JSON.stringify(st.S.relicFound));
   const bn=document.getElementById('relicbn');ck('finding-a-relic-raises-a-banner',!!bn&&bn.textContent.includes('MYTHIC RELIC FOUND')&&bn.textContent.includes(rl.relicInfo(got).power),bn&&bn.textContent);
   ck('finding-a-relic-flags-the-gear-tab',st.S.relicNew===got.un);
   r.over=false;bt.die();ck('defeat-screen-mentions-the-relic',document.querySelector('#ovt').innerHTML.includes('Mythic Relic')&&document.querySelector('#ovt').innerHTML.includes(got.nm));
