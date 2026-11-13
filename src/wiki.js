@@ -7,6 +7,9 @@ import { RTREE, STB, reqStage, ascFee } from './ascension.js';
 
 // ---------------------------------------------------------------- changelog (add new entries at the TOP; `id` must be unique)
 export const CHANGELOG = [
+  { id: '2026-11-13a', date: '2026-11-13', title: 'Fix: saving for newly verified accounts', items: [
+    'Fixed a problem where an account that had just verified its email could show "The server refused the request" and never sync. The game now refreshes your sign-in automatically before saving to the cloud. If you saw this, reload the page (or sign out and back in) once.',
+  ] },
   { id: '2026-11-12l', date: '2026-11-12', title: 'Sign in to play', items: [
     'You now sign in (or create an account) when the game opens. Your progress is tied to your account, so you can carry on from any device.',
     'If you played before accounts were required, the first account you sign in with keeps your existing progress.',

@@ -26,7 +26,18 @@ let fb = null, timer = 0, lastPushAt = 0, lastSig = '';
 const afterSyncFns = [], afterPushFns = []; // features (gifts, leaderboard) that run after a sync / a successful push
 export function setAfterSync(f) { afterSyncFns.push(f); }
 export function setAfterPush(f) { afterPushFns.push(f); }
-export const withFirebase = () => init();
+// Firebase Auth restores a returning user with an up-to-date `emailVerified`, but the cached ID token it holds was minted BEFORE they
+// verified, so the server-side email_verified claim can stay false for up to an hour: Firestore then refuses writes for a player the
+// app shows as verified (the "server refused the request" message). So the first Firestore use per page session forces a token refresh,
+// and syncNow retries once with a fresh token if the server still refuses.
+let tokenFresh = false;
+async function freshToken(f) {
+  if (tokenFresh) return;
+  const u = f && f.auth && f.auth.currentUser;
+  if (!u || !u.getIdToken) return;
+  try { await u.getIdToken(true); tokenFresh = true; } catch (e) { /* offline: try again on the next call */ }
+}
+export const withFirebase = async () => { const f = await init(); await freshToken(f); return f; };
 
 function init() {
   if (!fb) {
@@ -121,6 +132,7 @@ function claimDevice(uid) {
 }
 async function onUser(u) {
   st.user = u ? { uid: u.uid, email: u.email, verified: !!u.emailVerified } : null;
+  tokenFresh = false; // a new sign-in state: get a fresh token before the next Firestore call
   if (!u) { emit('user'); return; }
   claimDevice(u.uid);
   try { localStorage.setItem(FLAG, '1'); } catch (e) { /* ignore */ }
@@ -134,14 +146,22 @@ async function syncNow() {
   if (mode !== 'camp') { setTimeout(syncNow, 30000); return; } // never swap saves mid-run
   st.busy = true; st.err = ''; emit('state');
   try {
-    const { F, db } = await init();
-    const snap = await F.getDoc(F.doc(db, 'saves', st.user.uid));
-    if (!snap.exists()) { await push(true); return; }
-    const c = snap.data(), b = readBase();
-    if (isFresh(S)) { await applyCloud(c); return; }                         // brand-new device: take the cloud save
-    if (b && b.version === c.clientT) { await push(false); return; }         // cloud unchanged since our last sync: send ours
-    if (b && b.localT >= (S.lastT || 0)) { await applyCloud(c); return; }    // we have not played since last sync: take cloud
-    st.conflict = { cloud: c.summary || {}, local: summ(S), doc: c, version: c.clientT }; // both changed: ask the player
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const { F, db } = await withFirebase();
+        const snap = await F.getDoc(F.doc(db, 'saves', st.user.uid));
+        if (!snap.exists()) { await push(true); break; }
+        const c = snap.data(), b = readBase();
+        if (isFresh(S)) { await applyCloud(c); break; }                         // brand-new device: take the cloud save
+        if (b && b.version === c.clientT) { await push(false); break; }         // cloud unchanged since our last sync: send ours
+        if (b && b.localT >= (S.lastT || 0)) { await applyCloud(c); break; }    // we have not played since last sync: take cloud
+        st.conflict = { cloud: c.summary || {}, local: summ(S), doc: c, version: c.clientT }; // both changed: ask the player
+        break;
+      } catch (e) {
+        if (e && e.code === 'permission-denied' && attempt === 0) { tokenFresh = false; continue; } // stale token claim: refresh once and retry
+        throw e;
+      }
+    }
   } catch (e) { st.err = cloudErr(e); } finally {
     st.busy = false; emit('state');
     if (!st.err && !st.conflict) for (const f of afterSyncFns) Promise.resolve().then(f).catch(() => { /* best-effort extras */ });
@@ -149,7 +169,7 @@ async function syncNow() {
 }
 
 async function push(force) {
-  const { F, db } = await init(), ref = F.doc(db, 'saves', st.user.uid);
+  const { F, db } = await withFirebase(), ref = F.doc(db, 'saves', st.user.uid);
   const json = localStorage.getItem(KEY) || JSON.stringify(S), b = readBase(), sig = sigOf(json);
   if (!force && b && sig === lastSig) { st.dirty = false; return 'skipped'; } // nothing meaningful changed: no write
   const { payload, trimmed } = await fit(json), clientT = Date.now();

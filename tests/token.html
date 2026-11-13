@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>running</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+</head><body><div id="app">
+<header><h1>Delve</h1><div id="top"></div></header>
+<section id="battle" hidden>
+ <div class="cv"><canvas id="c" width="192" height="108"></canvas><div id="fxl"></div>
+  <div id="over" hidden><div class="px" style="font-size:12px">Defeated</div><div id="ovt"></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button data-a="delveAgain" style="background:#d94a4a;color:#fff;border-color:#fff">⚔ Delve Again</button><button data-a="camp">Go to camp</button></div></div></div>
+ <div class="bar"><i id="hpb"></i><span id="hpt"></span></div>
+ <div class="bar m" id="mpw"><i id="mpb"></i><span id="mpt"></span></div>
+ <div class="bar e"><i id="ehb"></i><span id="ent"></span></div>
+ <div class="row sp" style="margin:6px 0"><div class="row" id="spells"></div><div class="row"><button class="s alt" data-a="spd" id="spdb"></button><button class="s alt" data-a="end">End run</button></div></div>
+ <div class="mute">Last drop</div><div id="last"></div><div class="mute" style="margin-top:6px">Loot this run</div><div id="feed"></div>
+</section>
+<section id="camp" hidden>
+ <div class="row sp"><div class="tabs"><button data-a="tab" data-v="g" id="tg">Gear</button><button data-a="tab" data-v="u" id="tu">Upgrades</button><button data-a="tab" data-v="v" id="tv">Vault</button><button data-a="tab" data-v="m" id="tm">Magic</button><button data-a="tab" data-v="p" id="tp">Pets</button><button data-a="tab" data-v="r" id="tr2">Auras</button><button data-a="tab" data-v="i" id="ti">Idle</button><button data-a="tab" data-v="a" id="ta">Ascend</button><button data-a="tab" data-v="l" id="tl">Scores</button><button data-a="tab" data-v="x" id="tx">Account</button></div></div>
+ <div style="margin:8px 0"><button data-a="delve" style="width:100%;font-size:22px;padding:10px;background:var(--btn);border-width:4px;box-shadow:5px 5px 0 var(--ink)">⚔ DELVE</button></div>
+ <div id="sdw" class="row" style="margin:6px 0"></div><div id="cbody"></div><div style="margin:16px 0"><button class="s alt" data-a="reset">Reset save</button></div>
+</section>
+</div>
+<script type="module">
+// Stale sign-in token: a returning player whose emailVerified is true (Auth reloaded the user) but whose cached ID token was minted
+// before they verified. Firestore refuses until the token is refreshed. cloud.js must refresh once per session and retry once.
+const out=[],ck=(n,c,x)=>out.push(n+':'+(c?'ok':'FAIL'+(x!==undefined?'('+x+')':'')));
+window.onerror=(m,u,l)=>out.push('ERR '+m+' @'+String(u).split('/').pop()+':'+l);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+try{
+ window.__HD_NO_BOOT_INIT=true;localStorage.removeItem('hd-cloud');
+ await import('/src/main.js');
+ const st=await import('/src/state.js'),cloud=await import('/src/cloud.js'),T=cloud._test;
+ const KEY='hollow-delve-2',S=()=>st.S;
+ const docs=new Map();let sc;
+ // sc = scenario: {claimOk: does the server currently believe the email is verified, failFirstRefresh, alwaysDeny, tokenCalls, gets, refreshes}
+ const denied=()=>Object.assign(new Error('Missing or insufficient permissions.'),{code:'permission-denied'});
+ const user={uid:'u1',email:'a@b.c',emailVerified:true,async getIdToken(force){sc.tokenCalls++;if(force){if(sc.failFirstRefresh&&sc.refreshes===0){sc.refreshes++;throw new Error('network')}sc.refreshes++;if(sc.becomesValidOnRefresh)sc.claimOk=true}return 'tok'}};
+ const auth={currentUser:user};
+ const check=()=>{if(sc.alwaysDeny||!sc.claimOk)throw denied()};
+ const F={doc:(db,c,id)=>({path:c+'/'+id,c,id}),serverTimestamp:()=>({ts:1}),collection:(db,c)=>({coll:c}),orderBy:()=>({}),limit:()=>({}),where:()=>({}),query:(c)=>c,
+  async getDoc(ref){if(ref.c==='saves'){sc.gets++;check()}const d=docs.get(ref.path);return{exists:()=>!!d,data:()=>d}},async getDocs(){return{docs:[]}},
+  async setDoc(ref,data){check();docs.set(ref.path,data)},async deleteDoc(ref){docs.delete(ref.path)},
+  async runTransaction(db,fn){const w=[],tx={async get(ref){const d=docs.get(ref.path);return{exists:()=>!!d,data:()=>d}},set(ref,data){check();w.push(['set',ref.path,data])},delete(ref){w.push(['del',ref.path])}};await fn(tx);for(const x of w){if(x[0]==='set')docs.set(x[1],{...x[2]});else docs.delete(x[1])}}};
+ T.inject({A:{},F,auth,db:{}});
+ const run=async(o)=>{docs.clear();sc={claimOk:false,becomesValidOnRefresh:true,failFirstRefresh:false,alwaysDeny:false,tokenCalls:0,gets:0,refreshes:0,...o};T.reset();localStorage.removeItem(KEY);localStorage.removeItem('hd-cloud-base');st.load();S().gold=123;st.save();await T.onUser(user);await sleep(300);return cloud.cloudState()};
+ // A the real-world case: the first Firestore call must refresh the token, after which the server accepts
+ let c=await run({});
+ ck('stale-claim-is-fixed-by-the-proactive-refresh',docs.has('saves/u1')&&!c.err&&c.syncAt>0,'err='+c.err+' docs='+[...docs.keys()]);
+ ck('the-token-was-forced-fresh-exactly-once',sc.refreshes===1,sc.refreshes);
+ ck('and-it-did-not-need-the-retry',sc.gets===1,sc.gets);
+ ck('the-cloud-copy-holds-the-save',!!docs.get('saves/u1')&&docs.get('saves/u1').summary&&docs.get('saves/u1').summary.gold===123);
+ // B the first refresh fails (flaky network): the denied call triggers one retry with a fresh token
+ c=await run({failFirstRefresh:true});
+ ck('a-failed-first-refresh-is-retried-once-and-then-succeeds',docs.has('saves/u1')&&!c.err&&sc.refreshes===2,'err='+c.err+' refreshes='+sc.refreshes);
+ // C the server really refuses (not a stale token): one retry, then a clear message, no loop
+ c=await run({alwaysDeny:true,becomesValidOnRefresh:false});
+ ck('a-genuine-refusal-is-retried-only-once',sc.gets===2,sc.gets);
+ ck('and-then-the-clear-message-is-shown',c.err.includes('server refused'),c.err);
+ ck('nothing-was-written',!docs.has('saves/u1'));
+ // D the refresh happens once per session, and again for a new sign-in
+ await run({});const r0=sc.refreshes;await cloud.withFirebase();await cloud.withFirebase();await cloud.withFirebase();
+ ck('later-calls-do-not-refresh-again',sc.refreshes===r0,r0+' -> '+sc.refreshes);
+ await T.onUser(user);await cloud.withFirebase();
+ ck('a-new-sign-in-refreshes-again',sc.refreshes===r0+1,sc.refreshes);
+ // E no current user / no getIdToken: nothing breaks
+ auth.currentUser=null;c=await run({claimOk:true});auth.currentUser=user;
+ ck('no-current-user-is-harmless-when-the-server-accepts',docs.has('saves/u1')&&!c.err&&sc.refreshes===0,'err='+c.err+' refreshes='+sc.refreshes);
+ // F a verified player whose claim was fine all along makes no extra calls beyond the one refresh
+ c=await run({claimOk:true,becomesValidOnRefresh:false});
+ ck('healthy-account-still-syncs-normally',docs.has('saves/u1')&&!c.err&&sc.gets===1);
+}catch(e){out.push('EXC '+e.message+' | '+(e.stack||'').split(String.fromCharCode(10))[1])}
+document.title=out.join(' ');
+</script></body></html>
