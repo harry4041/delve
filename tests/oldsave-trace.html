@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>running</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+</head><body><div id="app">
+<header><h1>Delve</h1><div id="top"></div></header>
+<section id="battle" hidden>
+ <div class="cv"><canvas id="c" width="192" height="108"></canvas><div id="fxl"></div>
+  <div id="over" hidden><div class="px" style="font-size:12px">Defeated</div><div id="ovt"></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button data-a="delveAgain" style="background:#d94a4a;color:#fff;border-color:#fff">⚔ Delve Again</button><button data-a="camp">Go to camp</button><button class="s alt" data-a="auto" id="autoo">Auto-delve: OFF</button></div></div></div>
+ <div class="bar"><i id="hpb"></i><span id="hpt"></span></div>
+ <div class="bar m" id="mpw"><i id="mpb"></i><span id="mpt"></span></div>
+ <div class="bar e"><i id="ehb"></i><span id="ent"></span></div>
+ <div class="row sp" style="margin:6px 0"><div class="row" id="spells"></div><div class="row"><button class="s alt" data-a="auto" id="autob">Auto-delve: OFF</button><button class="s alt" data-a="spd" id="spdb"></button><button class="s alt" data-a="end">End run</button></div></div>
+ <div class="mute">Last drop</div><div id="last"></div><div class="mute" style="margin-top:6px">Loot this run</div><div id="feed"></div>
+</section>
+<section id="camp" hidden>
+ <div class="row sp"><div class="tabs"><button data-a="tab" data-v="g" id="tg">Gear</button><button data-a="tab" data-v="u" id="tu">Upgrades</button><button data-a="tab" data-v="v" id="tv">Vault</button><button data-a="tab" data-v="m" id="tm">Magic</button><button data-a="tab" data-v="p" id="tp">Pets</button><button data-a="tab" data-v="r" id="tr2">Auras</button><button data-a="tab" data-v="i" id="ti">Idle</button><button data-a="tab" data-v="a" id="ta">Ascend</button><button data-a="tab" data-v="l" id="tl">Scores</button><button data-a="tab" data-v="x" id="tx">Account</button></div></div>
+ <div style="margin:8px 0"><button data-a="delve" style="width:100%;font-size:22px;padding:10px;background:var(--btn);border-width:4px;box-shadow:5px 5px 0 var(--ink)">⚔ DELVE</button></div>
+ <div id="sdw" class="row" style="margin:6px 0"></div><div id="cbody"></div><div style="margin:16px 0"><button class="s alt" data-a="reset">Reset save</button></div>
+</section>
+</div>
+<script type="module">
+// Old-save parity: three seeded delves from a fixed save WITHOUT S.meta, ticked by hand. The fingerprint in the title must be
+// identical before and after a change that should not affect old saves (run this page against both versions and compare).
+// Uses only names that exist in every version since 2026-11-13.
+const out=[];window.onerror=(m,u,l)=>out.push('ERR '+m+' @'+String(u).split('/').pop()+':'+l);
+try{
+ localStorage.removeItem('hd-cloud');window.__HD_NO_BOOT_INIT=true;
+ await import('/src/main.js');
+ const st=await import('/src/state.js'),bt=await import('/src/battle.js');
+ const save=st.def();delete save.meta;
+ Object.assign(save,{gold:5e6,gems:3,best:25,bestOverall:25,life:25,asc:1,tr:{might:90,vigor:90,haste:12,grit:12,regen:12,greed:5,eyes:3,plunder:2,goblin:4,fury:6,luck:2},farm:{t:1,gold:0,gems:0},lastT:1});
+ localStorage.setItem('hollow-delve-2',JSON.stringify(save));st.load();
+ let a=12345;Math.random=()=>{a=(a+0x6D2B79F5)>>>0;let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296};
+ const fp=[];
+ for(let r=0;r<3;r++){
+  bt.startRun();st.setMode('camp'); // the page's own render loop only ticks in battle mode: every tick here is ours
+  const run=st.run;let n=0;while(!run.over&&n<40000){bt.tick(.05);n++}
+  fp.push([run.stage,run.gold,run.loot.length,Math.round(run.totalDmg),Math.round(st.S.gold),n]);
+  st.S.bag.push(...run.loot);
+  if(st.S.meta&&new URLSearchParams(location.search).has("nobeasts"))st.S.meta.beasts={}; // ?nobeasts: leave out bestiary stars (earned from kills by design) to compare everything else
+ }
+ out.push('trace:'+JSON.stringify(fp));
+}catch(e){out.push('EXC '+e.message+' | '+(e.stack||'').split('\n')[1])}
+try{localStorage.removeItem('hollow-delve-2')}catch(e){} // leave no save behind for the other test pages
+document.title=out.join(' ');
+</script></body></html>

@@ -41,7 +41,7 @@ try{
  ck('changelog-ids-unique',new Set(w.CHANGELOG.map(c=>c.id)).size===w.CHANGELOG.length);
  // every wiki section renders
  go('w');const secs=[...document.querySelectorAll('[data-wk]')].map(b=>b.dataset.wk);
- ck('ten-sections',secs.length===10,secs.join(','));
+ ck('eleven-sections',secs.length===11&&secs[10]==='goals',secs.join(',')); // Goals (shared with the Unity version) comes last
  for(const k of secs){document.querySelector('[data-wk='+k+']').click();await sleep(30);ck('section-renders:'+k,body().length>400&&!body().includes('undefined')&&!body().includes('NaN'),body().length)}
  const sec=async k=>{document.querySelector('[data-wk='+k+']').click();await sleep(30);return body()};
  // content comes from the game's data

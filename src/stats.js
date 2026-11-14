@@ -5,6 +5,7 @@ import {activeAuras,auraApply} from './auras.js';
 import {TREE} from './skilltree.js';
 import {RTREE} from './ascension.js';
 import {baseOf} from './assets.js';
+import {powerMult} from './meta.js';
 /* ===== POWER LEVEL ===== */
 export function powerLevel(){
  const st=stats();
@@ -47,7 +48,7 @@ export function stats(){
  s.ls+=1.0*L('vamp');s.dodge+=1.5*L('evasion');setSynergyBonuses(s);
  if(S.ascBuff){const b=ASC_BUFFS.find(x=>x.k===S.ascBuff);if(b)b.fn(s)}
  if(S.ascDebuff){const d=ASC_DEBUFFS.find(x=>x.k===S.ascDebuff);if(d)d.fn(s)}
- const pm=(1+.1*RL('rPow'))*Math.pow(1.15,RL('rMight'));const dOver=Math.max(0,s.dodge-50);s.dodge=Math.min(50,s.dodge);const ab=ascB();s.atk*=pm*ab.atk;s.hp*=pm*ab.hp;s.def*=ab.def*(1+dOver/100);const cOver=Math.max(0,s.crit-75);s.crit=Math.min(75,s.crit);s.critDmg=2+cOver/100+.15*L('deadlyAim')+.05*L('mAim');const sOver=Math.max(0,s.spd-3.5);s.spd=Math.min(3.5,s.spd);s.atk*=1+sOver*.5;auraApply(s);return s}
+ const pm=(1+.1*RL('rPow'))*Math.pow(1.15,RL('rMight'));const dOver=Math.max(0,s.dodge-50);s.dodge=Math.min(50,s.dodge);const ab=ascB();s.atk*=pm*ab.atk;s.hp*=pm*ab.hp;s.def*=ab.def*(1+dOver/100);{const mm=powerMult();s.atk*=mm;s.hp*=mm}/* trophies and the Spire (meta.js); exactly 1 with an empty S.meta */const cOver=Math.max(0,s.crit-75);s.crit=Math.min(75,s.crit);s.critDmg=2+cOver/100+.15*L('deadlyAim')+.05*L('mAim');const sOver=Math.max(0,s.spd-3.5);s.spd=Math.min(3.5,s.spd);s.atk*=1+sOver*.5;auraApply(s);return s}
 export function L(k){return (S.tr[k]||0)}
 export function RL(k){return ((S.rl&&S.rl[k])||0)}
 export function fmtN(n){n=Math.floor(n);if(!isFinite(n))return'huge';if(n<1e5)return String(n);if(n>=1e36)return n.toExponential(2).replace('e+','e');const u=['','K','M','B','T','Qa','Qi','Sx','Sp','Oc','No','Dc'];let i=0,v=n;while(v>=1000&&i<u.length-1){v/=1000;i++}return v.toFixed(v<10?2:v<100?1:0)+u[i]}

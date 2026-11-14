@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>running</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+</head><body><div id="app">
+<header><h1>Delve</h1><div id="top"></div></header>
+<section id="battle" hidden>
+ <div class="cv"><canvas id="c" width="192" height="108"></canvas><div id="fxl"></div>
+  <div id="over" hidden><div class="px" style="font-size:12px">Defeated</div><div id="ovt"></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button data-a="delveAgain" style="background:#d94a4a;color:#fff;border-color:#fff">⚔ Delve Again</button><button data-a="camp">Go to camp</button><button class="s alt" data-a="auto" id="autoo">Auto-delve: OFF</button></div></div></div>
+ <div class="bar"><i id="hpb"></i><span id="hpt"></span></div>
+ <div class="bar m" id="mpw"><i id="mpb"></i><span id="mpt"></span></div>
+ <div class="bar e"><i id="ehb"></i><span id="ent"></span></div>
+ <div class="row sp" style="margin:6px 0"><div class="row" id="spells"></div><div class="row"><button class="s alt" data-a="auto" id="autob">Auto-delve: OFF</button><button class="s alt" data-a="spd" id="spdb"></button><button class="s alt" data-a="end">End run</button></div></div>
+ <div class="mute">Last drop</div><div id="last"></div><div class="mute" style="margin-top:6px">Loot this run</div><div id="feed"></div>
+</section>
+<section id="camp" hidden>
+ <div class="row sp"><div class="tabs"><button data-a="tab" data-v="g" id="tg">Gear</button><button data-a="tab" data-v="u" id="tu">Upgrades</button><button data-a="tab" data-v="v" id="tv">Vault</button><button data-a="tab" data-v="m" id="tm">Magic</button><button data-a="tab" data-v="p" id="tp">Pets</button><button data-a="tab" data-v="r" id="tr2">Auras</button><button data-a="tab" data-v="i" id="ti">Idle</button><button data-a="tab" data-v="a" id="ta">Ascend</button><button data-a="tab" data-v="l" id="tl">Scores</button><button data-a="tab" data-v="x" id="tx">Account</button></div></div>
+ <div style="margin:8px 0"><button data-a="delve" style="width:100%;font-size:22px;padding:10px;background:var(--btn);border-width:4px;box-shadow:5px 5px 0 var(--ink)">⚔ DELVE</button></div>
+ <div id="sdw" class="row" style="margin:6px 0"></div><div id="cbody"></div><div style="margin:16px 0"><button class="s alt" data-a="reset">Reset save</button></div>
+</section>
+</div>
+<script type="module">
+// Web half of the web-vs-Unity comparison (tests/parity.mjs runs both and compares). Same scenario, step for step, as
+// tests/parity-unity/Program.cs: fixed clock, the same seeded random stream (re-seeded at every step), the same save.
+// Keep the two scenarios identical when you change either.
+const steps=[];window.onerror=(m,u,l)=>{document.title='EXC '+m+' @'+String(u).split('/').pop()+':'+l};
+try{
+ localStorage.removeItem('hd-cloud');window.__HD_NO_BOOT_INIT=true;
+ await import('/src/main.js');
+ const st=await import('/src/state.js'),bt=await import('/src/battle.js'),mt=await import('/src/meta.js'),gl=await import('/src/goals.js'),ss=await import('/src/stats.js');
+ const T0=1794657600000;let clock=T0;Date.now=()=>clock;
+ const mul=(s)=>{let a=s>>>0;return()=>{a=(a+0x6D2B79F5)>>>0;let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296}};
+ let calls=0;const sites=[];const seedRng=(n)=>{const g=mul(n);calls=0;Math.random=()=>{calls++;if(n===101&&sites.length<600){const f=(new Error().stack.split(String.fromCharCode(10))[2]||'').trim().split(' ')[1]||'?';sites.push(f.split('.').pop().toLowerCase())}return g()}};
+ const S=()=>st.S,M=()=>st.S.meta,put=(name,data)=>steps.push({name,data:JSON.parse(JSON.stringify(data))});
+ const stats=()=>{const x=ss.stats();return{atk:x.atk,hp:x.hp,def:x.def}};
+ const run=()=>{const r=st.run;return{stage:r.stage,gold:r.gold,loot:r.loot.length,totalDmg:r.totalDmg,over:r.over,floor:r.floor||0,towerFloors:r.towerFloors||0,towerGems:r.towerGems||0}};
+ const traces={};const delve=(seed)=>{seedRng(seed);bt.startRun();st.setMode('camp');const r=st.run;let n=0;const tr=traces[seed]=[];while(!r.over&&n<4000){if(n%40===0)bt.cast(0);bt.tick(.05);n++;tr.push([n,r.stage,r.eHp,r.hp,r.gold,calls])}return n};
+ // the save: this game's def() with fixed values (the Unity side loads exactly this string)
+ const sv=st.def();Object.assign(sv,{gold:5e6,gems:20,best:40,bestOverall:40,life:40,asc:1,tr:{might:90,vigor:90,haste:12,grit:12,regen:12,greed:5,eyes:3,plunder:2,goblin:4,fury:6,luck:2},rl:{rMagic:1},farm:{t:T0,gold:0,gems:0},lastT:T0,seenUp:'2026-11-14a'});
+ sv.meta=Object.assign(st.freshMeta(),{c:{kill:40,boss:3,gold:9000},beasts:{'0:0':48,'1:5':4},trophies:{slayer:0}});
+ const S0=JSON.stringify(sv);
+ const load=(json)=>{localStorage.setItem('hollow-delve-2',json);st.load()};
+
+ seedRng(1);load(S0);put('load',{meta:M(),gold:S().gold,gems:S().gems,stats:stats(),pm:mt.powerMult(),gm:mt.goldMult()});
+ seedRng(2);mt.ensureBounties();put('ensure',{meta:M()});
+ {const n=delve(101);put('delve',{n,run:run(),gold:S().gold,gems:S().gems,meta:M()})}
+ seedRng(4);{const msgs=[];for(let i=0;i<3;i++){const b=M().bounties[i];if(b.k==='stage')M().dayBest=Math.max(M().dayBest,b.goal);else M().c[b.k]=b.b+b.goal;msgs.push(mt.claimBounty(i));if(i===0)msgs.push(mt.claimBounty(0))}
+  msgs.push(mt.rerollBounty(1));msgs.push(mt.openChest());msgs.push(mt.openChest());put('bounties',{msgs,meta:M(),gold:S().gold,gems:S().gems})}
+ seedRng(5);{const res=[mt.buyBoost('gold'),mt.buyBoost('loot'),mt.buyBoost('gold'),mt.boostLeftText('gold'),mt.boostLeftText('loot')];put('boosts',{res,boosts:M().boosts,gems:S().gems})}
+ seedRng(6);{const msgs=[];for(const l of mt.LINES)while(mt.trophyCanClaim(l))msgs.push(mt.claimTrophy(l.k));put('trophies',{msgs,trophies:M().trophies,points:mt.trophyPoints(),gems:S().gems,stats:stats(),pm:mt.powerMult(),gm:mt.goldMult()})}
+ seedRng(202);{bt.startSpire();st.setMode('camp');const r=st.run;let n=0;const names=[bt.ename()];while(!r.over&&n<6000){bt.tick(.05);n++;if(n%500===0)names.push(bt.ename())}
+  put('spire',{n,run:run(),names,gold:S().gold,gems:S().gems,spireBest:M().spireBest,c:M().c,defeat:gl.spireDefeat(r)})}
+ {const n=delve(303);put('delve2',{n,run:run(),gold:S().gold,gems:S().gems,meta:M()})}
+ {const out=[];for(let sd=500;sd<506;sd++){const n=delve(sd);out.push(JSON.parse(JSON.stringify({n,run:run(),gold:S().gold,gems:S().gems,c:M().c,beasts:M().beasts,relicFound:S().relicFound,best:S().best})))}put('more-delves',out)}
+ seedRng(8);put('tabs',{q:gl.bountyTab(),t:gl.trophyTab(),b:gl.bestiaryTab(),s:gl.spireTab()});
+ seedRng(9);clock+=86400000;mt.ensureBounties();put('nextday',{meta:M()});
+ const bad=['"x"','[]','null','{"c":"x","bounties":{},"trophies":{"a":-1,"b":"2","c":1.5,"d":2,"e":3e9},"beasts":{"0:0":-5,"1:1":null,"2:2":"7","3:3":4},"boosts":{"gold":"soon","loot":-1},"day":5,"dayBest":-3,"spireBest":"9","rerolled":"yes","chest":1}',
+  '{"c":{"kill":1e400,"boss":-2,"gold":12},"bounties":[null,{"k":5,"goal":1,"b":0},{"k":"kill","goal":"x","b":0},{"k":"kill","goal":10,"b":0,"done":"yes"},7],"spireBest":1e12,"dayBest":1e400}',
+  '{"c":null,"bounties":null,"trophies":null,"beasts":null,"boosts":null,"day":null,"spireBest":-4.5}','{"spireBest":7.9,"trophies":{"x":2.0},"day":"2026-11-14","unityOnly":{"a":[1,2]}}'];
+ const noMeta=JSON.parse(S0);delete noMeta.meta;const damaged=bad.map((m)=>JSON.stringify(noMeta).slice(0,-1)+',"meta":'+m+'}');
+ seedRng(10);put('damaged',{metas:damaged.map((d)=>{load(d);return M()})});
+ window.__parity={save:S0,damaged,steps,traces,sites};localStorage.removeItem('hollow-delve-2'); // leave no save behind for the other test pages
+document.title='done '+steps.length;
+}catch(e){document.title='EXC '+e.message+' | '+(e.stack||'').split('\n')[1]}
+</script></body></html>

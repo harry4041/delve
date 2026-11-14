@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>running</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+</head><body><div id="app">
+<header><h1>Delve</h1><div id="top"></div></header>
+<section id="battle" hidden>
+ <div class="cv"><canvas id="c" width="192" height="108"></canvas><div id="fxl"></div>
+  <div id="over" hidden><div class="px" style="font-size:12px">Defeated</div><div id="ovt"></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button data-a="delveAgain" style="background:#d94a4a;color:#fff;border-color:#fff">⚔ Delve Again</button><button data-a="camp">Go to camp</button><button class="s alt" data-a="auto" id="autoo">Auto-delve: OFF</button></div></div></div>
+ <div class="bar"><i id="hpb"></i><span id="hpt"></span></div>
+ <div class="bar m" id="mpw"><i id="mpb"></i><span id="mpt"></span></div>
+ <div class="bar e"><i id="ehb"></i><span id="ent"></span></div>
+ <div class="row sp" style="margin:6px 0"><div class="row" id="spells"></div><div class="row"><button class="s alt" data-a="auto" id="autob">Auto-delve: OFF</button><button class="s alt" data-a="spd" id="spdb"></button><button class="s alt" data-a="end">End run</button></div></div>
+ <div class="mute">Last drop</div><div id="last"></div><div class="mute" style="margin-top:6px">Loot this run</div><div id="feed"></div>
+</section>
+<section id="camp" hidden>
+ <div class="tabs main"><button data-a="tab" data-v="g" id="tg">Gear</button><button data-a="tab" data-v="u" id="tu">Upgrades</button><button data-a="tab" data-v="m" id="tm">Magic</button><button data-a="tab" data-v="p" id="tp">Pets</button><button data-a="tab" data-v="a" id="ta">Ascend</button><button data-a="more" id="tmore">More ▾</button></div>
+ <div id="more" class="box" hidden>
+  <div class="mute">Hero</div><div class="tabs"><button data-a="tab" data-v="v" id="tv">Vault</button><button data-a="tab" data-v="k" id="tk">Look</button><button data-a="tab" data-v="r" id="tr2">Auras</button></div>
+  <div class="mute">Progress</div><div class="tabs"><button data-a="tab" data-v="i" id="ti">Idle</button><button data-a="tab" data-v="l" id="tl">Leaderboards</button></div>
+  <div class="mute">Goals</div><div class="tabs"><button data-a="tab" data-v="q" id="tq">Bounties</button><button data-a="tab" data-v="t" id="tt">Trophies</button><button data-a="tab" data-v="b" id="tb">Bestiary</button><button data-a="tab" data-v="s" id="ts">Spire</button></div>
+  <div class="mute">Help and account</div><div class="tabs"><button data-a="tab" data-v="w" id="tw">Wiki</button><button data-a="tab" data-v="n" id="tn">Updates</button><button data-a="tab" data-v="x" id="tx">Account</button></div>
+ </div>
+ <div style="margin:8px 0"><button data-a="delve" style="width:100%;font-size:22px;padding:10px;background:var(--btn);border-width:4px;box-shadow:5px 5px 0 var(--ink)">⚔ DELVE</button></div>
+ <div id="sdw" class="row" style="margin:6px 0"></div><div id="cbody"></div><div style="margin:16px 0"><button class="s alt" data-a="reset">Reset save</button></div>
+</section>
+</div>
+<script type="module">
+// Goal systems shared with the Unity version (meta.js / goals.js): save format, old saves, bounties, trophies, bestiary, the Spire
+// and boosts. tests/oldsave-trace.html separately proves that a save without S.meta plays exactly as before (compare versions).
+const out=[],ck=(n,c,x)=>out.push(n+':'+(c?'ok':'FAIL'+(x!==undefined?'('+x+')':'')));
+window.onerror=(m,u,l)=>out.push('ERR '+m+' @'+String(u).split('/').pop()+':'+l);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+try{
+ localStorage.removeItem('hd-cloud');window.__HD_NO_BOOT_INIT=true;
+ await import('/src/main.js');
+ const st=await import('/src/state.js'),bt=await import('/src/battle.js'),cp=await import('/src/camp.js'),mt=await import('/src/meta.js'),gl=await import('/src/goals.js'),ss=await import('/src/stats.js'),asc=await import('/src/ascension.js'),wk=await import('/src/wiki.js');
+ const KEY='hollow-delve-2',S=()=>st.S,q=s=>document.querySelector(s),rnd=Math.random,realNow=Date.now;
+ let clock=null;Date.now=()=>clock===null?realNow():clock;
+ const loadSave=(o)=>{localStorage.setItem(KEY,typeof o==='string'?o:JSON.stringify(o));st.load()};
+ const base=(o={})=>{const s=st.def();delete s.meta;return Object.assign(s,{gold:1e6,gems:0,best:30,bestOverall:30,life:30,tr:{might:20,vigor:20},seenUp:wk.LATEST_UPDATE},o)};
+ const camp=(t)=>{st.setMode('camp');st.setRun(null);st.setTab(t);cp.view();cp.camp()};
+ const near=(a,b)=>Math.abs(a/b-1)<1e-12;
+
+ // 0 shared helpers
+ ck('nice-two-significant-figures',mt.nice(12345)===12000&&mt.nice(987654)===990000&&mt.nice(7)===7&&mt.nice(1.4)===1);
+ ck('nice-rounds-halves-to-even-like-csharp',mt.nice(125)===120&&mt.nice(135)===140&&mt.nice(2.5)===2&&mt.nice(3.5)===4,[mt.nice(125),mt.nice(135),mt.nice(2.5),mt.nice(3.5)]);
+ ck('nice-zero-negative-infinite',mt.nice(0)===0&&mt.nice(-5)===0&&mt.nice(Infinity)===0&&mt.nice(NaN)===0);
+ loadSave(base());ck('killgold-formula',mt.killGold(0)===1.5&&near(mt.killGold(10),1.5*Math.pow(1.12,10)));
+ ck('trophy-max-points-59',mt.trophyMaxPoints()===59);
+ ck('bestiary-33-kinds-99-stars',mt.beasts().length===33&&mt.beastMaxStars()===99&&mt.beasts().filter(e=>e.boss).map(e=>e.zone).join()==='1,3,5');
+
+ // 1 old saves: no meta -> a fresh one; every multiplier exactly 1
+ loadSave(base());const fm=JSON.stringify(st.freshMeta());
+ ck('old-save-gets-a-fresh-meta',JSON.stringify(S().meta)===fm,JSON.stringify(S().meta));
+ ck('empty-meta-multipliers-are-exactly-1',mt.powerMult()===1&&mt.goldMult()===1&&mt.bestiaryDmgMult(1,0)===1&&!mt.boostActive('loot'));
+ {const a=ss.stats();delete S().meta;const b=ss.stats();ck('stats-identical-with-missing-or-empty-meta',a.atk===b.atk&&a.hp===b.hp&&a.def===b.def&&a.crit===b.crit&&a.spd===b.spd)}
+
+ // 2 a Unity save that already has meta: loads, plays, saves and reloads with every field intact (unknown keys too)
+ clock=new Date(2026,10,14,12,0,0).getTime();
+ const um={c:{kill:1234,boss:56,golden:3,gold:9.5e6,unc:300,epic:40,spell:77,floor:12,bounty:5},day:mt.today(),bounties:[{k:'kill',goal:100,b:1200,done:false},{k:'stage',goal:24,b:0,done:true},{k:'gold',goal:5000,b:9e6,done:false}],rerolled:true,chest:false,dayBest:22,trophies:{slayer:2,bosses:1},beasts:{'0:0':6,'1:5':3},spireBest:9,boosts:{gold:clock+600000},unityOnly:{x:1,y:[1,2]}};
+ loadSave(base({meta:JSON.parse(JSON.stringify(um))}));
+ ck('unity-meta-loads-unchanged',JSON.stringify(S().meta)===JSON.stringify(um),JSON.stringify(S().meta));
+ bt.startRun();st.setMode('camp');{const r=st.run;let n=0;while(!r.over&&r.stage<6&&n<20000){bt.tick(.05);n++}}
+ st.save();st.load();{const m=S().meta;
+  ck('unity-meta-survives-play-and-reload',m.c.kill>1234&&m.c.gold>9.5e6&&m.c.boss===56&&m.unityOnly&&m.unityOnly.y.join()==='1,2'&&m.trophies.slayer===2&&m.trophies.bosses===1&&m.spireBest===9&&m.boosts.gold===um.boosts.gold&&m.day===um.day&&m.bounties.length===3&&m.bounties[0].b===1200&&m.bounties[1].done===true&&m.rerolled===true&&m.chest===false&&m.dayBest>=22&&m.beasts['1:5']===3&&m.beasts['0:0']>6,JSON.stringify(m))}
+
+ // 3 bounties
+ loadSave(base());clock=new Date(2026,10,14,12,0,0).getTime();mt.ensureBounties();
+ const m3=()=>S().meta,set0=JSON.stringify(m3().bounties);
+ ck('three-bounties-for-today',m3().day==='2026-11-14'&&m3().bounties.length===3&&new Set(m3().bounties.map(b=>b.k)).size===3&&m3().bounties.every(b=>mt.bountyDef(b.k)&&mt.bountyDef(b.k).ok()),set0);
+ ck('bounties-only-from-eligible-kinds',m3().bounties.every(b=>!['spell','golden'].includes(b.k)),set0); // no magic, no Golden goblin in this save
+ ck('same-set-as-unity',m3().bounties.map(b=>b.k).join()==='boss,stage,floor',m3().bounties.map(b=>b.k).join()); // .NET: tests/netrandom/Program.cs, 2026-11-14, pool mask 19
+ mt.ensureBounties();clock+=3*3600e3;mt.ensureBounties();ck('same-set-all-day',JSON.stringify(m3().bounties)===set0);
+ {const b=m3().bounties[0];ck('baseline-is-the-counter-when-handed-out',b.k==='stage'?b.b===0:b.b===mt.C(b.k))}
+ const finish=(i)=>{const b=m3().bounties[i];if(b.k==='stage')m3().dayBest=Math.max(m3().dayBest,b.goal);else m3().c[b.k]=b.b+b.goal};
+ ck('cannot-claim-unfinished',mt.claimBounty(0)===null);
+ finish(0);let g0=S().gold,gm0=S().gems;const msg=mt.claimBounty(0);
+ ck('claim-pays-1-gem-and-gold',!!msg&&S().gems===gm0+1&&S().gold===g0+mt.bountyGold()&&mt.C('bounty')===1&&msg==='Bounty complete: +1 gem and '+ss.fmtN(mt.bountyGold())+' gold',msg);
+ ck('no-double-claim',mt.claimBounty(0)===null&&S().gems===gm0+1);
+ ck('chest-not-before-all-three',mt.openChest()===null&&!mt.chestReady());
+ ck('cannot-swap-a-done-bounty',mt.rerollBounty(0)===false);
+ {const before=m3().bounties.map(b=>b.k);ck('swap-replaces-with-a-new-kind',mt.rerollBounty(1)===true&&m3().rerolled===true&&m3().bounties[1].k==='gold'&&!before.includes(m3().bounties[1].k),before+' -> '+m3().bounties.map(b=>b.k))}
+ ck('only-one-swap-a-day',mt.rerollBounty(2)===false);
+ finish(1);finish(2);mt.claimBounty(1);mt.claimBounty(2);
+ gm0=S().gems;const cm=mt.openChest();
+ ck('chest-after-all-three',cm==='Daily chest: +2 gems and 15 minutes of Gold rush'&&S().gems===gm0+2&&m3().chest===true&&mt.boostActive('gold')&&mt.boostLeft('gold')===15*60000,cm);
+ ck('chest-only-once',mt.openChest()===null);
+ const kept=JSON.stringify(m3().bounties);clock+=13*3600e3; // next local day
+ mt.ensureBounties();ck('fresh-set-next-day',m3().day==='2026-11-15'&&m3().bounties.map(b=>b.k).join()==='boss,kill,floor'&&m3().bounties.length===3&&m3().bounties.every(b=>!b.done)&&!m3().rerolled&&!m3().chest&&JSON.stringify(m3().bounties)!==kept);
+ m3().bounties=m3().bounties.slice(0,1);mt.ensureBounties();ck('a-short-list-is-topped-up-to-three',m3().bounties.length===3&&new Set(m3().bounties.map(b=>b.k)).size===3);
+ // UI: tab, claim button, dot on More, Bounties label
+ finish(0);
+ camp('q');
+ ck('bounty-tab-renders',q('#cbody').innerHTML.includes('Daily bounties')&&q('#cbody').innerHTML.includes('Boosts')&&q('#top').textContent.includes('daily bounties'));
+ ck('more-dot-and-bounties-label-when-claimable',q('#tmore').className.includes('dot')&&q('#tq').textContent==='Bounties •');
+ q('[data-a=bClaim]').click();ck('claim-button-works',S().meta.bounties[0].done===true&&q('#tq').textContent==='Bounties');
+ ck('the-dot-also-shows-for-trophies',q('#tmore').className.includes('dot')&&q('#tt').textContent==='Trophies •'&&mt.trophiesClaimable()); // Bounty hunter I: three bounties were claimed above
+ for(const l of mt.LINES)while(mt.trophyCanClaim(l))mt.claimTrophy(l.k);cp.camp();
+ ck('no-dot-when-nothing-to-claim',!q('#tmore').className.includes('dot'),q('#tmore').className);
+
+ // 4 trophies, Spire and Gold rush multipliers
+ loadSave(base());const a0=ss.stats();
+ S().meta.trophies={slayer:3};S().meta.spireBest=9;const a1=ss.stats();
+ ck('trophy-points-and-multipliers',mt.trophyPoints()===3&&near(mt.trophyPowerMult(),1.015)&&near(mt.trophyGoldMult(),1.03)&&near(mt.spirePowerMult(),1.09));
+ ck('attack-and-health-x-1.015-x-1.09',near(a1.atk/a0.atk,1.015*1.09)&&near(a1.hp/a0.hp,1.015*1.09)&&a1.def===a0.def,(a1.atk/a0.atk)+' '+(a1.hp/a0.hp));
+ const killGoldNow=(meta)=>{loadSave(base());Object.assign(S().meta,meta);Math.random=()=>.5;bt.startRun();st.setMode('camp');const r=st.run,g=r.gold;r.eHp=1;r.hT=10;bt.tick(.001);Math.random=rnd;return r.gold-g};
+ const gA=killGoldNow({}),gB=killGoldNow({trophies:{slayer:3}}),gC=killGoldNow({trophies:{slayer:3},boosts:{gold:Date.now()+60000}});
+ ck('kill-gold-x-1.03-and-x-2-with-gold-rush',gA>0&&gB===Math.ceil(1.03*gA)&&gC===Math.ceil(2*1.03*gA),[gA,gB,gC]);
+ // trophy claims
+ loadSave(base());S().meta.c.kill=150;let gm=S().gems;const tm=mt.claimTrophy('slayer');
+ ck('trophy-claim',tm==='Slayer I: +1 gem, +1 trophy point'&&S().gems===gm+1&&S().meta.trophies.slayer===1&&mt.claimTrophy('slayer')===null,tm);
+ S().meta.c.kill=2e5;S().meta.trophies.slayer=3;gm=S().gems;ck('fourth-tier-pays-2-gems',mt.claimTrophy('slayer')==='Slayer IV: +2 gems, +1 trophy point'&&S().gems===gm+2);
+ camp('t');ck('trophy-tab-renders',q('#cbody').innerHTML.includes('Kingslayer')&&q('#top').textContent.includes('4 trophy points')&&q('#cbody').innerHTML.includes('Slay 10 bosses'));
+ ck('singular-wording',mt.LINES.find(l=>l.k==='golden').d(1)==='Defeat 1 golden enemy'&&mt.LINES.find(l=>l.k==='ascend').d(1)==='Ascend once');
+
+ // bestiary damage and the Lucky find loot rolls
+ loadSave(base());S().meta.beasts={'0:0':50};Math.random=()=>.5;bt.startRun();st.setMode('camp');
+ ck('bestiary-star-gives-4-percent',st.run.stage===1&&st.run.eType===0&&near(st.run.bmult,1.04));
+ {const r=st.run,h0=r.eHp=r.eMax=1e9;r.hT=10;bt.tick(.001);const d1=h0-r.eHp;S().meta.beasts={};bt.startRun();st.setMode('camp');const r2=st.run;r2.eHp=r2.eMax=1e9;r2.hT=10;bt.tick(.001);const d0=1e9-r2.eHp;Math.random=rnd;
+  ck('bestiary-damage-applied-to-hits',Math.abs(d1/d0-1.04)<.002,d1+'/'+d0)}
+ ck('bestiary-boss-thresholds',(S().meta.beasts={'1:5':5},mt.bestiaryDmgMult(10,5)===1.04&&mt.bestiaryDmgMult(40,5)===1.04&&mt.bestiaryDmgMult(30,5)===1));
+ loadSave(base());Math.random=()=>0;bt.startRun();st.setMode('camp');const n0=st.run.eDrops.length;S().meta.boosts={loot:Date.now()+60000};bt.startRun();st.setMode('camp');const n1=st.run.eDrops.length;Math.random=rnd;
+ ck('lucky-find-adds-two-rolls',n1===n0+2,n0+' '+n1);
+ loadSave(base());bt.startRun();st.setMode('camp');{const r=st.run;let n=0;while(!r.over&&r.stage<4&&n<20000){bt.tick(.05);n++}}
+ ck('kills-are-recorded',mt.C('kill')>=3&&mt.beastKills('0:0')>=1&&mt.beastKills('0:1')>=1&&mt.C('gold')>0);
+ camp('b');ck('bestiary-tab-renders',q('#cbody').innerHTML.includes(st.TP[0]+' · stages 1-5')&&q('#cbody').innerHTML.includes('???')&&q('#top').textContent.includes('bestiary stars'));
+
+ // 5 the Spire
+ loadSave(base());S().meta.spireBest=4;st.save();
+ const rec=()=>JSON.stringify([S().best,S().bestOverall,S().life,S().bag.length,S().meta.c.kill||0,S().meta.beasts,localStorage.getItem('hd-lb')]),rec0=rec();
+ camp('s');ck('spire-tab-renders',q('#cbody').innerHTML.includes('Climb from floor 5')&&q('#top').textContent.includes('spire floor 4'));
+ q('[data-a=spire]').click();let r=st.run;
+ ck('climb-starts-at-best-plus-one',r&&r.tower===true&&r.floor===5&&r.stage===26&&st.mode==='battle'&&r.boss===true&&r.eType===5&&r.eDrops.length===0&&r.bmult===1);
+ ck('warden-strength',r.eMax===Math.round(20*Math.pow(asc.hpG(),26)*6)&&near(r.eAtk,4*Math.pow(asc.atG(),26)*2.2)&&bt.ename()==='Regenerating warden');
+ await sleep(150);ck('enemy-bar-shows-the-floor',q('#ent').textContent==='SPIRE · Floor 5 · Regenerating warden',q('#ent').textContent);
+ st.setMode('camp');let g1=S().gold,gm1=S().gems;r.eHp=1;r.hT=10;bt.tick(.001);
+ ck('first-clear-pays-gold-and-gems',S().meta.spireBest===5&&S().gold===g1+mt.floorGold(5)&&S().gems===gm1+2&&r.floor===6&&r.stage===30&&r.towerFloors===1&&r.towerGems===2&&r.gold===mt.floorGold(5)&&mt.C('floor')===1);
+ ck('floor-6-is-giant',bt.ename()==='Giant warden'&&r.eMax===Math.round(20*Math.pow(asc.hpG(),30)*6*1.3));
+ ck('repeat-clears-pay-nothing',JSON.stringify(mt.spireCleared(3))==='{"gold":0,"gems":0}'&&S().meta.spireBest===5);
+ ck('spire-leaves-dungeon-records-alone',rec()===rec0,rec0+' vs '+rec());
+ {const e=r.eMax,h=r.eHp=e*.5;bt.tick(1);ck('twist-cycle',['Warden','Swift','Armoured','Brutal','Regenerating','Giant','Warden'].every((n,i)=>mt.spireMod(i+1).n===n)&&mt.spireMod(12).n==='Giant')}
+ {const keep=S().meta.spireBest;S().meta.spireBest=4;const saved=st.run;bt.startSpire();st.setMode('camp');const w=st.run;w.eHp=w.eMax*.5;w.hT=-1e9;w.stun=5;bt.tick(1);
+  ck('regenerating-warden-heals-3-percent-a-second',w.floor===5&&Math.abs(w.eHp/w.eMax-.53)<1e-9,w.eHp/w.eMax);S().meta.spireBest=keep;st.setRun(saved)}
+ bt.die();ck('defeat-text',q('#ovt').innerHTML.includes('Fell on floor 6')&&q('#ovt').innerHTML.includes('Cleared 1 floor, +')&&q('#ovt').innerHTML.includes('💎2')&&q('#ovt').innerHTML.includes('Spire bonus: +5% attack and health'),q('#ovt').innerHTML);
+ ck('red-button-says-climb-again',q('#over [data-a=delveAgain]').textContent==='▲ Climb again');
+ ck('spire-not-in-run-history',localStorage.getItem('hd-lb')===JSON.parse(rec0)[6]);
+ st.setMode('battle');S().autoDelve=true;const dead=st.run;await sleep(2600);
+ ck('auto-delve-does-not-restart-a-climb',st.run===dead&&st.run.over===true&&st.mode==='battle');
+ S().autoDelve=false;q('#over [data-a=delveAgain]').click();r=st.run;
+ ck('climb-again-starts-the-next-floor',r&&r!==dead&&r.tower&&r.floor===6&&!r.over&&st.mode==='battle');
+ bt.die();q('#over [data-a=camp]').click();ck('go-to-camp-works',st.mode==='camp'&&st.run===null);
+ bt.startRun();st.setMode('camp');bt.die();ck('dungeon-red-button-says-delve-again',q('#over [data-a=delveAgain]').textContent==='⚔ Delve Again'&&q('#ovt').innerHTML.includes('Reached stage'));
+ loadSave(base({best:10,bestOverall:10,life:10}));camp('s');ck('spire-locked-below-15',q('#cbody').innerHTML.includes('Reach stage 15')&&!q('[data-a=spire]'));
+ bt.startSpire();ck('locked-spire-cannot-start',!st.run||!st.run.tower);
+ // a new day mid-climb hands out bounties without touching the climb
+ loadSave(base());S().meta.spireBest=0;bt.startSpire();st.setMode('camp');clock=new Date(2026,10,20,9,0,0).getTime();st.run.eHp=1;st.run.hT=10;bt.tick(.001);
+ ck('day-change-during-a-climb',S().meta.day==='2026-11-20'&&S().meta.dayBest===0&&S().meta.bounties.length===3);
+
+ // boosts
+ loadSave(base({gems:20}));clock=Date.UTC(2026,10,14,12);
+ ck('buy-gold-rush',mt.buyBoost('gold')&&S().gems===18&&mt.boostLeft('gold')===30*60000&&mt.boostLeftText('gold')==='30m left');
+ mt.buyBoost('gold');ck('buying-again-adds-time',mt.boostLeftText('gold')==='1h 0m left'&&S().gems===16);
+ for(let i=0;i<10;i++)mt.buyBoost('gold');ck('capped-below-240-minutes',mt.boostLeft('gold')===210*60000&&S().gems===6,mt.boostLeft('gold')/60000+' '+S().gems);
+ mt.addBoost('gold',60);ck('addboost-caps-at-240',mt.boostLeft('gold')===240*60000);
+ clock+=241*60000;ck('boost-expires',!mt.boostActive('gold')&&mt.boostLeftText('gold')==='');
+ camp('q');q('[data-a=boost][data-v=loot]').click();ck('boost-button-works',mt.boostActive('loot')&&S().gems===4);
+ clock=null;
+
+ // 6 damaged meta
+ const bad=['"x"','[]','null','5',
+  '{"c":"x","bounties":{},"trophies":{"a":-1,"b":"2","c":1.5,"d":2},"beasts":{"0:0":-5,"1:1":null,"2:2":"7","3:3":4},"boosts":{"gold":"soon","loot":-1},"day":5,"dayBest":-3,"spireBest":"9","rerolled":"yes","chest":1}',
+  '{"c":{"kill":1e400,"boss":-2,"gold":12},"bounties":[null,{"k":5,"goal":1,"b":0},{"k":"kill","goal":"x","b":0},{"k":"kill","goal":10,"b":0,"done":"yes"},7],"spireBest":-4,"dayBest":1e400}',
+  '{"c":null,"bounties":null,"trophies":null,"beasts":null,"boosts":null,"day":null}'];
+ let okAll=true,why='';
+ for(const m of bad){try{const sv=JSON.stringify(base());loadSave(sv.slice(0,-1)+',"meta":'+m+'}');const x=ss.stats();mt.ensureBounties();
+  for(const t of ['q','t','b','s'])camp(t);
+  if(!Number.isFinite(x.atk)||!Number.isFinite(x.hp)||!Number.isFinite(mt.powerMult())||!Number.isFinite(mt.goldMult()))throw new Error('non-finite')}catch(e){okAll=false;why+=m.slice(0,20)+': '+e.message+'; '}}
+ ck('damaged-meta-loads-without-crashing',okAll,why);
+ {const sv=JSON.stringify(base());loadSave(sv.slice(0,-1)+',"meta":'+bad[4]+'}');const m=S().meta;
+  ck('damaged-values-repaired',JSON.stringify(m.trophies)==='{"d":2}'&&JSON.stringify(m.beasts)==='{"3:3":4}'&&JSON.stringify(m.boosts)==='{}'&&JSON.stringify(m.c)==='{}'&&m.day!==5&&m.dayBest===0&&m.spireBest===0&&m.rerolled===false&&m.chest===false,JSON.stringify(m))}
+ {const sv=JSON.stringify(base());loadSave(sv.slice(0,-1)+',"meta":'+bad[5]+'}');const m=S().meta;
+  ck('damaged-bounties-filtered',m.bounties.length===1&&m.bounties[0].k==='kill'&&m.bounties[0].done===false&&JSON.stringify(m.c)==='{"gold":12}'&&m.spireBest===0&&m.dayBest===0,JSON.stringify(m))}
+
+ // meta survives ascension; Reset save gives a fresh one
+ loadSave(base({life:200,best:200,bestOverall:200,gold:1e40}));S().meta.c.kill=5;S().meta.spireBest=3;asc.ascend();
+ ck('meta-survives-ascension',S().asc===1&&S().meta.c.kill===5&&S().meta.spireBest===3,S().asc);
+ camp('g');const rb=q('[data-a=reset]');rb.click();rb.click();{const m=S().meta;ck('reset-save-gives-a-fresh-meta',S().gold===0&&JSON.stringify([m.c,m.trophies,m.beasts,m.boosts,m.spireBest,m.rerolled,m.chest])==='[{},{},{},{},0,false,false]',JSON.stringify(m))}
+ // wiki section
+ camp('w');q('[data-wk=goals]').click();await sleep(50);ck('wiki-goals-section',q('#cbody').innerHTML.includes('More → Goals')&&q('#cbody').innerHTML.includes('The Spire'));
+ ck('changelog-entry',wk.LATEST_UPDATE==='2026-11-14a');
+}catch(e){out.push('EXC '+e.message+' | '+(e.stack||'').split('\n')[1])}
+Date.now=Date.now;try{localStorage.removeItem('hollow-delve-2')}catch(e){}
+document.title=out.join(' ');
+</script></body></html>

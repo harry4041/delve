@@ -271,11 +271,11 @@ function draw(){const r=run,t=r.t;ART_T=t;const tier=Math.floor((r.stage-1)/5)%6
 
 export function hud(){const st=stats(),r=run;$('#hpb').style.width=r.hp/st.hp*100+'%';$('#hpt').textContent=Math.ceil(r.hp)+' / '+Math.round(st.hp);
  $('#mpw').hidden=!hasMagic();$('#mpb').style.width=r.mp/mpMax()*100+'%';$('#mpt').textContent=Math.floor(r.mp)+' mana';
- $('#ehb').style.width=Math.max(0,r.eHp/r.eMax*100)+'%';$('#ent').textContent=(r.boss?'BOSS · ':'')+'Stage '+r.stage+' · '+ename()+' · '+r.eDrops.length+' loot';
+ $('#ehb').style.width=Math.max(0,r.eHp/r.eMax*100)+'%';$('#ent').textContent=r.tower?'SPIRE · Floor '+r.floor+' · '+ename():(r.boss?'BOSS · ':'')+'Stage '+r.stage+' · '+ename()+' · '+r.eDrops.length+' loot';
  const gemStr=(S.gems||0)>0?'<span style="color:var(--gem)"> · 💎'+S.gems+'</span>':'';
  $('#top').innerHTML=fmtN(S.gold)+' gold'+gemStr+'<br><span class="mute">asc '+S.asc+' · best '+S.best+' · all-time '+S.bestOverall+'</span>';{const ab=$('#autob'),ao=$('#autoo');if(ab)ab.textContent='Auto-delve: '+(S.autoDelve?'ON':'OFF');if(ao)ao.textContent=S.autoDelve?'Auto-delve: ON (click to stop)':'Auto-delve: OFF'}$('#spdb').hidden=maxSpd()<2;$('#spdb').textContent='Speed x'+Math.min(S.speed,maxSpd());
  document.querySelectorAll('#spells button').forEach(b=>{const i=+b.dataset.v;b.disabled=r.over||r.cd[i]>0||r.mp<SP[i].c;b.textContent=SP[i].n+(r.cd[i]>0?' '+Math.ceil(r.cd[i]):'')})}
 const AUTO_DELAY=1.5; // seconds the defeat screen stays up before auto-delve starts the next run
 let last=0,sv=0;export function loop(ts){const dt=Math.min(.1,(ts-last)/1000||0);last=ts;
- if(mode=='battle'&&run){const n=Math.min(S.speed,maxSpd());for(let i=0;i<n;i++)tick(dt);if(run.over){run.ot=(run.ot||0)+dt;if(S.autoDelve&&run.ot>=AUTO_DELAY){delveAgain();requestAnimationFrame(loop);return}}draw();hud();sv+=dt;if(sv>5){sv=0;save()}}
+ if(mode=='battle'&&run){const n=Math.min(S.speed,maxSpd());for(let i=0;i<n;i++)tick(dt);if(run.over){run.ot=(run.ot||0)+dt;if(S.autoDelve&&!run.tower&&run.ot>=AUTO_DELAY){delveAgain();requestAnimationFrame(loop);return}}draw();hud();sv+=dt;if(sv>5){sv=0;save()}}
  requestAnimationFrame(loop)}

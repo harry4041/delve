@@ -15,7 +15,9 @@ import {lbTab,vaultTab} from './vault-leaderboard.js';
 import {RT,RTREE,ascTab,ascend,hasMagic,hasSp,maxSpd,petLc,rcost,startStage,tierStage} from './ascension.js';
 import {autoEquip,equip,sell,target} from './gear.js';
 import {tree} from './treeview.js';
-import {cast,die,startRun} from './battle.js';
+import {cast,die,startRun,startSpire} from './battle.js';
+import {bountyTab,trophyTab,bestiaryTab,spireTab,goalsClaimable} from './goals.js';
+import {M,BOOSTS,beastTotalStars,bountiesClaimable,buyBoost,boostLeftText,claimBounty,claimTrophy,openChest,rerollBounty,spireUnlocked,trophiesClaimable,trophyPoints} from './meta.js';
 import {drawPortrait,hud,magicTab,petTab} from './render.js';
 import {chip} from './assets.js';
 import {buyQty} from './treelist.js';
@@ -33,11 +35,14 @@ export function view(){$('#battle').hidden=mode!='battle';$('#camp').hidden=mode
 // Starts the next run after a defeat: banks the loot (trimming the bag to its cap by selling the cheapest items), then delves. Used by the button and by auto-delve.
 export function delveAgain(){if(run&&run.over){S.bag.push(...run.loot);run.loot=[];const bc=bagCap();while(S.bag.length>bc&&bc!==Infinity){let m=0;S.bag.forEach((x,i)=>{if(val(x)<val(S.bag[m]))m=i});sell(S.bag[m].id)}}startRun()}
 let moreOpen=false; // the "More" tab panel (secondary tabs) is expanded
-const SECONDARY=['v','r','i','l','k','x','w','n'];
-export function camp(){const st=stats();$('#sdw').innerHTML=(RL('rStart')?'<span>Start stage</span><button class="s alt" data-a="sd" data-v="-1">-</button><b>'+startStage()+'</b><button class="s alt" data-a="sd" data-v="1">+</button>':'')+(L('sorter')?'<span style="margin-left:8px">Auto-sell</span><button class="s alt" data-a="qm" data-v="-1">-</button><b>'+(qmT()?RN[qmT()-1]+' and below':'Off')+'</b><button class="s alt" data-a="qm" data-v="1">+</button>':'');$('#tg').className=tab=='g'?'on':'';$('#tg').textContent='Gear'+(S.relicNew?' \u2605':'');$('#ta').className=tab=='a'?'on':'';$('#tv').className=tab=='v'?'on':'';$('#tl').className=tab=='l'?'on':'';$('#tp').className=tab=='p'?'on':'';$('#tm').className=tab=='m'?'on':'';$('#ti').className=tab=='i'?'on':'';$('#tu').className=tab=='u'?'on':'';if($('#tr2'))$('#tr2').className=tab=='r'?'on':'';if($('#tx'))$('#tx').className=tab=='x'?'on':'';if($('#tw'))$('#tw').className=tab=='w'?'on':'';if($('#tk'))$('#tk').className=tab=='k'?'on':'';{const mo=$('#more'),mt=$('#tmore');if(mo)mo.hidden=!moreOpen;if(mt){mt.className=(SECONDARY.includes(tab)?'on':'')+(hasNewUpdate()&&tab!='n'&&!moreOpen?' dot':'');mt.textContent='More '+(moreOpen?'▴':'▾')}}if($('#tn')){$('#tn').className=tab=='n'?'on':'';$('#tn').textContent=hasNewUpdate()&&tab!='n'?'Updates •':'Updates'}
+const SECONDARY=['v','r','i','l','k','x','w','n','q','t','b','s'];
+const GOAL_BTN={q:'tq',t:'tt',b:'tb',s:'ts'}; // More -> Goals buttons (missing on the test pages' older HTML shell)
+export function camp(){const st=stats();$('#sdw').innerHTML=(RL('rStart')?'<span>Start stage</span><button class="s alt" data-a="sd" data-v="-1">-</button><b>'+startStage()+'</b><button class="s alt" data-a="sd" data-v="1">+</button>':'')+(L('sorter')?'<span style="margin-left:8px">Auto-sell</span><button class="s alt" data-a="qm" data-v="-1">-</button><b>'+(qmT()?RN[qmT()-1]+' and below':'Off')+'</b><button class="s alt" data-a="qm" data-v="1">+</button>':'');$('#tg').className=tab=='g'?'on':'';$('#tg').textContent='Gear'+(S.relicNew?' \u2605':'');$('#ta').className=tab=='a'?'on':'';$('#tv').className=tab=='v'?'on':'';$('#tl').className=tab=='l'?'on':'';$('#tp').className=tab=='p'?'on':'';$('#tm').className=tab=='m'?'on':'';$('#ti').className=tab=='i'?'on':'';$('#tu').className=tab=='u'?'on':'';if($('#tr2'))$('#tr2').className=tab=='r'?'on':'';if($('#tx'))$('#tx').className=tab=='x'?'on':'';if($('#tw'))$('#tw').className=tab=='w'?'on':'';if($('#tk'))$('#tk').className=tab=='k'?'on':'';for(const [k,id] of Object.entries(GOAL_BTN))if($('#'+id))$('#'+id).className=tab==k?'on':'';if($('#tq'))$('#tq').textContent=bountiesClaimable()?'Bounties •':'Bounties';if($('#tt'))$('#tt').textContent=trophiesClaimable()?'Trophies •':'Trophies';
+ {const mo=$('#more'),mt=$('#tmore');if(mo)mo.hidden=!moreOpen;if(mt){mt.className=(SECONDARY.includes(tab)?'on':'')+((hasNewUpdate()&&tab!='n'||goalsClaimable())&&!moreOpen?' dot':'');mt.textContent='More '+(moreOpen?'▴':'▾')}}if($('#tn')){$('#tn').className=tab=='n'?'on':'';$('#tn').textContent=hasNewUpdate()&&tab!='n'?'Updates •':'Updates'}
  const pl=powerLevel(),plC=plColor(pl),plLbl=plLabel(pl);
  const gemHtml=(S.gems||0)>0?'<span style="color:var(--gem)"> · 💎'+S.gems+'</span>':'';
  const plHtml='<span style="color:'+plC+'"> · ⚡'+pl+' ('+plLbl+')</span>';
+ {const gt={q:['daily bounties',bountyTab],t:[trophyPoints()+' trophy points',trophyTab],b:[beastTotalStars()+' bestiary stars',bestiaryTab],s:['spire floor '+M().spireBest,spireTab]}[tab];if(gt){$('#top').innerHTML=fmtN(S.gold)+' gold'+plHtml+gemHtml+'<br><span class="mute">'+gt[0]+'</span>';$('#cbody').innerHTML=gt[1]();return}}
  if(tab=='k'){$('#top').innerHTML=fmtN(S.gold)+' gold'+plHtml+gemHtml+'<br><span class="mute">appearance</span>';$('#cbody').innerHTML=lookTab();drawPortrait();return}
  if(tab=='w'||tab=='n'){$('#top').innerHTML=fmtN(S.gold)+' gold'+plHtml+gemHtml+'<br><span class="mute">'+(tab=='w'?'guide':'new in this version')+'</span>';$('#cbody').innerHTML=tab=='w'?wikiTab():updatesTab();if(tab=='n'){save();if($('#tn'))$('#tn').textContent='Updates'}return}
  if(tab=='x'){$('#top').innerHTML=fmtN(S.gold)+' gold'+plHtml+gemHtml+'<br><span class="mute">'+accountStatus()+'</span>';$('#cbody').innerHTML=accountTab();return}
@@ -103,6 +108,8 @@ function bulkBtns(){const ok=[];for(let i=0;i<9+L('bulkX');i++)if(i<9?L('bulk'+(
 document.addEventListener('change',e=>{if(e.target&&e.target.id==='sellsel')sellSel=+e.target.value});
 function sellBelow(m){S.bag=S.bag.filter(it=>{if(it.ri<=m&&!it.un){S.gold+=val(it);return false}return true})}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b||b.disabled)return;const a=b.dataset.a,v=b.dataset.v;
+ if(a=='delveAgain'&&run&&run.tower){setMode('camp');setRun(null);save();if(spireUnlocked())startSpire();else view();return} // after a Spire run the red button climbs again
+ if(a=='spire'){startSpire();return}
  if(a=='delve'||a=='delveAgain'){if(a=='delveAgain')delveAgain();else startRun();return}
  if(a=='auto'){S.autoDelve=!S.autoDelve;save();return}
  if(a=='more'){moreOpen=!moreOpen;camp();return}
@@ -130,6 +137,8 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b
   
   if(a=='magic'&&!hasMagic()&&S.gold>=300&&S.best>=6){S.gold-=300;S.magic=true}
   if(a=='bp'&&PET[v]&&S.pets[v]&&!S.pets[v].own&&S.gold>=PET[v].cost){farmSettle();S.gold-=PET[v].cost;S.pets[v].own=1;S.ap=+v}if(a=='ap'){farmSettle();S.ap=+v}if(a=='farmCollect'){const fc=farmCollect();if(fc.gold||fc.gems)toast('Collected '+fmtN(fc.gold)+' gold'+(fc.gems?' and '+fc.gems+' gems':'')+' from the farm')}
+  if(a=='bClaim'){const m=claimBounty(+v);if(m)toast(m)}if(a=='bChest'){const m=openChest();if(m)toast(m)}if(a=='bReroll')rerollBounty(+v);if(a=='trClaim'){const m=claimTrophy(v);if(m)toast(m)}
+  if(a=='boost'){const bd=BOOSTS.find((x)=>x.k===v);if(bd&&buyBoost(v))toast(bd.n+': '+boostLeftText(v))}
   if(a=='pl'&&PET[v]&&S.pets[v]&&S.pets[v].own){for(let i=0,q=buyQty();i<q;i++){const c=petLc(+v);if(!(S.gold>=c))break;S.gold-=c;S.pets[v].lvl++}} // levels up to the x1/x5/x10 buy quantity
   if(a=='upAura'){const aur=AURAS.find(x=>x.k===v),lv=S.auras&&S.auras[v];if(aur&&lv){const c=auraUpCost(aur);if((S.gems||0)>=c){S.gems-=c;S.auras[v]=lv+1}}}
   if(a=='buyAura'){const aur=AURAS.find(x=>x.k===v);if(aur&&!auraOwned(v)&&(S.gems||0)>=aur.gems){S.gems-=aur.gems;S.auras=S.auras||{};S.auras[v]=1}}

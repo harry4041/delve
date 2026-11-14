@@ -8,7 +8,7 @@ let p=Math.min(.95,.02+L('luck')*.003+(1-Math.pow(.95,L('mLoot')))*.9);while(Mat
 export function gen(il,ri,fty,fbn,flv){const lv=flv||rollLv(),ty=fty||pick(Object.keys(BASE)),b=(2+il*1.6)*RM[ri]*LVM[lv-1],st={};
  const put=(k,m)=>{const v=b*W[k]*m*(.8+Math.random()*.4);st[k]=k=='spd'?Math.round(v*1000)/1000:['crit','ls','dodge','gf','mpr'].includes(k)?Math.round(v*10)/10:Math.max(1,Math.round(v))};
  for(const k in TT[ty])put(k,TT[ty][k]);
- const ex=['atk','def','hp','crit','spd','ls','dodge','gf','thorn','mpr'].filter(k=>!(k in st)).sort(()=>Math.random()-.5);
+ const ex=['atk','def','hp','crit','spd','ls','dodge','gf','thorn','mpr'].filter(k=>!(k in st));for(let i=ex.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[ex[i],ex[j]]=[ex[j],ex[i]]} // Fisher-Yates, exactly as the Unity version's J.Shuffle (a random sort comparator is biased and its number of draws depends on the browser)
  for(let i=0;i<Math.min(ri,6)&&i<ex.length;i++)put(ex[i],.5);
  const bn=fbn&&BASE[ty].includes(fbn)?fbn:pick(BASE[ty]);if(SPEC[bn]&&!(SPEC[bn] in st))put(SPEC[bn],.8);let sf='';if(ri>=2){sf=pick(Object.keys(SUFS));const k=SUFS[sf];if(!(k in st))put(k,.7)}return{id:nextUid(),ty,ri,lv,il,nm:pick(PRE[Math.min(ri,PRE.length-1)])+' '+bn+(sf?' '+sf:''),st}}
 // greed now gives +12% per level multiplicatively

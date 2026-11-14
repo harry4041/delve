@@ -39,7 +39,9 @@ export function nextUid(){return (uid++)}
 export function setForgeMode(v){return (forgeMode=v)}
 export function setForgeSelected(v){return (forgeSelected=v)}
 
-export function def(){return{gold:0,gems:0,best:0,bestOverall:0,tr:{},eq:{rhand:{id:0,ty:'weapon',ri:0,il:1,nm:'Rusty Sword',st:{atk:2}}},bag:[],magic:false,petsOn:false,pets:PET.map(()=>({own:0,lvl:0})),giftsClaimed:[],relicFound:{},relicPity:0,relicNew:'',autoDelve:false,seenUp:'',look:{},username:'',farm:{t:Date.now(),gold:0,gems:0},ap:-1,speed:1,uid:1,rl:{},relics:0,asc:0,life:0,sd:0,vault:[],vaultLvl:0,vaultUnlocked:false,ascBuff:null,ascDebuff:null,bagLvl:0,auras:{}}}
+// S.meta: the goal systems shared with the Unity version (meta.js). Field names and meanings are fixed by the shared save format.
+export function freshMeta(){return{c:{},day:'',bounties:[],rerolled:false,chest:false,dayBest:0,trophies:{},beasts:{},spireBest:0,boosts:{}}}
+export function def(){return{meta:freshMeta(),gold:0,gems:0,best:0,bestOverall:0,tr:{},eq:{rhand:{id:0,ty:'weapon',ri:0,il:1,nm:'Rusty Sword',st:{atk:2}}},bag:[],magic:false,petsOn:false,pets:PET.map(()=>({own:0,lvl:0})),giftsClaimed:[],relicFound:{},relicPity:0,relicNew:'',autoDelve:false,seenUp:'',look:{},username:'',farm:{t:Date.now(),gold:0,gems:0},ap:-1,speed:1,uid:1,rl:{},relics:0,asc:0,life:0,sd:0,vault:[],vaultLvl:0,vaultUnlocked:false,ascBuff:null,ascDebuff:null,bagLvl:0,auras:{}}}
 // Repairs a save whose fields have the wrong type (hand-edited, damaged or from a bad cloud doc) so the game never crashes on load.
 // Healthy saves pass through untouched. Items must have a known type and a stats object.
 function sanitize(){
@@ -62,6 +64,15 @@ function sanitize(){
   if(typeof S.username!=='string'||!/^[A-Za-z0-9_.-]{3,18}$/.test(S.username))S.username=''; // the server copy (users/<uid>) is the source of truth after sign-in
   if(!S.farm||typeof S.farm!=='object'||Array.isArray(S.farm))S.farm={t:Date.now(),gold:0,gems:0};
   num(S.farm,'t');num(S.farm,'gold');num(S.farm,'gems');
+  // S.meta (meta.js, shared with Unity): same repairs as MetaState.Repair() in Meta.cs. Unknown keys are kept (the other version may use them).
+  if(!S.meta||typeof S.meta!=='object'||Array.isArray(S.meta))S.meta=freshMeta();
+  {const m=S.meta;for(const k of ['c','trophies','beasts','boosts'])obj(m,k);arr(m,'bounties');if(typeof m.day!=='string')m.day='';
+   for(const o of [m.c,m.beasts,m.boosts])for(const k of Object.keys(o))if(typeof o[k]!=='number'||!Number.isFinite(o[k])||o[k]<0)delete o[k];
+   for(const k of Object.keys(m.trophies))if(!Number.isInteger(m.trophies[k])||m.trophies[k]<0||m.trophies[k]>2147483647)delete m.trophies[k]; // tier counts are 32-bit ints in Unity (Save.cs StrictMeta)
+   m.bounties=m.bounties.filter((b)=>b&&typeof b==='object'&&typeof b.k==='string'&&Number.isFinite(b.goal)&&Number.isFinite(b.b));for(const b of m.bounties)b.done=b.done===true;
+   m.rerolled=m.rerolled===true;m.chest=m.chest===true;
+   if(typeof m.dayBest!=='number'||!Number.isFinite(m.dayBest)||m.dayBest<0)m.dayBest=0;
+   m.spireBest=typeof m.spireBest==='number'&&Number.isFinite(m.spireBest)?Math.max(0,Math.min(2147483647,Math.floor(m.spireBest))):0}
 }
 export function load(){try{S=JSON.parse(localStorage.getItem('hollow-delve-2'))}catch(e){}if(!S||!S.eq)S=def();S.tr=S.tr||{};S.relicFound=S.relicFound&&typeof S.relicFound==='object'&&!Array.isArray(S.relicFound)?S.relicFound:{};S.relicPity=Number.isFinite(S.relicPity)?S.relicPity:0;S.relicNew=typeof S.relicNew==='string'?S.relicNew:'';S.pets=Array.isArray(S.pets)?S.pets:[];while(S.pets.length<PET.length)S.pets.push({own:0,lvl:0});S.eq=S.eq||{};S.bag=S.bag||[];S.rl=S.rl||{};S.relics=S.relics||0;if(S.rl.rKeep){let t=0;for(let i=0;i<S.rl.rKeep;i++)t+=Math.max(1,Math.round(6*Math.pow(1.5,i)));S.relics+=t;delete S.rl.rKeep}if(S.tr&&S.tr.offl){let g0=0;for(let i=0;i<S.tr.offl;i++)g0+=Math.round(8000*Math.pow(1.5,i));S.gold=(S.gold||0)+g0;delete S.tr.offl}S.asc=S.asc||0;S.life=S.life||S.best||0;S.sd=S.sd||0;uid=S.uid||1;S.vault=S.vault||[];S.vaultLvl=S.vaultLvl||0;S.vaultUnlocked=S.vaultUnlocked||false;S.bestOverall=S.bestOverall||S.best||0;S.ascBuff=S.ascBuff||null;S.ascDebuff=S.ascDebuff||null;S.bagLvl=S.bagLvl||0;S.gems=S.gems||0;S.auras=S.auras||{};S.giftsClaimed=S.giftsClaimed||[];S.autoDelve=!!S.autoDelve;S.seenUp=typeof S.seenUp==='string'?S.seenUp:'';S.farm=S.farm||{t:Date.now(),gold:0,gems:0};sanitize();offlineCalc()}
 let saveHook=null;export function setSaveHook(f){saveHook=f}

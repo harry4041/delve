@@ -7,6 +7,13 @@ import { RTREE, STB, reqStage, ascFee } from './ascension.js';
 
 // ---------------------------------------------------------------- changelog (add new entries at the TOP; `id` must be unique)
 export const CHANGELOG = [
+  { id: '2026-11-14a', date: '2026-11-14', title: 'Goals: bounties, trophies, bestiary and the Spire', items: [
+    'New under More → Goals. Daily bounties: three small tasks a day, each paying 1 gem and gold; finish all three to open a daily chest (2 gems and 15 minutes of Gold rush). One free swap a day.',
+    'Boosts: spend 2 gems on 30 minutes of Gold rush (double gold from enemies) or Lucky find (two extra loot rolls on every enemy), up to 4 hours. They run in real time.',
+    'Trophies: thirteen lifetime goals with up to five tiers. Each tier pays gems and a trophy point; every point gives +0.5% attack and health and +1% gold.',
+    'Bestiary: every enemy kind earns up to three stars from kills, and each star adds 4% damage against that kind.',
+    'The Spire (from stage 15): climb a tower of boss-strength wardens with twists. First clears pay gold, every 5th floor pays gems, and every floor cleared gives +1% attack and health everywhere.',
+  ] },
   { id: '2026-11-13k', date: '2026-11-13', title: 'Rarer relics', items: [
     'Mythic Relics are rarer: each boss kill has a 1% chance, plus 2% for every boss kill since your last relic (up to 60%). That is about one relic every 9 boss kills on average.',
   ] },
@@ -138,7 +145,7 @@ export function hasNewUpdate() { return S.seenUp !== LATEST_UPDATE; }
 // ---------------------------------------------------------------- helpers
 const SECTIONS = [
   ['start', 'Getting started'], ['items', 'Items & tiers'], ['gear', 'Slots & types'], ['stats', 'Stats'],
-  ['power', 'Upgrades & magic'], ['pets', 'Pets'], ['auras', 'Auras & gems'], ['asc', 'Ascension'], ['idle', 'Idle & auto'], ['online', 'Online'],
+  ['power', 'Upgrades & magic'], ['pets', 'Pets'], ['auras', 'Auras & gems'], ['asc', 'Ascension'], ['idle', 'Idle & auto'], ['online', 'Online'], ['goals', 'Goals'],
 ];
 const ui = { sec: 'start' };
 const STAT = {
@@ -293,7 +300,18 @@ function online() {
     + p('Sometimes we send gifts (gold, gems or items) to everyone or to one player. They are collected automatically after signing in, or with the button on the Account tab, and each can only be claimed once.');
 }
 
-const BODY = { start, items, gear, stats, power, pets, auras, asc, idle, online };
+// Goals (More -> Goals: bounties, boosts, trophies, bestiary, the Spire). Same text as the Unity version's Wiki.cs Goals page.
+function goals() {
+  const H = (t) => '<div class="px" style="font-size:9px;margin:10px 0 6px">' + t + '</div>', U = (items) => '<ul style="margin:0 0 8px;padding-left:20px">' + items.map((x) => '<li>' + x + '</li>').join('') + '</ul>';
+  return H('Goals') + '<p style="margin:0 0 8px">Four extra systems live under <b>More → Goals</b>. They reward the things you already do in the dungeon, and none of them can be lost.</p>'
+    + H('Bounties') + U(['Three small tasks each day (defeat enemies, slay bosses, reach a stage, cast spells...), sized to how deep you have been.', 'Each pays <b>1 gem</b> and some gold; finish all three to open the <b>daily chest</b> (2 gems and 15 minutes of Gold rush).', 'You can swap one unfinished task a day. New bounties arrive at midnight; skipping a day costs nothing.'])
+    + H('Boosts') + U(['<b>Gold rush</b> doubles gold from enemies; <b>Lucky find</b> adds two loot rolls to every enemy.', '2 gems for 30 minutes. Buying again adds time, up to 4 hours. The timer runs in real time.'])
+    + H('Trophies') + U(['Thirteen lifetime goals with up to five tiers each: kills, bosses, depth, gold, ascensions, relics, pets, spells, the Spire and more.', 'Every tier pays gems (2 from the fourth tier) and a <b>trophy point</b>. Each point gives <b>+0.5% attack and health</b> and <b>+1% gold</b> from enemies.'])
+    + H('Bestiary') + U(['Each zone has five enemy kinds (plus a death knight where bosses fall). Kills earn up to three stars per kind.', 'Each star adds <b>4% damage</b> against that kind. Use Start stage to farm the zone you want.'])
+    + H('The Spire') + U(['Unlocks at stage 15. A tower of single wardens, each as strong as a dungeon boss and with a twist: Swift, Armoured, Brutal, Regenerating or Giant.', 'Climbs start at your first uncleared floor with full health. Floors pay gold the first time you clear them, and gems every 5th floor.', 'Every floor cleared gives <b>+1% attack and health</b> everywhere, so the Spire and the dungeon push each other.']);
+}
+
+const BODY = { start, items, gear, stats, power, pets, auras, asc, idle, online, goals };
 
 export function wikiTab() {
   const nav = SECTIONS.map(([k, n]) => '<button class="s' + (ui.sec === k ? '' : ' alt') + '" data-wk="' + k + '">' + n + '</button>').join('');
