@@ -11,4 +11,5 @@ window.addEventListener('hd-lb',()=>{if(tab==='l'&&mode==='camp')camp()});
 window.addEventListener('hd-wiki',()=>{if(tab==='w'&&mode==='camp')camp()});
 window.addEventListener('hd-tree',()=>{if(['u','m','p'].includes(tab)&&mode==='camp')camp()});
 window.addEventListener('hd-bp',()=>{if(tab==='g'&&mode==='camp')camp()});
+window.addEventListener('hd-shop',()=>{if(['h','k','q'].includes(tab)&&mode==='camp')camp()}); // wallet changed: Shop, Look (cosmetics) and Bounties (boosts)
 window.addEventListener('hd-cloud',e=>{if(e.detail==='applied')view();else if(tab==='x'&&mode==='camp')camp()});

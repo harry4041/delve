@@ -1,0 +1,12 @@
+# Cloudflare Worker for the shop (free plan). Deploy from this folder: npx wrangler deploy   (see README.md)
+name = "delve-shop"
+main = "worker.js"
+compatibility_date = "2026-11-01"
+
+[vars]
+FIREBASE_PROJECT = "delve-game-4041"
+ALLOW_ORIGIN = "https://delve-game-4041.web.app,https://delve-game-4041.firebaseapp.com"
+SA_EMAIL = ""      # the service account's client_email (same project as the game)
+LS_VARIANTS = "{}" # Lemon Squeezy variant id -> Crystal pack, e.g. {"123456":"c100","123457":"c550","123458":"c1200"}
+# Secrets (never in this file): npx wrangler secret put SA_KEY      (the service account's private_key)
+#                               npx wrangler secret put LS_SECRET   (the Lemon Squeezy webhook signing secret)

@@ -191,7 +191,11 @@ export const BOOSTS = [
 ];
 export const BOOST_CAP_MIN = 240;
 export function boostLeft(k) { const t = M().boosts[k]; return typeof t === 'number' ? Math.max(0, t - Date.now()) : 0; }
-export function boostActive(k) { return boostLeft(k) > 0; }
+// Paid boosts (shop.js) live in the server-held wallet: a boost is active if the save's timer OR the paid timer runs. Never stacked:
+// Gold rush is x2 and Lucky find +2 rolls whichever timer is running. Without a wallet this is exactly the old rule.
+let paidLeft = () => 0;
+export function setPaidBoostSource(f) { paidLeft = f; }
+export function boostActive(k) { return boostLeft(k) > 0 || paidLeft(k) > 0; }
 export function addBoost(k, minutes) {
   const now = Date.now(), from = Math.max(now, now + boostLeft(k));
   M().boosts[k] = Math.min(now + BOOST_CAP_MIN * 60000, from + minutes * 60000);

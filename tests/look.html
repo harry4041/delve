@@ -25,6 +25,7 @@ const out=[],ck=(n,c,x)=>out.push(n+':'+(c?'ok':'FAIL'+(x!==undefined?'('+x+')':
 window.onerror=(m,u,l)=>out.push('ERR '+m+' @'+String(u).split('/').pop()+':'+l);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 try{
+ localStorage.removeItem('hd-wallet-test'); // no Shop cosmetics owned (shop.js test wallet)
  await import('/src/main.js');
  const st=await import('/src/state.js'),cp=await import('/src/camp.js'),lk=await import('/src/look.js'),bt=await import('/src/battle.js');
  const KEY='hollow-delve-2',S=()=>st.S,G=lk.LOOK_GROUPS,body=()=>document.querySelector('#cbody').innerHTML;
@@ -41,9 +42,9 @@ try{
  ck('new-save-has-look',typeof S().look==='object'&&!Array.isArray(S().look));
  // 2 every option of every group applies
  let all=true,why='';
- for(const g of G)g.opts.forEach((o,i)=>{fresh();lk.applyLook(g.k+':'+i);if(lk.lookIdx(g.k)!==i){all=false;why=g.k+i}});
- ck('every-option-selectable',all,why);
- ck('option-counts',G.map(g=>g.opts.length).join(',')==='10,5,12,14,10,9,8,5,5,6,7',G.map(g=>g.opts.length).join(','));
+ for(const g of G)g.opts.forEach((o,i)=>{fresh();lk.applyLook(g.k+':'+i);if((lk.lookIdx(g.k)===i)!==!o.p){all=false;why=g.k+i}});
+ ck('every-free-option-selectable-and-shop-options-only-once-owned',all,why);
+ ck('option-counts',G.map(g=>g.opts.length).join(',')==='10,5,13,16,10,10,8,5,5,6,7',G.map(g=>g.opts.length).join(','));
  fresh();lk.applyLook('skin:3');lk.applyLook('hair:5');lk.applyLook('tun:6');lk.applyLook('scarf:3');lk.applyLook('eye:5');lk.applyLook('hs:2');
  const s2=lk.lookStyle();ck('chosen-values-reach-the-style',s2.skin==='#c68642'&&s2.hair==='#e8e8f0'&&s2.tun==='#34303f'&&s2.scarf==='#e8c050'&&s2.eye==='#d02a2a'&&s2.hs===2,JSON.stringify(s2));
  lk.applyLook('hs:4');ck('bald-removes-hair-but-keeps-brow-colour',lk.lookStyle().hair===null&&lk.lookStyle().hairCol==='#e8e8f0');
@@ -64,8 +65,8 @@ try{
  fresh();go();
  ck('locked-cape-group-shows-a-message-and-no-swatches',body().includes('locked')&&body().includes('Heroic mantle')&&!document.querySelector('[data-v^="cape:"]'));
  S().rl={rCape:1};go();
- const total=G.reduce((a,g)=>a+g.opts.length,0);
- ck('tab-has-a-button-for-every-option',document.querySelectorAll('#cbody [data-a=look]').length===total+2,document.querySelectorAll('#cbody [data-a=look]').length+' vs '+(total+2));
+ const total=G.reduce((a,g)=>a+g.opts.filter(o=>!o.p).length,0),prem=G.reduce((a,g)=>a+g.opts.filter(o=>o.p).length,0);
+ ck('tab-has-a-button-for-every-option',document.querySelectorAll('#cbody [data-a=look]').length===total+2&&document.querySelectorAll('#cbody [data-a=tab][data-v=h]').length===prem&&prem===4,document.querySelectorAll('#cbody [data-a=look]').length+' vs '+(total+2)+', locked '+prem);
  ck('tab-has-a-preview-canvas',!!document.querySelector('#pv'));
  ck('tab-button-highlighted',document.querySelector('#tk').className==='on');
  ck('no-undefined-or-nan-in-markup',!body().includes('undefined')&&!body().includes('NaN'));

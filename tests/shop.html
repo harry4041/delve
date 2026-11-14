@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>running</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+</head><body><div id="app">
+<header><h1>Delve</h1><div id="top"></div></header>
+<section id="battle" hidden>
+ <div class="cv"><canvas id="c" width="192" height="108"></canvas><div id="fxl"></div>
+  <div id="over" hidden><div class="px" style="font-size:12px">Defeated</div><div id="ovt"></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button data-a="delveAgain" style="background:#d94a4a;color:#fff;border-color:#fff">⚔ Delve Again</button><button data-a="camp">Go to camp</button><button class="s alt" data-a="auto" id="autoo">Auto-delve: OFF</button></div></div></div>
+ <div class="bar"><i id="hpb"></i><span id="hpt"></span></div>
+ <div class="bar m" id="mpw"><i id="mpb"></i><span id="mpt"></span></div>
+ <div class="bar e"><i id="ehb"></i><span id="ent"></span></div>
+ <div class="row sp" style="margin:6px 0"><div class="row" id="spells"></div><div class="row"><button class="s alt" data-a="auto" id="autob">Auto-delve: OFF</button><button class="s alt" data-a="spd" id="spdb"></button><button class="s alt" data-a="end">End run</button></div></div>
+ <div class="mute">Last drop</div><div id="last"></div><div class="mute" style="margin-top:6px">Loot this run</div><div id="feed"></div>
+</section>
+<section id="camp" hidden>
+ <div class="tabs main"><button data-a="tab" data-v="g" id="tg">Gear</button><button data-a="tab" data-v="u" id="tu">Upgrades</button><button data-a="tab" data-v="m" id="tm">Magic</button><button data-a="tab" data-v="p" id="tp">Pets</button><button data-a="tab" data-v="a" id="ta">Ascend</button><button data-a="more" id="tmore">More ▾</button></div>
+ <div id="more" class="box" hidden>
+  <div class="mute">Hero</div><div class="tabs"><button data-a="tab" data-v="v" id="tv">Vault</button><button data-a="tab" data-v="k" id="tk">Look</button><button data-a="tab" data-v="r" id="tr2">Auras</button></div>
+  <div class="mute">Progress</div><div class="tabs"><button data-a="tab" data-v="i" id="ti">Idle</button><button data-a="tab" data-v="l" id="tl">Leaderboards</button></div>
+  <div class="mute">Goals</div><div class="tabs"><button data-a="tab" data-v="q" id="tq">Bounties</button><button data-a="tab" data-v="t" id="tt">Trophies</button><button data-a="tab" data-v="b" id="tb">Bestiary</button><button data-a="tab" data-v="s" id="ts">Spire</button></div>
+  <div id="shopg"><div class="mute">Shop</div><div class="tabs"><button data-a="tab" data-v="h" id="th">✦ Shop</button></div></div>
+  <div class="mute">Help and account</div><div class="tabs"><button data-a="tab" data-v="w" id="tw">Wiki</button><button data-a="tab" data-v="n" id="tn">Updates</button><button data-a="tab" data-v="x" id="tx">Account</button></div>
+ </div>
+ <div style="margin:8px 0"><button data-a="delve" style="width:100%;font-size:22px;padding:10px;background:var(--btn);border-width:4px;box-shadow:5px 5px 0 var(--ink)">⚔ DELVE</button></div>
+ <div id="sdw" class="row" style="margin:6px 0"></div><div id="cbody"></div><div style="margin:16px 0"><button class="s alt" data-a="reset">Reset save</button></div>
+</section>
+</div>
+<script type="module">
+// The shop in TEST MODE (fake server in the browser, the same rules as the real server via shopcat.js): Crystals, paid boosts
+// (never stacking with free ones), the daily limit, cosmetics in the Look tab, and the 'off' mode a deployed game uses without a server.
+const out=[],ck=(n,c,x)=>out.push(n+':'+(c?'ok':'FAIL'+(x!==undefined?'('+x+')':'')));
+window.onerror=(m,u,l)=>out.push('ERR '+m+' @'+String(u).split('/').pop()+':'+l);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+try{
+ localStorage.removeItem('hd-cloud');localStorage.removeItem('hd-wallet-test');window.__HD_NO_BOOT_INIT=true;
+ await import('/src/main.js');
+ const st=await import('/src/state.js'),bt=await import('/src/battle.js'),cp=await import('/src/camp.js'),mt=await import('/src/meta.js'),sh=await import('/src/shop.js'),lk=await import('/src/look.js'),cat=await import('/src/shopcat.js'),wk=await import('/src/wiki.js');
+ const S=()=>st.S,q=s=>document.querySelector(s),rnd=Math.random;
+ const fresh=()=>{localStorage.removeItem('hollow-delve-2');st.load();S().gold=1e6;S().best=S().bestOverall=S().life=30;S().seenUp=wk.LATEST_UPDATE};
+ const camp=(t)=>{st.setMode('camp');st.setRun(null);st.setTab(t);cp.view();cp.camp()};
+ const killGold=()=>{Math.random=()=>.5;bt.startRun();st.setMode('camp');const r=st.run,g=r.gold;r.eHp=1;r.hT=10;bt.tick(.001);Math.random=rnd;return r.gold-g};
+ fresh();
+ ck('dev-server-runs-the-shop-in-test-mode',sh.shopMode()==='test');
+ // off: a deployed game without a server
+ window.__HD_SHOP_MODE='off';camp('k');
+ ck('off-hides-the-shop-button',q('#shopg').hidden===true);
+ ck('off-hides-locked-cosmetics',!q('#cbody').innerHTML.includes('🔒'));
+ camp('h');ck('off-shop-says-coming-soon',q('#cbody').innerHTML.includes('coming soon')&&!q('[data-a=shopPack]'));
+ delete window.__HD_SHOP_MODE;
+ // test mode: buying Crystals
+ camp('h');ck('test-mode-is-labelled',q('#shopg').hidden===false&&q('#cbody').innerHTML.includes('TEST MODE')&&q('[data-a=shopPack]').textContent==='Test: free');
+ const base=killGold();ck('no-boost-baseline',base>0&&mt.goldMult()===1);
+ camp('h');q('[data-a=shopPack][data-v=c100]').click();await sleep(50);
+ ck('test-pack-credits-crystals',sh.walletNow().crystals===100&&q('#top').textContent.includes('100 Crystals'),sh.walletNow()&&sh.walletNow().crystals);
+ // paid boost
+ q('[data-a=shopBuy][data-v=gold30]').click();await sleep(50);
+ ck('paid-gold-rush-active',sh.walletNow().crystals===70&&sh.paidBoostLeft('gold')>29*60000&&mt.boostActive('gold')&&mt.goldMult()===2&&!mt.boostActive('loot'));
+ ck('paid-boost-doubles-kill-gold',killGold()===2*base,base);
+ mt.addBoost('gold',30);ck('free-and-paid-gold-rush-never-stack',mt.goldMult()===2&&killGold()===2*base);
+ ck('the-save-timer-is-untouched-by-paid-time',Math.abs(mt.boostLeft('gold')-30*60000)<2000,mt.boostLeft('gold'));
+ // daily limit
+ camp('h');q('[data-a=shopPack][data-v=c1200]').click();await sleep(30);
+ for(const id of ['loot60','loot60','loot60'])await sh.buyItem(id);camp('h');
+ ck('daily-limit-blocks-more-paid-time',cat.paidMinLeft(sh.walletNow(),Date.now())===30&&q('[data-a=shopBuy][data-v=gold60]').disabled&&q('[data-a=shopBuy][data-v=gold60]').title==='daily limit reached'&&!q('[data-a=shopBuy][data-v=gold30]').disabled);
+ // cosmetics
+ camp('k');ck('locked-cosmetics-link-to-the-shop',q('#cbody').innerHTML.includes('🔒 Royal')&&!!q('#cbody [data-a=tab][data-v=h]'));
+ const tun0=lk.lookStyle().tun;lk.applyLook('tun:14');ck('cannot-choose-an-unowned-cosmetic',lk.lookStyle().tun===tun0&&S().look.tun===undefined,S().look.tun);
+ for(let i=0;i<40;i++){lk.applyLook('rand');if(S().look.tun>=14||S().look.hair===12||S().look.cape===9)break}ck('randomise-never-picks-unowned-cosmetics',!(S().look.tun>=14||S().look.hair===12||S().look.cape===9));
+ S().look={tun:14};ck('a-save-with-an-unowned-cosmetic-falls-back',lk.lookStyle().tun===lk.LOOK_GROUPS.find(g=>g.k==='tun').opts[lk.DEFAULT.tun].c);
+ await sh.buyItem('outfit_royal');lk.applyLook('tun:14');
+ ck('owned-cosmetic-can-be-worn',sh.owns('outfit_royal')&&lk.lookStyle().tun==='#5b2a86');
+ camp('k');ck('owned-cosmetic-shows-as-a-swatch',!q('#cbody').innerHTML.includes('🔒 Royal')&&!!q('#cbody [data-v="tun:14"]'));
+ ck('capes-locked-without-relic-or-mantle',!lk.capesUnlocked());
+ await sh.buyItem('capes');ck('patrons-mantle-unlocks-capes',lk.capesUnlocked()&&lk.capeColor(0,'#000')==='#b02838');
+ camp('h');ck('owned-items-marked',(q('#cbody').innerHTML.match(/Owned ✓/g)||[]).length===2);
+ // the test wallet survives a reload and hostile data is cleaned
+ const raw=JSON.parse(localStorage.getItem('hd-wallet-test'));ck('test-wallet-saved',raw.crystals===sh.walletNow().crystals&&raw.owned.includes('capes'));
+ localStorage.setItem('hd-wallet-test','{"crystals":"9999","owned":["capes",{"x":1}],"boosts":{"gold":"forever"}}');sh.resetShopForTests();await sh.refreshWallet();
+ ck('hostile-test-wallet-cleaned',sh.walletNow().crystals===0&&sh.walletNow().owned.join()==='capes'&&sh.paidBoostLeft('gold')===0);
+ // no wallet at all: every multiplier is exactly what it was before the shop
+ localStorage.removeItem('hd-wallet-test');sh.resetShopForTests();fresh();
+ ck('no-wallet-means-no-change',mt.goldMult()===1&&!mt.boostActive('gold')&&!mt.boostActive('loot')&&sh.paidBoostLeft('gold')===0);
+ // live mode without a signed-in player
+ window.__HD_SHOP_MODE='live';sh.resetShopForTests();camp('h');ck('live-needs-a-verified-account',q('#cbody').innerHTML.includes('verify your email')&&!q('[data-a=shopBuy]'));delete window.__HD_SHOP_MODE;
+}catch(e){out.push('EXC '+e.message+' | '+(e.stack||'').split('\n')[1])}
+try{localStorage.removeItem('hollow-delve-2');localStorage.removeItem('hd-wallet-test')}catch(e){}
+document.title=out.join(' ');
+</script></body></html>

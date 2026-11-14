@@ -3,15 +3,16 @@
 // exactly as before.
 import { S } from './state.js';
 import { RL } from './stats.js';
+import { owns, shopMode } from './shop.js';
 
-const sw = (n, c) => ({ n, c });
+const sw = (n, c, p) => (p ? { n, c, p } : { n, c }); // p = the Shop cosmetic (shopcat.js) that unlocks this option
 export const LOOK_GROUPS = [
   { k: 'skin', n: 'Skin', opts: [sw('Peach', '#ffd5ac'), sw('Fair', '#f6e0cf'), sw('Tan', '#e0ac69'), sw('Bronze', '#c68642'), sw('Brown', '#8d5524'), sw('Deep', '#5c3a21'), sw('Moss', '#9bd18b'), sw('Frost', '#b8c4ff'), sw('Weathered', '#d19a6e'), sw('Ruddy', '#c98a68')] },
   { k: 'hs', n: 'Hair style', opts: [sw('Spiky', null), sw('Short', null), sw('Long', null), sw('Mohawk', null), sw('Bald', null)] },
-  { k: 'hair', n: 'Hair colour', opts: [sw('Ginger', '#ff9a2e'), sw('Blonde', '#f2d16b'), sw('Brown', '#6b4226'), sw('Black', '#1f1a24'), sw('Red', '#c0392b'), sw('White', '#e8e8f0'), sw('Blue', '#3d8bff'), sw('Pink', '#ff7ab8'), sw('Green', '#4cc46a'), sw('Purple', '#a04fd0'), sw('Chestnut', '#4a3123'), sw('Ash', '#8d8578')] },
-  { k: 'tun', n: 'Outfit', opts: [sw('Blue', '#3d8bff'), sw('Red', '#d94a4a'), sw('Green', '#3fa86a'), sw('Purple', '#8a5ad0'), sw('Gold', '#d9a63a'), sw('Teal', '#2fb5b0'), sw('Black', '#34303f'), sw('White', '#d8d8e8'), sw('Orange', '#e0803a'), sw('Pink', '#e070a8'), sw('Leather', '#6b4f35'), sw('Slate', '#4a5568'), sw('Moss', '#4e5d3a'), sw('Wine', '#6e2f3a')] },
+  { k: 'hair', n: 'Hair colour', opts: [sw('Ginger', '#ff9a2e'), sw('Blonde', '#f2d16b'), sw('Brown', '#6b4226'), sw('Black', '#1f1a24'), sw('Red', '#c0392b'), sw('White', '#e8e8f0'), sw('Blue', '#3d8bff'), sw('Pink', '#ff7ab8'), sw('Green', '#4cc46a'), sw('Purple', '#a04fd0'), sw('Chestnut', '#4a3123'), sw('Ash', '#8d8578'), sw('Starlight', '#bfe4ff', 'hair_star')] },
+  { k: 'tun', n: 'Outfit', opts: [sw('Blue', '#3d8bff'), sw('Red', '#d94a4a'), sw('Green', '#3fa86a'), sw('Purple', '#8a5ad0'), sw('Gold', '#d9a63a'), sw('Teal', '#2fb5b0'), sw('Black', '#34303f'), sw('White', '#d8d8e8'), sw('Orange', '#e0803a'), sw('Pink', '#e070a8'), sw('Leather', '#6b4f35'), sw('Slate', '#4a5568'), sw('Moss', '#4e5d3a'), sw('Wine', '#6e2f3a'), sw('Royal', '#5b2a86', 'outfit_royal'), sw('Obsidian', '#17131f', 'outfit_obsidian')] },
   { k: 'scarf', n: 'Scarf', opts: [sw('Red', '#d94a4a'), sw('None', null), sw('Blue', '#3d8bff'), sw('Gold', '#e8c050'), sw('Green', '#3fa86a'), sw('Purple', '#8a5ad0'), sw('White', '#e8e8f0'), sw('Black', '#2a2434'), sw('Wine', '#7a2a35'), sw('Ash', '#7d7a74')] },
-  { k: 'cape', n: 'Cape', opts: [sw('Auto', 'auto'), sw('None', null), sw('Crimson', '#b02838'), sw('Royal', '#2a50b8'), sw('Forest', '#2a7a3a'), sw('Violet', '#7a3ab8'), sw('Gold', '#c8982a'), sw('Black', '#26202e'), sw('White', '#d8d8e8')] },
+  { k: 'cape', n: 'Cape', opts: [sw('Auto', 'auto'), sw('None', null), sw('Crimson', '#b02838'), sw('Royal', '#2a50b8'), sw('Forest', '#2a7a3a'), sw('Violet', '#7a3ab8'), sw('Gold', '#c8982a'), sw('Black', '#26202e'), sw('White', '#d8d8e8'), sw('Phoenix', '#ff6a1a', 'cape_phoenix')] },
   { k: 'eye', n: 'Eye colour', opts: [sw('Night', '#2b2150'), sw('Sky', '#2a6fd0'), sw('Emerald', '#2a9a4a'), sw('Brown', '#6a3a1a'), sw('Violet', '#8a2ab0'), sw('Ember', '#d02a2a'), sw('Gold', '#d0a020'), sw('Steel', '#5a6472')] },
   // Face: shapes are drawn by HERO_ST.face in render.js (all four default to the original look at index 0). Append new options at the END of a group.
   { k: 'es', n: 'Eye shape', opts: [sw('Round', null), sw('Narrow', null), sw('Wide', null), sw('Sleepy', null), sw('Happy', null)] },
@@ -24,9 +25,11 @@ const G = Object.fromEntries(LOOK_GROUPS.map((g) => [g.k, g]));
 // Index chosen for a group, always inside the option range.
 // Options a player has not chosen yet fall back to DEFAULT (a weathered, muted look); explicit choices always win, and Reset clears them.
 export const DEFAULT = { skin: 8, hs: 1, hair: 10, tun: 10, scarf: 8, eye: 3, mo: 2, ch: 4 };
+// A Shop option that is not owned (another account's save, or a refunded purchase) falls back like an unchosen option.
+const usable = (o) => !o.p || owns(o.p);
 export function lookIdx(k) {
   const v = S.look && S.look[k], n = G[k].opts.length;
-  return Number.isInteger(v) && v >= 0 && v < n ? v : (DEFAULT[k] || 0);
+  return Number.isInteger(v) && v >= 0 && v < n && usable(G[k].opts[v]) ? v : (DEFAULT[k] || 0);
 }
 const opt = (k) => G[k].opts[lookIdx(k)];
 
@@ -37,7 +40,7 @@ export function lookStyle() {
 }
 
 // Cape colour for the battle scene and portrait: null = no cape, 'auto' = crimson, or the colour of the best gear from Epic up.
-export const capesUnlocked = () => RL('rCape') > 0; // the Heroic mantle relic (Ascend tab) unlocks capes
+export const capesUnlocked = () => RL('rCape') > 0 || owns('capes'); // the Heroic mantle relic (Ascend tab) or the Patron's mantle (Shop)
 export function capeColor(gearRi, gearCol) {
   if (!capesUnlocked()) return null;
   const c = opt('cape').c;
@@ -50,19 +53,19 @@ export function capeColor(gearRi, gearCol) {
 export function applyLook(v) {
   if (!S.look || typeof S.look !== 'object') S.look = {};
   if (v === 'reset') { S.look = {}; return; }
-  if (v === 'rand') { for (const g of LOOK_GROUPS) S.look[g.k] = Math.floor(Math.random() * g.opts.length); return; }
+  if (v === 'rand') { for (const g of LOOK_GROUPS) { const ok = g.opts.map((o, i) => i).filter((i) => usable(g.opts[i])); S.look[g.k] = ok[Math.floor(Math.random() * ok.length)]; } return; }
   const parts = String(v).split(':');
   if (parts.length !== 2 || !/^[0-9]{1,2}$/.test(parts[1])) return;
   const k = parts[0], n = +parts[1];
-  if (Object.prototype.hasOwnProperty.call(G, k) && Number.isInteger(n) && n >= 0 && n < G[k].opts.length) S.look[k] = n; // own keys only: '__proto__' and 'constructor' must not count as groups
+  if (Object.prototype.hasOwnProperty.call(G, k) && Number.isInteger(n) && n >= 0 && n < G[k].opts.length && usable(G[k].opts[n])) S.look[k] = n; // own keys only: '__proto__' and 'constructor' must not count as groups
 }
 
 export function lookTab() {
   const group = (g) => {
     const cur = lookIdx(g.k);
-    if (g.k === 'cape' && !capesUnlocked()) return '<div style="margin-bottom:8px"><div class="mute" style="margin-bottom:3px">Cape: <b style="color:var(--ink)">locked</b></div><div class="mute">Capes are unlocked with the <b>Heroic mantle</b> relic (Ascend tab). Your first ascension earns the relics for it.</div></div>';
+    if (g.k === 'cape' && !capesUnlocked()) return '<div style="margin-bottom:8px"><div class="mute" style="margin-bottom:3px">Cape: <b style="color:var(--ink)">locked</b></div><div class="mute">Capes are unlocked with the <b>Heroic mantle</b> relic (Ascend tab). Your first ascension earns the relics for it. The <b>Patron\'s mantle</b> in the Shop unlocks them too.</div></div>';
     return '<div style="margin-bottom:8px"><div class="mute" style="margin-bottom:3px">' + g.n + ': <b style="color:var(--ink)">' + g.opts[cur].n + '</b></div><div class="row" style="flex-wrap:wrap;gap:4px">'
-      + g.opts.map((o, i) => (o.c && o.c !== 'auto'
+      + g.opts.map((o, i) => (!usable(o) ? (shopMode() === 'off' ? '' : '<button class="s alt" data-a="tab" data-v="h" title="' + o.n + ': in the Shop">🔒 ' + o.n + '</button>') : o.c && o.c !== 'auto'
         ? '<button class="sw' + (i === cur ? ' on' : '') + '" data-a="look" data-v="' + g.k + ':' + i + '" title="' + o.n + '" aria-label="' + g.n + ' ' + o.n + '" style="background:' + o.c + '"></button>'
         : '<button class="s' + (i === cur ? '' : ' alt') + '" data-a="look" data-v="' + g.k + ':' + i + '">' + o.n + '</button>')).join('') + '</div></div>';
   };

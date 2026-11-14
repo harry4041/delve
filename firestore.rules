@@ -117,6 +117,12 @@ service cloud.firestore {
         && (resource == null || request.time > resource.data.t + duration.value(60, 's'));
     }
 
+    // Crystal wallets (shop): written ONLY by the shop server (server/worker.js, service account, which bypasses these rules).
+    match /wallet/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+
     match /banned/{uid} {
       allow read, write: if false;
     }
