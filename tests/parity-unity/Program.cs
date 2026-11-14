@@ -4,12 +4,14 @@ using System.Globalization;
 using Newtonsoft.Json.Linq;
 using Delve.Core;
 using Delve.Core.Ui;
+using Look = Delve.Core.Art.Look;
 
 CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
 var web = JObject.Parse(File.ReadAllText(args[0]));
 string S0 = (string)web["save"]; var damaged = web["damaged"].Select(x => (string)x).ToList();
 long T0 = 1794657600000, clock = T0; J.Clock = () => clock;
 Store.Dir = Path.Combine(Path.GetTempPath(), "delve-parity-store"); Directory.CreateDirectory(Store.Dir);
+Store.Delete("hd-wallet-test"); Shop.DevBuild = true; Shop.ModeOverride = "test";
 void SeedRng(int n) => J.Rng = new SeqRandom(n) { log = n == 101 };
 var steps = new JArray();
 void Put(string name, object data) => steps.Add(new JObject { ["name"] = name, ["data"] = JToken.FromObject(data) });
@@ -51,6 +53,14 @@ SeedRng(202);
 { var outs = new List<object>(); for (int sd = 500; sd < 506; sd++) { int n = Delve(sd); outs.Add(new { n, run = Rn(), gold = S().gold, gems = S().gems, c = Meta_()["c"], beasts = Meta_()["beasts"], relicFound = JObject.Parse(SaveSystem.ToJson(Game.S))["relicFound"], best = S().best }); } Put("more-delves", outs); }
 SeedRng(8); Put("tabs", new { q = GoalViews.BountyTab(), t = GoalViews.TrophyTab(), b = GoalViews.BestiaryTab(), s = GoalViews.SpireTab() });
 SeedRng(9); clock += 86400000; Bounties.Ensure(); Put("nextday", new { meta = Meta_() });
+SeedRng(11);
+{
+    Shop.ResetForTests(); Shop.Refresh().GetAwaiter().GetResult(); var html0 = Shop.Tab(); Shop.BuyPack("c1200").GetAwaiter().GetResult();
+    var res = new JArray(); foreach (var id in new[] { "gold30", "loot60", "outfit_royal", "capes", "gold60", "c100", "outfit_royal" }) { res.Add(id + ":" + ShopCat.SpendBlock(Shop.Now, id, J.Now())); Shop.BuyItem(id).GetAwaiter().GetResult(); res.Add(null); }
+    Look.Apply("tun:14"); Look.Apply("hair:12"); Look.Apply("cape:9"); var W = Shop.Now;
+    Put("shop", new { html0, res, wallet = W.ToJson(), gold = Boosts.Active("gold"), loot = Boosts.Active("loot"), gm = Meta.GoldMult(), paidGold = Shop.PaidBoostLeft("gold"), paidMin = ShopCat.PaidMinLeft(W, J.Now()), look = new[] { Look.Idx("tun"), Look.Idx("hair"), Look.Idx("cape") }, capes = Look.CapesUnlocked(), cape = Look.CapeColor(0, "#000"), tab = Shop.Tab(), top = Shop.Top() });
+}
+{ int n = Delve(404); Put("delve-paid", new { n, run = Rn(), gold = S().gold, gems = S().gems, c = Meta_()["c"] }); }
 SeedRng(10); Put("damaged", new { metas = damaged.Select(d => { Load(d); return Meta_(); }).ToList() });
 File.WriteAllText(args[1], new JObject { ["steps"] = steps, ["traces"] = traces, ["sites"] = new JArray(SeqRandom.Sites) }.ToString(Newtonsoft.Json.Formatting.None));
 Console.WriteLine("unity steps: " + steps.Count);

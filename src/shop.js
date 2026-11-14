@@ -16,7 +16,7 @@ export function shopMode() {
   return SHOP_API ? 'live' : dev ? 'test' : 'off';
 }
 const TEST_KEY = 'hd-wallet-test', CACHE_KEY = 'hd-wallet';
-let wallet = null, busy = false, note = '';
+let wallet = null, busy = false, note = '', testOrders = 0; // testOrders: no Math.random here, so test purchases never shift the game's random rolls
 const emit = () => window.dispatchEvent(new CustomEvent('hd-shop'));
 
 // The wallet as last read from the server (or the test wallet). A cached copy keeps paid boosts and cosmetics working offline.
@@ -28,7 +28,7 @@ setPaidBoostSource(paidBoostLeft);
 function readJson(key) { try { return JSON.parse(localStorage.getItem(key)); } catch (e) { return null; } }
 function writeJson(key, v) { try { localStorage.setItem(key, JSON.stringify(v)); } catch (e) { /* ignore */ } }
 function setWallet(w, uid) { wallet = cleanWallet(w); if (shopMode() === 'test') writeJson(TEST_KEY, wallet); else if (uid) writeJson(CACHE_KEY, { uid, w: wallet }); emit(); }
-export function resetShopForTests() { wallet = null; busy = false; note = ''; }
+export function resetShopForTests() { wallet = null; busy = false; note = ''; testOrders = 0; }
 
 // Reads the wallet (test: from this browser; live: wallet/<uid>, which the rules let only its owner read).
 export async function refreshWallet() {
@@ -77,7 +77,7 @@ const boughtText = (it) => (it.k ? it.n + ': +' + it.min + ' min (paid timer)' :
 export async function buyPack(id) {
   const p = SHOP.packs.find((x) => x.id === id), m = shopMode();
   if (!p || m === 'off') return;
-  if (m === 'test') { setWallet(creditOrder(wallet || cleanWallet(null), 'test-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7), id).wallet); toast('TEST MODE: +' + p.crystals + ' Crystals (no money)'); return; }
+  if (m === 'test') { setWallet(creditOrder(wallet || cleanWallet(null), 'test-' + Date.now() + '-' + ++testOrders, id).wallet); toast('TEST MODE: +' + p.crystals + ' Crystals (no money)'); return; }
   const c = cloudState();
   if (!c.user || !c.user.verified || !CHECKOUT[id]) { toast('Verify your email on the Account tab to buy Crystals.'); return; }
   window.open(CHECKOUT[id] + (CHECKOUT[id].includes('?') ? '&' : '?') + 'checkout[custom][uid]=' + encodeURIComponent(c.user.uid), '_blank', 'noopener');

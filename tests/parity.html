@@ -26,9 +26,9 @@
 // Keep the two scenarios identical when you change either.
 const steps=[];window.onerror=(m,u,l)=>{document.title='EXC '+m+' @'+String(u).split('/').pop()+':'+l};
 try{
- localStorage.removeItem('hd-cloud');window.__HD_NO_BOOT_INIT=true;
+ localStorage.removeItem('hd-cloud');localStorage.removeItem('hd-wallet-test');window.__HD_NO_BOOT_INIT=true;window.__HD_SHOP_MODE='test';
  await import('/src/main.js');
- const st=await import('/src/state.js'),bt=await import('/src/battle.js'),mt=await import('/src/meta.js'),gl=await import('/src/goals.js'),ss=await import('/src/stats.js');
+ const st=await import('/src/state.js'),bt=await import('/src/battle.js'),mt=await import('/src/meta.js'),gl=await import('/src/goals.js'),ss=await import('/src/stats.js'),sh=await import('/src/shop.js'),lk=await import('/src/look.js'),cat=await import('/src/shopcat.js');
  const T0=1794657600000;let clock=T0;Date.now=()=>clock;
  const mul=(s)=>{let a=s>>>0;return()=>{a=(a+0x6D2B79F5)>>>0;let t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296}};
  let calls=0;const sites=[];const seedRng=(n)=>{const g=mul(n);calls=0;Math.random=()=>{calls++;if(n===101&&sites.length<600){const f=(new Error().stack.split(String.fromCharCode(10))[2]||'').trim().split(' ')[1]||'?';sites.push(f.split('.').pop().toLowerCase())}return g()}};
@@ -55,6 +55,10 @@ try{
  {const out=[];for(let sd=500;sd<506;sd++){const n=delve(sd);out.push(JSON.parse(JSON.stringify({n,run:run(),gold:S().gold,gems:S().gems,c:M().c,beasts:M().beasts,relicFound:S().relicFound,best:S().best})))}put('more-delves',out)}
  seedRng(8);put('tabs',{q:gl.bountyTab(),t:gl.trophyTab(),b:gl.bestiaryTab(),s:gl.spireTab()});
  seedRng(9);clock+=86400000;mt.ensureBounties();put('nextday',{meta:M()});
+ seedRng(11);{sh.resetShopForTests();await sh.refreshWallet();const html0=sh.shopTab();await sh.buyPack('c1200');const res=[];for(const id of ['gold30','loot60','outfit_royal','capes','gold60','c100','outfit_royal'])res.push(id+':'+cat.spendBlock(sh.walletNow(),id,Date.now()),await sh.buyItem(id));
+  lk.applyLook('tun:14');lk.applyLook('hair:12');lk.applyLook('cape:9');const W=sh.walletNow();
+  put('shop',{html0,res,wallet:JSON.parse(JSON.stringify(W)),gold:mt.boostActive('gold'),loot:mt.boostActive('loot'),gm:mt.goldMult(),paidGold:sh.paidBoostLeft('gold'),paidMin:cat.paidMinLeft(W,Date.now()),look:[lk.lookIdx('tun'),lk.lookIdx('hair'),lk.lookIdx('cape')],capes:lk.capesUnlocked(),cape:lk.capeColor(0,'#000'),tab:sh.shopTab(),top:sh.shopTop()});}
+ {const n=delve(404);put('delve-paid',{n,run:run(),gold:S().gold,gems:S().gems,c:M().c})}
  const bad=['"x"','[]','null','{"c":"x","bounties":{},"trophies":{"a":-1,"b":"2","c":1.5,"d":2,"e":3e9},"beasts":{"0:0":-5,"1:1":null,"2:2":"7","3:3":4},"boosts":{"gold":"soon","loot":-1},"day":5,"dayBest":-3,"spireBest":"9","rerolled":"yes","chest":1}',
   '{"c":{"kill":1e400,"boss":-2,"gold":12},"bounties":[null,{"k":5,"goal":1,"b":0},{"k":"kill","goal":"x","b":0},{"k":"kill","goal":10,"b":0,"done":"yes"},7],"spireBest":1e12,"dayBest":1e400}',
   '{"c":null,"bounties":null,"trophies":null,"beasts":null,"boosts":null,"day":null,"spireBest":-4.5}','{"spireBest":7.9,"trophies":{"x":2.0},"day":"2026-11-14","unityOnly":{"a":[1,2]}}'];

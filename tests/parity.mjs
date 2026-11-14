@@ -24,7 +24,13 @@ let dll = path.join(unityDir, 'Library', 'ScriptAssemblies', 'Assembly-CSharp.dl
 if (!fs.existsSync(dll) || fs.statSync(dll).mtimeMs < newest(path.join(unityDir, 'Assets', 'Scripts'))) {
   const out = path.join(tmp, 'delve-parity-unitybuild');
   console.log('the editor has not compiled the latest scripts yet: building Assembly-CSharp with dotnet');
-  execFileSync('dotnet', ['build', path.join(unityDir, 'Assembly-CSharp.csproj'), '-nologo', '-v', 'q', '-o', out], { stdio: 'inherit' });
+  // Unity's own project file only lists scripts it has imported, so build a copy that includes every script under Assets/Scripts
+  // (it must sit next to the original: its package references are relative paths). It is deleted again right after.
+  const bs = String.fromCharCode(92), tmpProj = path.join(unityDir, 'Assembly-CSharp.parity.csproj');
+  let proj = fs.readFileSync(path.join(unityDir, 'Assembly-CSharp.csproj'), 'utf8').replace(/<Compile Include="[^"]*" \/>/g, '');
+  proj = proj.replace('</Project>', '<ItemGroup><Compile Include="Assets' + bs + 'Scripts' + bs + '**' + bs + '*.cs" Exclude="Assets' + bs + 'Scripts' + bs + '**' + bs + 'Editor' + bs + '**" /></ItemGroup></Project>');
+  fs.writeFileSync(tmpProj, proj);
+  try { execFileSync('dotnet', ['build', tmpProj, '-nologo', '-v', 'q', '-o', out], { stdio: 'inherit' }); } finally { fs.rmSync(tmpProj, { force: true }); }
   dll = path.join(out, 'Assembly-CSharp.dll');
 }
 execFileSync('dotnet', ['run', '--project', 'tests/parity-unity', '-c', 'Release', `-p:UnityDir=${unityDir}`, `-p:UnityDll=${dll}`, '--', webFile, unityFile], { stdio: 'inherit' });
